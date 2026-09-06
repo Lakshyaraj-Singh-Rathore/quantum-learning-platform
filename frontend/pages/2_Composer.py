@@ -42,8 +42,11 @@ if react_available:
             ir = composer.get_circuit()
         except Exception as exc:  # noqa: BLE001
             st.error(f"Composer returned an invalid circuit: {exc}")
-    with st.expander("Measurement buttons and block editing"):
-        composer.render("grid")
+    # NB: composer.render() opens its own expanders, and Streamlit forbids
+    # nesting them -- so this section must not be wrapped in one.
+    st.divider()
+    st.subheader("Measurement buttons and block editing")
+    composer.render("grid")
 else:
     with st.expander("About the drag-and-drop component", expanded=False):
         st.info(build_instructions())
