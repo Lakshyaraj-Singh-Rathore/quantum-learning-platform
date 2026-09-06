@@ -15,9 +15,11 @@ Classically, in the worst case you must query $2^{n-1}+1$ inputs. Quantum mechan
 ## The phase kickback trick
 
 The oracle is implemented reversibly as
+
 $$U_f: |x\rangle|y\rangle \mapsto |x\rangle|y \oplus f(x)\rangle$$
 
 Prepare the target qubit in $|-\rangle = (|0\rangle - |1\rangle)/\sqrt2$. Then
+
 $$U_f|x\rangle|-\rangle = (-1)^{f(x)}|x\rangle|-\rangle$$
 
 The target is unchanged, but a **phase** $(-1)^{f(x)}$ has been "kicked back" onto the

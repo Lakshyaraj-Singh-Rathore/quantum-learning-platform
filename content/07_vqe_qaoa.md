@@ -21,7 +21,9 @@ VQE estimates the **ground-state energy** of a Hamiltonian - the lowest eigenval
 main application is chemistry: molecular energies, reaction barriers, materials.
 
 The variational principle guarantees
+
 $$E(\vec\theta) \ge E_{\text{ground}}$$
+
 for every $\vec\theta$, so the optimizer can only ever approach the true answer from
 above - a very useful safety property.
 

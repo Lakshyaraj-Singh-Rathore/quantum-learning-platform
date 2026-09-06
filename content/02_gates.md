@@ -18,8 +18,9 @@ measure and reset) has an inverse.
 | **I** | Identity | does nothing (useful as a placeholder/delay) |
 
 The Hadamard is the workhorse:
-$$H|0\rangle = \frac{|0\rangle + |1\rangle}{\sqrt2}, \qquad
-H|1\rangle = \frac{|0\rangle - |1\rangle}{\sqrt2}$$
+
+$$H|0\rangle = \frac{|0\rangle + |1\rangle}{\sqrt2}, \qquad H|1\rangle = \frac{|0\rangle - |1\rangle}{\sqrt2}$$
+
 Note that $H|1\rangle$ carries a **minus sign**. Applying $H$ twice returns the original
 state ($H^2 = I$) precisely because of that sign - the two paths interfere.
 

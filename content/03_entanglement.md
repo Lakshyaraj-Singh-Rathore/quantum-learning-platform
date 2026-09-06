@@ -6,6 +6,7 @@ $|\psi\rangle_A \otimes |\phi\rangle_B$ of independent single-qubit states.
 ## The Bell states
 
 The canonical example is
+
 $$|\Phi^+\rangle = \frac{|00\rangle + |11\rangle}{\sqrt2}$$
 
 Recipe: **H on q0, then CNOT with q0 as control and q1 as target.**
@@ -15,13 +16,15 @@ The individual outcomes are random, but they are perfectly **correlated**. Neith
 has a definite state of its own; only the pair does.
 
 The four Bell states form a basis for two-qubit space:
-$$|\Phi^\pm\rangle = \frac{|00\rangle \pm |11\rangle}{\sqrt2}, \qquad
-|\Psi^\pm\rangle = \frac{|01\rangle \pm |10\rangle}{\sqrt2}$$
+
+$$|\Phi^\pm\rangle = \frac{|00\rangle \pm |11\rangle}{\sqrt2}, \qquad |\Psi^\pm\rangle = \frac{|01\rangle \pm |10\rangle}{\sqrt2}$$
 
 ## GHZ states
 
 Entanglement scales to more qubits. Applying H to q0 and then CNOTs onto q1, q2, ... gives
+
 $$|GHZ\rangle = \frac{|00\cdots0\rangle + |11\cdots1\rangle}{\sqrt2}$$
+
 Every qubit agrees with every other, all at once.
 
 ## What entanglement is not

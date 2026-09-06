@@ -9,7 +9,9 @@ is provably optimal for unstructured search.
 With $n$ qubits we have $N = 2^n$ basis states. We want the marked state $|w\rangle$.
 
 **Step 0.** Apply H to every qubit to build the uniform superposition
+
 $$|s\rangle = \frac{1}{\sqrt N}\sum_{x=0}^{N-1}|x\rangle$$
+
 Every item currently has amplitude $1/\sqrt{N}$.
 
 ## The Grover iteration
@@ -17,11 +19,15 @@ Every item currently has amplitude $1/\sqrt{N}$.
 Each iteration has two parts.
 
 **1. The oracle $U_w$** flips the *phase* of the marked state:
+
 $$U_w|x\rangle = \begin{cases} -|x\rangle & x = w \\ |x\rangle & \text{otherwise}\end{cases}$$
+
 For $n=2$ marking $|11\rangle$, the oracle is simply a **CZ** gate.
 
 **2. The diffuser** reflects all amplitudes about their mean:
+
 $$U_s = 2|s\rangle\langle s| - I$$
+
 In gates: H on all qubits, X on all qubits, a multi-controlled Z, X on all, H on all.
 
 The marked amplitude was pushed below the mean by the oracle, so reflecting about the mean
@@ -34,6 +40,7 @@ $\theta = 2\arcsin(1/\sqrt N)$ toward $|w\rangle$ in the plane spanned by $|w\ra
 the uniform superposition of the non-solutions.
 
 The optimal number of iterations is
+
 $$k \approx \frac{\pi}{4}\sqrt{N}$$
 
 ## Do not over-rotate
