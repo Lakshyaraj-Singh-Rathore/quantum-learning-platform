@@ -1,5 +1,7 @@
 """Authentication and role-based authorization."""
 
+import pytest
+
 
 def test_register_login_and_me(client):
     email = "auth-flow@example.com"
@@ -208,3 +210,36 @@ def test_ingestion_rechunks_a_stale_split(tmp_path, monkeypatch):
         db.query(ContentChunk).filter(ContentChunk.lesson_slug == "demo").delete()
         db.commit()
         db.close()
+
+
+def test_retired_chat_model_names_the_setting(monkeypatch):
+    """A retired model must point at GEMINI_CHAT_MODEL, not leak a raw 404.
+
+    Regression: gemini-2.0-flash was retired and the tutor surfaced
+    "temporarily unavailable (NotFound: 404 ...)", which reads like an outage
+    rather than a one-line config change.
+    """
+    import app.ai.gemini_client as gc
+
+    message = (
+        "404 This model models/gemini-2.0-flash is no longer available. "
+        "Please update your code to use models/gemini-3.6-flash."
+    )
+    assert gc._is_retired_model(Exception(message))
+    assert not gc._is_retired_model(Exception("429 rate limit exceeded"))
+    assert not gc._is_retired_model(Exception("500 internal error"))
+
+    class FakeModel:
+        def __init__(self, *a, **k):
+            pass
+
+        def generate_content(self, contents):
+            raise RuntimeError(message)
+
+    class FakeGenAI:
+        GenerativeModel = FakeModel
+
+    monkeypatch.setattr(gc, "_client", lambda: FakeGenAI())
+    with pytest.raises(gc.GeminiUnavailable) as excinfo:
+        gc.generate("hello")
+    assert "GEMINI_CHAT_MODEL" in str(excinfo.value)

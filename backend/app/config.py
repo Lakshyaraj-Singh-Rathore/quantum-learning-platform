@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     api_cors_origins: str = "*"
 
     gemini_api_key: str = ""
-    gemini_chat_model: str = "gemini-2.0-flash"
+    gemini_chat_model: str = "gemini-3.6-flash"
     gemini_embed_model: str = "gemini-embedding-001"
 
     qbraid_api_key: str = ""

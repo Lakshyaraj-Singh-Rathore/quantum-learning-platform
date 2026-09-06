@@ -35,6 +35,20 @@ def _is_transient(exc: Exception) -> bool:
     return any(marker in blob for marker in _TRANSIENT_MARKERS)
 
 
+def _is_retired_model(exc: Exception) -> bool:
+    """True when Google reports the configured model as gone.
+
+    Google retires Gemini models on a rolling basis, so this surfaces a
+    message that names the setting to change instead of a raw 404.
+    """
+    blob = f"{exc}".lower()
+    return "404" in blob and (
+        "no longer available" in blob
+        or "is not found" in blob
+        or "not supported for" in blob
+    )
+
+
 class GeminiUnavailable(RuntimeError):
     pass
 
@@ -164,7 +178,16 @@ def generate(
         contents.append({"role": role, "parts": [turn.get("content", "")]})
     contents.append({"role": "user", "parts": [prompt]})
 
-    response = model.generate_content(contents)
+    try:
+        response = model.generate_content(contents)
+    except Exception as exc:  # noqa: BLE001
+        if _is_retired_model(exc):
+            raise GeminiUnavailable(
+                f"The configured chat model '{settings.gemini_chat_model}' has been "
+                "retired by Google. Update GEMINI_CHAT_MODEL in your .env "
+                f"(details: {exc})"
+            ) from exc
+        raise
     return (getattr(response, "text", "") or "").strip()
 
 
