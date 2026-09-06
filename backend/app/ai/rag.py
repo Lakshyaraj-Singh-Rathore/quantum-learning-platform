@@ -141,10 +141,26 @@ def ingest_content_folder(db: Session, folder: str | None = None, force: bool = 
             chunks_written += 1
 
     db.commit()
+
+    # Report the true corpus state, not just what this run touched: a partial
+    # backfill (e.g. embeddings rejected mid-run) is otherwise invisible.
+    total_chunks = db.scalar(select(func.count()).select_from(ContentChunk)) or 0
+    unembedded = sum(
+        1 for row in db.scalars(select(ContentChunk)).all() if row.embedding is None
+    )
+    if unembedded:
+        log.warning(
+            "%d of %d content chunks still have no embedding; "
+            "AI retrieval will use the keyword fallback for those",
+            unembedded,
+            total_chunks,
+        )
     return {
         "lessons": lessons,
         "chunks": chunks_written,
         "embedded": embedded,
+        "total_chunks": total_chunks,
+        "unembedded": unembedded,
         "skipped": False,
     }
 

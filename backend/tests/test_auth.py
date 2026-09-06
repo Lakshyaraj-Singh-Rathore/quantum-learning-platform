@@ -107,3 +107,45 @@ def test_embed_always_matches_configured_dimension(monkeypatch):
         vector = gc.embed("hello")
         assert vector is not None
         assert len(vector) == dim
+
+
+def test_embed_retries_transient_errors_only(monkeypatch):
+    """Free-tier keys rate limit ingestion bursts.
+
+    Regression: a burst of embedding calls hit 429s and silently lost 15 of 23
+    chunks, leaving RAG partially on the keyword fallback. Transient failures
+    must be retried; permanent ones must fail fast.
+    """
+    import app.ai.gemini_client as gc
+    from app.config import get_settings
+
+    monkeypatch.setattr(gc, "EMBED_BACKOFF_SECONDS", 0.0)
+    dim = get_settings().embedding_dim
+
+    class Fake:
+        def __init__(self, fails, exc):
+            self.calls, self.fails, self.exc = 0, fails, exc
+
+        def embed_content(self, model, content, output_dimensionality=None):
+            self.calls += 1
+            if self.calls <= self.fails:
+                raise self.exc
+            return {"embedding": [0.5] * (output_dimensionality or dim)}
+
+    # transient: recovers, and the vector still matches the schema
+    fake = Fake(2, Exception("429 Resource has been exhausted (quota)"))
+    monkeypatch.setattr(gc, "_client", lambda: fake)
+    assert len(gc.embed("hi")) == dim
+    assert fake.calls == 3
+
+    # permanent: no retry storm
+    fake = Fake(99, Exception("404 model not found"))
+    monkeypatch.setattr(gc, "_client", lambda: fake)
+    assert gc.embed("hi") is None
+    assert fake.calls == 1
+
+    # transient but persistent: bounded retries
+    fake = Fake(99, Exception("429 rate limit"))
+    monkeypatch.setattr(gc, "_client", lambda: fake)
+    assert gc.embed("hi") is None
+    assert fake.calls == gc.EMBED_MAX_ATTEMPTS

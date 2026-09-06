@@ -3,11 +3,36 @@
 from __future__ import annotations
 
 import logging
+import time
 from typing import Any, Optional
 
 from app.config import get_settings
 
 log = logging.getLogger(__name__)
+
+#: Retry budget for embedding calls, which free-tier keys rate limit heavily.
+EMBED_MAX_ATTEMPTS = 4
+EMBED_BACKOFF_SECONDS = 1.5
+
+#: Error fragments that indicate a retryable (as opposed to permanent) failure.
+_TRANSIENT_MARKERS = (
+    "429",
+    "rate limit",
+    "quota",
+    "resource has been exhausted",
+    "resource_exhausted",
+    "503",
+    "500",
+    "unavailable",
+    "deadline",
+    "timeout",
+    "temporarily",
+)
+
+
+def _is_transient(exc: Exception) -> bool:
+    blob = f"{type(exc).__name__}: {exc}".lower()
+    return any(marker in blob for marker in _TRANSIENT_MARKERS)
 
 
 class GeminiUnavailable(RuntimeError):
@@ -74,17 +99,37 @@ def embed(text: str) -> Optional[list[float]]:
         raw = result["embedding"] if isinstance(result, dict) else result.embedding
         return list(raw)
 
-    try:
+    def _call() -> Any:
         try:
-            result = genai.embed_content(
+            return genai.embed_content(
                 model=model, content=text, output_dimensionality=dim
             )
         except TypeError:
             # SDK too old to accept the kwarg
-            result = genai.embed_content(model=model, content=text)
-        vector = _vector_of(result)
-    except Exception as exc:  # noqa: BLE001
-        log.warning("embedding failed: %s", exc)
+            return genai.embed_content(model=model, content=text)
+
+    # Free-tier keys are rate limited; a burst of ingestion calls otherwise
+    # loses most chunks. Retry transient failures with a short backoff.
+    last: Exception | None = None
+    for attempt in range(EMBED_MAX_ATTEMPTS):
+        try:
+            vector = _vector_of(_call())
+            break
+        except Exception as exc:  # noqa: BLE001
+            last = exc
+            if not _is_transient(exc) or attempt == EMBED_MAX_ATTEMPTS - 1:
+                log.warning("embedding failed: %s", exc)
+                return None
+            delay = EMBED_BACKOFF_SECONDS * (2**attempt)
+            log.info(
+                "embedding rate limited (attempt %d/%d), retrying in %.1fs",
+                attempt + 1,
+                EMBED_MAX_ATTEMPTS,
+                delay,
+            )
+            time.sleep(delay)
+    else:  # pragma: no cover - loop always breaks or returns
+        log.warning("embedding failed: %s", last)
         return None
 
     if len(vector) != dim:
