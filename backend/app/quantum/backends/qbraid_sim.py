@@ -92,10 +92,45 @@ def run(
     )
 
 
+#: Substrings that indicate the qBraid endpoint could not be reached at all.
+#: These must be checked *before* the auth branch: the SDK reports an
+#: unreachable host as "Failed to authenticate with the Quantum Runtime
+#: service", which would otherwise be misdiagnosed as a bad API key.
+_NETWORK_MARKERS = (
+    "ssl_error_syscall",
+    "connection aborted",
+    "connection refused",
+    "connection reset",
+    "connection error",
+    "max retries exceeded",
+    "failed to establish a new connection",
+    "name or service not known",
+    "temporary failure in name resolution",
+    "timed out",
+    "timeout",
+)
+
+
+def _is_network_failure(exc: Exception) -> bool:
+    seen: list[str] = []
+    cur: BaseException | None = exc
+    while cur is not None and len(seen) < 10:
+        seen.append(f"{type(cur).__name__}: {cur}".lower())
+        cur = cur.__cause__ or cur.__context__
+    blob = " ".join(seen)
+    return any(marker in blob for marker in _NETWORK_MARKERS)
+
+
 def _translate(exc: Exception, device_id: str) -> BackendError:
     """Turn raw SDK failures into actionable messages for the UI."""
     message = str(exc)
     lowered = message.lower()
+    if _is_network_failure(exc):
+        return BackendUnavailable(
+            "Could not reach the qBraid API (network unreachable). This is a "
+            "connectivity problem, not a credentials problem — check egress "
+            "access to api.qbraid.com."
+        )
     if "authenticate" in lowered or "unauthorized" in lowered or "401" in lowered:
         return BackendUnavailable(
             "qBraid rejected the credentials. Check that QBRAID_API_KEY is valid "
