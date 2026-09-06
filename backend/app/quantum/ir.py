@@ -146,7 +146,12 @@ class Op(BaseModel):
             name = self.gate.strip().lower()
             if name in CONTROLLED_ALIASES:
                 base, n_controls = CONTROLLED_ALIASES[name]
-                if not self.controls and n_controls > 0 and len(self.qubits) > n_controls:
+                if n_controls < 0:
+                    # arbitrary number of controls: last qubit is the target
+                    if not self.controls and len(self.qubits) > 1:
+                        self.controls = self.qubits[:-1]
+                        self.qubits = self.qubits[-1:]
+                elif not self.controls and len(self.qubits) > n_controls:
                     self.controls = self.qubits[:n_controls]
                     self.qubits = self.qubits[n_controls:]
                 name = base
