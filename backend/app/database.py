@@ -1,4 +1,4 @@
-from sqlalchemy import JSON, create_engine, text
+from sqlalchemy import JSON, create_engine, inspect, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 from sqlalchemy.types import TypeDecorator
@@ -50,10 +50,23 @@ def get_db():
 
 
 def init_db() -> None:
+    """Ensure the schema exists.
+
+    When Alembic owns the database (an ``alembic_version`` table is present,
+    which is the case for the Docker/production path where the API runs
+    ``alembic upgrade head`` before starting) this is a no-op. ``create_all``
+    would otherwise race the migrations and leave the two disagreeing.
+
+    For local development and the test suite -- SQLite, no migrations run --
+    it still creates the tables so the app is usable with zero setup.
+    """
     if engine.dialect.name == "postgresql":
         with engine.connect() as conn:
             conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
             conn.commit()
     from app import models  # noqa: F401  register models
+
+    if inspect(engine).has_table("alembic_version"):
+        return
 
     Base.metadata.create_all(bind=engine)
