@@ -100,10 +100,27 @@ def ingest_content_folder(db: Session, folder: str | None = None, force: bool = 
             select(func.count()).select_from(ContentChunk).where(ContentChunk.lesson_slug == slug)
         )
 
+        # Re-chunk when the stored split no longer matches what the current
+        # chunker produces (e.g. the lesson text or CHUNK_TARGET_CHARS
+        # changed). Without this, a stale coarse split -- such as one chunk
+        # holding an entire lesson -- would persist forever and make retrieval
+        # return whole lessons instead of focused passages.
+        wanted = len(chunk_markdown(text))
+        if existing and existing != wanted and not force:
+            log.info(
+                "re-chunking %s: stored %d chunk(s) but the chunker now yields %d",
+                slug,
+                existing,
+                wanted,
+            )
+            force_this = True
+        else:
+            force_this = force
+
         # Chunks ingested before a GEMINI_API_KEY was configured are stored
         # with embedding=NULL. Without this backfill they would never gain an
         # embedding, silently degrading RAG to keyword matching forever.
-        if existing and not force:
+        if existing and not force_this:
             if is_configured():
                 # NB: a real pgvector column stores SQL NULL, but the JSON
                 # fallback used on SQLite stores the string 'null'. Filter in
@@ -119,11 +136,12 @@ def ingest_content_folder(db: Session, folder: str | None = None, force: bool = 
                         stale.embedding = vector
                         embedded += 1
             continue
-        if existing and force:
+        if existing and force_this:
             for stale in db.scalars(
                 select(ContentChunk).where(ContentChunk.lesson_slug == slug)
             ).all():
                 db.delete(stale)
+            db.flush()
 
         for index, chunk in enumerate(chunk_markdown(text)):
             vector = embed(chunk)

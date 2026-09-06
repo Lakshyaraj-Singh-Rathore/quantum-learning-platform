@@ -149,3 +149,62 @@ def test_embed_retries_transient_errors_only(monkeypatch):
     monkeypatch.setattr(gc, "_client", lambda: fake)
     assert gc.embed("hi") is None
     assert fake.calls == gc.EMBED_MAX_ATTEMPTS
+
+
+def test_ingestion_rechunks_a_stale_split(tmp_path, monkeypatch):
+    """A stored split that no longer matches the chunker must be rebuilt.
+
+    Regression: an early build stored one chunk per lesson. Because ingestion
+    skipped any lesson that already had chunks, that coarse split persisted
+    forever and retrieval returned whole lessons instead of focused passages.
+    """
+    import app.ai.rag as rag
+    from app.database import SessionLocal
+    from app.models.content import ContentChunk
+    from sqlalchemy import func, select
+
+    lesson = tmp_path / "demo.md"
+    lesson.write_text(
+        "\n".join(f"## Section {i}\n\n{'body text ' * 120}" for i in range(4)),
+        encoding="utf-8",
+    )
+    expected = len(rag.chunk_markdown(lesson.read_text(encoding="utf-8")))
+    assert expected > 1, "fixture must split into several chunks"
+
+    monkeypatch.setattr(rag, "is_configured", lambda: True)
+    monkeypatch.setattr(rag, "embed", lambda text: None)
+
+    db = SessionLocal()
+    try:
+        db.query(ContentChunk).filter(ContentChunk.lesson_slug == "demo").delete()
+        # seed the stale state: the whole lesson as a single chunk
+        db.add(
+            ContentChunk(
+                lesson_slug="demo",
+                chunk_index=0,
+                text=lesson.read_text(encoding="utf-8"),
+                tags=[],
+                embedding=None,
+            )
+        )
+        db.commit()
+
+        rag.ingest_content_folder(db, folder=str(tmp_path))
+        count = db.scalar(
+            select(func.count()).select_from(ContentChunk).where(
+                ContentChunk.lesson_slug == "demo"
+            )
+        )
+        assert count == expected
+
+        # and it must not churn on the next run
+        rag.ingest_content_folder(db, folder=str(tmp_path))
+        assert count == db.scalar(
+            select(func.count()).select_from(ContentChunk).where(
+                ContentChunk.lesson_slug == "demo"
+            )
+        )
+    finally:
+        db.query(ContentChunk).filter(ContentChunk.lesson_slug == "demo").delete()
+        db.commit()
+        db.close()
