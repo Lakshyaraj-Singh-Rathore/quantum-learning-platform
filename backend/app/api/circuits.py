@@ -76,7 +76,10 @@ def get_circuit(
     return _out(row)
 
 
-@router.delete("/{circuit_id}", status_code=204)
+# response_model=None is required: `from __future__ import annotations` makes
+# the `-> None` return annotation the *string* "None", which FastAPI 0.115
+# treats as a real response model and then rejects against a 204 (no body).
+@router.delete("/{circuit_id}", status_code=204, response_model=None)
 def delete_circuit(
     circuit_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)
 ) -> None:
