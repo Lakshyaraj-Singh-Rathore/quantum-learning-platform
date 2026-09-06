@@ -58,11 +58,17 @@ def run(
     warnings: list[str] = []
 
     with Timer() as timer:
-        provider = QbraidProvider(api_key=settings.qbraid_api_key)
-        device = provider.get_device(settings.qbraid_device_id)
-        job = device.run(qasm, shots=shots)
+        try:
+            provider = QbraidProvider(api_key=settings.qbraid_api_key)
+            device = provider.get_device(settings.qbraid_device_id)
+            job = device.run(qasm, shots=shots)
+        except Exception as exc:  # noqa: BLE001 - surface SDK errors cleanly
+            raise _translate(exc, settings.qbraid_device_id) from exc
         _wait_for(job, timeout)
-        result = job.result()
+        try:
+            result = job.result()
+        except Exception as exc:  # noqa: BLE001
+            raise BackendError(f"qBraid job failed: {exc}") from exc
         counts = _extract_counts(result)
 
     counts = {_clean_key(k): int(v) for k, v in counts.items()}
@@ -84,6 +90,23 @@ def run(
             "job_id": str(getattr(job, "id", "") or getattr(job, "job_id", "")),
         },
     )
+
+
+def _translate(exc: Exception, device_id: str) -> BackendError:
+    """Turn raw SDK failures into actionable messages for the UI."""
+    message = str(exc)
+    lowered = message.lower()
+    if "authenticate" in lowered or "unauthorized" in lowered or "401" in lowered:
+        return BackendUnavailable(
+            "qBraid rejected the credentials. Check that QBRAID_API_KEY is valid "
+            "and that your account has Quantum Runtime access."
+        )
+    if "not found" in lowered or "no device" in lowered:
+        return BackendUnavailable(
+            f"qBraid device '{device_id}' was not found or is not enabled for this account. "
+            "Set QBRAID_DEVICE_ID to a device you can access."
+        )
+    return BackendError(f"qBraid submission failed: {message}")
 
 
 def _wait_for(job: Any, timeout: float) -> None:

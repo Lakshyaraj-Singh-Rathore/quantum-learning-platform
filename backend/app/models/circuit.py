@@ -1,10 +1,10 @@
 from datetime import datetime
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, func
-from sqlalchemy.dialects.postgresql import JSONB
+
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.database import Base
+from app.database import Base, JSONType
 
 
 class SavedCircuit(Base):
@@ -14,7 +14,7 @@ class SavedCircuit(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     name: Mapped[str] = mapped_column(String(200))
     description: Mapped[str] = mapped_column(Text, default="")
-    circuit_ir: Mapped[dict] = mapped_column(JSONB)
+    circuit_ir: Mapped[dict] = mapped_column(JSONType)
     qasm3: Mapped[str] = mapped_column(Text, default="")
     is_dynamic: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
