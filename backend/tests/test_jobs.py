@@ -136,6 +136,30 @@ def test_code_export_endpoints(client, student_headers, dynamic_ir, framework):
         assert "WHILE_CAP" in code
 
 
+def test_grade_counts_tolerates_shot_noise():
+    """A correct Bell state must pass across the whole plausible noise range.
+
+    Regression test: the seeded tolerance was once tight enough that ~12% of
+    *correct* submissions were graded as failures. Walk the +/-3 sigma band of
+    a 1024-shot 50/50 split (a ~1-in-370 tail) and require every outcome to
+    pass. Demanding 4 sigma would force a tolerance so wide it stops
+    discriminating against genuinely wrong distributions.
+    """
+    from app.services.autograder import PASS_THRESHOLD, grade_counts
+
+    target = {"counts": {"00": 0.5, "11": 0.5}, "tolerance": 0.25}
+    shots = 1024
+    sigma = int((0.25 * shots) ** 0.5)  # ~16 counts
+    for delta in range(-3 * sigma, 3 * sigma + 1, sigma or 1):
+        n00 = shots // 2 + delta
+        score, _ = grade_counts({"00": n00, "11": shots - n00}, target)
+        assert score >= PASS_THRESHOLD, f"correct Bell state failed at delta={delta}"
+
+    # ...while a plainly wrong distribution still scores zero.
+    score, _ = grade_counts({"00": shots}, target)
+    assert score < PASS_THRESHOLD
+
+
 def test_challenge_submission_is_autograded(client, student_headers, bell_ir):
     submitted = client.post(
         "/challenges/bell-state/submit",
