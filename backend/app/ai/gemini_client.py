@@ -40,6 +40,19 @@ def _client():
     return genai
 
 
+def _qualified_model(name: str) -> str:
+    """Return a model name the SDK accepts.
+
+    ``genai.embed_content`` rejects a bare id with "Model names should start
+    with 'models/' or 'tunedModels/'", so accept either form in configuration
+    and normalise here.
+    """
+    name = (name or "").strip()
+    if name.startswith(("models/", "tunedModels/")):
+        return name
+    return f"models/{name}"
+
+
 def embed(text: str) -> Optional[list[float]]:
     """Embed a single chunk of text; returns None when Gemini is unavailable."""
     try:
@@ -48,7 +61,9 @@ def embed(text: str) -> Optional[list[float]]:
         return None
     settings = get_settings()
     try:
-        result = genai.embed_content(model=settings.gemini_embed_model, content=text)
+        result = genai.embed_content(
+            model=_qualified_model(settings.gemini_embed_model), content=text
+        )
         vector = result["embedding"] if isinstance(result, dict) else result.embedding
         return list(vector)
     except Exception as exc:  # noqa: BLE001

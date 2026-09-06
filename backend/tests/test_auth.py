@@ -61,3 +61,19 @@ def test_instructor_dashboard_is_role_gated(client, student_headers):
     response = client.get("/dashboard/instructor", headers=headers)
     assert response.status_code == 200
     assert "total_students" in response.json()
+
+
+def test_gemini_embed_model_name_is_qualified():
+    """The SDK rejects a bare embedding model id.
+
+    Regression: GEMINI_EMBED_MODEL=text-embedding-004 made every embedding
+    call fail with "Model names should start with 'models/'", leaving the RAG
+    corpus unembedded while the app still reported a healthy startup.
+    """
+    from app.ai.gemini_client import _qualified_model
+
+    assert _qualified_model("text-embedding-004") == "models/text-embedding-004"
+    # already-qualified names must not be double-prefixed
+    assert _qualified_model("models/text-embedding-004") == "models/text-embedding-004"
+    assert _qualified_model("tunedModels/x") == "tunedModels/x"
+    assert _qualified_model("  text-embedding-004  ") == "models/text-embedding-004"
