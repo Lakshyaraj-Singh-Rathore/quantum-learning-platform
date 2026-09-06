@@ -77,3 +77,33 @@ def test_gemini_embed_model_name_is_qualified():
     assert _qualified_model("models/text-embedding-004") == "models/text-embedding-004"
     assert _qualified_model("tunedModels/x") == "tunedModels/x"
     assert _qualified_model("  text-embedding-004  ") == "models/text-embedding-004"
+
+
+def test_embed_always_matches_configured_dimension(monkeypatch):
+    """Embeddings must fit the content_chunks.embedding column.
+
+    Regression: text-embedding-004 (768 dims) was shut down by Google on
+    2026-01-14. Its replacement gemini-embedding-001 returns 3072 dims, which
+    would not fit the schema, so embed() requests output_dimensionality and
+    truncates if the model ignores it.
+    """
+    import app.ai.gemini_client as gc
+    from app.config import get_settings
+
+    dim = get_settings().embedding_dim
+
+    class Fake:
+        def __init__(self, dims, accept):
+            self.dims, self.accept = dims, accept
+
+        def embed_content(self, model, content, output_dimensionality=None):
+            if output_dimensionality is not None and not self.accept:
+                raise TypeError("unexpected keyword")
+            n = output_dimensionality if (output_dimensionality and self.accept) else self.dims
+            return {"embedding": [0.5] * n}
+
+    for dims, accept in ((3072, True), (3072, False), (dim, True)):
+        monkeypatch.setattr(gc, "_client", lambda d=dims, a=accept: Fake(d, a))
+        vector = gc.embed("hello")
+        assert vector is not None
+        assert len(vector) == dim

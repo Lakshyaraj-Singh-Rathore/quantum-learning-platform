@@ -54,21 +54,50 @@ def _qualified_model(name: str) -> str:
 
 
 def embed(text: str) -> Optional[list[float]]:
-    """Embed a single chunk of text; returns None when Gemini is unavailable."""
+    """Embed a single chunk of text; returns None when Gemini is unavailable.
+
+    ``gemini-embedding-001`` returns 3072 dimensions by default, but the
+    ``content_chunks.embedding`` column is sized to ``settings.embedding_dim``.
+    Request ``output_dimensionality`` so the vector matches the schema without
+    a migration; older models ignore/reject the argument, so fall back to a
+    plain call and truncate.
+    """
     try:
         genai = _client()
     except GeminiUnavailable:
         return None
     settings = get_settings()
+    model = _qualified_model(settings.gemini_embed_model)
+    dim = settings.embedding_dim
+
+    def _vector_of(result: Any) -> list[float]:
+        raw = result["embedding"] if isinstance(result, dict) else result.embedding
+        return list(raw)
+
     try:
-        result = genai.embed_content(
-            model=_qualified_model(settings.gemini_embed_model), content=text
-        )
-        vector = result["embedding"] if isinstance(result, dict) else result.embedding
-        return list(vector)
+        try:
+            result = genai.embed_content(
+                model=model, content=text, output_dimensionality=dim
+            )
+        except TypeError:
+            # SDK too old to accept the kwarg
+            result = genai.embed_content(model=model, content=text)
+        vector = _vector_of(result)
     except Exception as exc:  # noqa: BLE001
         log.warning("embedding failed: %s", exc)
         return None
+
+    if len(vector) != dim:
+        log.warning(
+            "embedding model %s returned %d dims, expected %d; truncating",
+            model,
+            len(vector),
+            dim,
+        )
+        vector = vector[:dim]
+        if len(vector) < dim:
+            return None
+    return vector
 
 
 def generate(

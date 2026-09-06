@@ -16,7 +16,7 @@ class Settings(BaseSettings):
 
     gemini_api_key: str = ""
     gemini_chat_model: str = "gemini-2.0-flash"
-    gemini_embed_model: str = "text-embedding-004"
+    gemini_embed_model: str = "gemini-embedding-001"
 
     qbraid_api_key: str = ""
     qbraid_device_id: str = ""
