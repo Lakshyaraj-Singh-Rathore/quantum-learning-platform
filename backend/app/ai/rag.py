@@ -14,7 +14,7 @@ from typing import Any
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.ai.gemini_client import embed
+from app.ai.gemini_client import embed, is_configured
 from app.config import get_settings
 from app.models.content import ContentChunk, Lesson
 
@@ -99,7 +99,25 @@ def ingest_content_folder(db: Session, folder: str | None = None, force: bool = 
         existing = db.scalar(
             select(func.count()).select_from(ContentChunk).where(ContentChunk.lesson_slug == slug)
         )
+
+        # Chunks ingested before a GEMINI_API_KEY was configured are stored
+        # with embedding=NULL. Without this backfill they would never gain an
+        # embedding, silently degrading RAG to keyword matching forever.
         if existing and not force:
+            if is_configured():
+                # NB: a real pgvector column stores SQL NULL, but the JSON
+                # fallback used on SQLite stores the string 'null'. Filter in
+                # Python so the backfill works identically on both.
+                rows = db.scalars(
+                    select(ContentChunk).where(ContentChunk.lesson_slug == slug)
+                ).all()
+                for stale in rows:
+                    if stale.embedding is not None:
+                        continue
+                    vector = embed(stale.text)
+                    if vector is not None:
+                        stale.embedding = vector
+                        embedded += 1
             continue
         if existing and force:
             for stale in db.scalars(
