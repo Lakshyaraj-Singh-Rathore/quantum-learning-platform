@@ -1,0 +1,16 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+.pytest_cache/
+.mypy_cache/
+*.egg-info/
+dist/
+build/
+node_modules/
+frontend/circuit_composer/frontend/build/
+frontend/circuit_composer/frontend/dist/
+.idea/
+.vscode/
+*.log
