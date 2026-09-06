@@ -1,0 +1,386 @@
+:root {
+  --bg: #ffffff;
+  --fg: #0f172a;
+  --muted: #64748b;
+  --line: #cbd5e1;
+  --wire: #94a3b8;
+  --panel: #f8fafc;
+  --accent: #6366f1;
+  --cell: 46px;
+  --gutter: 62px;
+}
+
+body.dark {
+  --bg: #0e1117;
+  --fg: #e2e8f0;
+  --muted: #94a3b8;
+  --line: #334155;
+  --wire: #475569;
+  --panel: #161b25;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: "Source Sans Pro", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 14px;
+}
+
+.composer {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ------------------------------------------------------------- toolbar */
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  padding: 8px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.toolbar .spacer {
+  flex: 1;
+}
+
+button.tb {
+  border: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--fg);
+  border-radius: 6px;
+  padding: 5px 10px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+button.tb:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+button.tb.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+button.tb.danger:hover {
+  border-color: #dc2626;
+  color: #dc2626;
+}
+
+button.tb:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* ------------------------------------------------------------- palette */
+.palette-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.palette-label {
+  color: var(--muted);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  width: 72px;
+  flex-shrink: 0;
+}
+
+.chip {
+  border-radius: 6px;
+  padding: 5px 11px;
+  color: #fff;
+  cursor: grab;
+  font-weight: 600;
+  font-size: 13px;
+  user-select: none;
+  border: 2px solid transparent;
+  white-space: nowrap;
+}
+
+.chip:active {
+  cursor: grabbing;
+}
+
+.chip.selected {
+  border-color: var(--fg);
+  box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent);
+}
+
+/* ------------------------------------------------------------- grid */
+.grid-scroll {
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg);
+  padding: 10px 0;
+}
+
+.grid {
+  position: relative;
+  display: grid;
+  align-items: center;
+}
+
+.qlabel {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  color: var(--muted);
+  padding-left: 10px;
+  height: var(--cell);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.wire {
+  position: absolute;
+  height: 2px;
+  background: var(--wire);
+  pointer-events: none;
+}
+
+.cell {
+  height: var(--cell);
+  width: var(--cell);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  border-radius: 6px;
+}
+
+.cell.drop {
+  outline: 2px dashed var(--accent);
+  outline-offset: -3px;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.cell.pickable {
+  cursor: crosshair;
+  background: color-mix(in srgb, #14b8a6 16%, transparent);
+  outline: 1px dashed #14b8a6;
+  outline-offset: -3px;
+}
+
+.colhead {
+  text-align: center;
+  font-size: 10px;
+  color: var(--muted);
+  height: 16px;
+  font-family: ui-monospace, monospace;
+}
+
+/* ------------------------------------------------------------- gates */
+.gate {
+  position: absolute;
+  border-radius: 6px;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 12px;
+  cursor: grab;
+  user-select: none;
+  z-index: 3;
+  border: 1px solid rgba(0, 0, 0, 0.18);
+}
+
+.gate:hover {
+  filter: brightness(1.1);
+}
+
+.gate.selected {
+  box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent);
+}
+
+.gate .del {
+  position: absolute;
+  top: -7px;
+  right: -7px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #dc2626;
+  color: #fff;
+  font-size: 11px;
+  line-height: 15px;
+  text-align: center;
+  display: none;
+  cursor: pointer;
+}
+
+.gate:hover .del {
+  display: block;
+}
+
+.ctrl-dot {
+  position: absolute;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: #14b8a6;
+  z-index: 4;
+  border: 2px solid var(--bg);
+}
+
+.ctrl-line {
+  position: absolute;
+  width: 2px;
+  background: #14b8a6;
+  z-index: 2;
+}
+
+.block-box {
+  position: absolute;
+  border: 2px dashed;
+  border-radius: 8px;
+  z-index: 1;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+  cursor: pointer;
+  background: rgba(148, 163, 184, 0.08);
+}
+
+.block-label {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 0 0 6px 0;
+  color: #fff;
+  white-space: nowrap;
+}
+
+/* ------------------------------------------------------------- banner */
+.banner {
+  padding: 7px 10px;
+  border-radius: 6px;
+  font-size: 12.5px;
+  border: 1px solid;
+}
+
+.banner.info {
+  background: rgba(99, 102, 241, 0.1);
+  border-color: rgba(99, 102, 241, 0.4);
+}
+
+.banner.warn {
+  background: rgba(245, 158, 11, 0.12);
+  border-color: rgba(245, 158, 11, 0.45);
+}
+
+.banner.err {
+  background: rgba(220, 38, 38, 0.12);
+  border-color: rgba(220, 38, 38, 0.45);
+}
+
+/* ------------------------------------------------------------- modal */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  padding: 20px;
+}
+
+.modal {
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 16px;
+  width: min(760px, 100%);
+  max-height: 88vh;
+  overflow: auto;
+}
+
+.modal h3 {
+  margin: 0 0 10px;
+  font-size: 15px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-bottom: 9px;
+}
+
+.field label {
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.field input,
+.field select {
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--fg);
+  font-size: 13px;
+}
+
+.row {
+  display: flex;
+  gap: 10px;
+}
+
+.row > * {
+  flex: 1;
+}
+
+.oplist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  max-height: 220px;
+  overflow: auto;
+}
+
+.oplist li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 9px;
+  border-bottom: 1px solid var(--line);
+  font-family: ui-monospace, monospace;
+  font-size: 12px;
+}
+
+.oplist li:last-child {
+  border-bottom: none;
+}
+
+.oplist li .grow {
+  flex: 1;
+}
+
+.hint {
+  color: var(--muted);
+  font-size: 12px;
+}

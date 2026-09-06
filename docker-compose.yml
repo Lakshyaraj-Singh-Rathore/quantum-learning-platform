@@ -43,7 +43,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
 
   worker:
     build:
@@ -61,6 +61,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    # the api service owns migrations; the worker just waits for the schema
     command: celery -A app.workers.celery_app.celery_app worker --loglevel=info --concurrency=2
 
   streamlit:
@@ -72,6 +73,8 @@ services:
       PYTHONPATH: /backend
     volumes:
       - ./frontend:/app
+      # keep the composer bundle baked into the image visible under the bind mount
+      - /app/circuit_composer/frontend/build
       - ./backend:/backend:ro
       - ./content:/content:ro
       - ./samples:/samples:ro

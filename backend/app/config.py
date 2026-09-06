@@ -23,6 +23,9 @@ class Settings(BaseSettings):
 
     celery_soft_time_limit: int = 8
     celery_hard_time_limit: int = 15
+    #: Run simulation tasks inline instead of dispatching to a worker.
+    #: Useful for local development without Redis; never enable in production.
+    celery_task_always_eager: bool = False
 
     content_dir: str = "/content"
     samples_dir: str = "/samples"

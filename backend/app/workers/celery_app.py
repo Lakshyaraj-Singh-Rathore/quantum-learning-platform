@@ -22,4 +22,7 @@ celery_app.conf.update(
     task_acks_late=True,
     worker_prefetch_multiplier=1,
     task_track_started=True,
+    # dev-only escape hatch so the platform runs without a broker
+    task_always_eager=settings.celery_task_always_eager,
+    task_eager_propagates=False,
 )
