@@ -1,0 +1,45 @@
+---
+config:
+  layout: fixed
+  theme: neo
+---
+flowchart TB
+    U["User"] --> UI["Streamlit App
+(Learn • Composer • Challenges • Dashboard)"]
+    UI -- REST + JWT --> API["FastAPI API
+(Auth • Jobs • Assessments • AI)"]
+    API --> V{"Validate
+(gates • params • limits)"}
+    V -- "invalid → 422" --> UI
+    V -- valid --> C{"run_hash
+cached?"}
+    C -- hit --> DB
+    C -- miss --> Q["Queue + Worker
+(Redis + Celery)"]
+    Q --> D{"Control flow?
+(if/for/while)"}
+    D -- Dynamic --> DYN["Qiskit Dynamic Engine
+(shot-by-shot)"]
+    D -- Static --> STAT["Normalize
+IR → Qiskit → transpile {rx, ry, rz, cx}"]
+    STAT --> B["Backends
+Aer • Cirq • PennyLane • qBraid"]
+    B --> DB[("Postgres
+Jobs + Results + Circuits")]
+    DYN --> DB
+    API --> AI["AI Tutor
+(Gemini + RAG)"]
+    AI --> GEM["Gemini API
+(Chat + Embeddings)"]
+    AI --> VEC[("pgvector
+Curriculum chunks")]
+    AI -- read-only --> DB
+    AI -. "✗ cannot simulate" .-> B
+    DYN --- LIM["Safety Limits
+15 qubits • 4096 shots • while ≤ 32 • 8s/15s timeouts"]
+     LIM:::note
+     V:::gate
+     C:::gate
+    classDef note fill:#f5f5f5,stroke:#9ca3af,stroke-dasharray:4 3,color:#0B1220
+    classDef gate fill:#fff7ed,stroke:#fb923c,color:#0B1220
+    linkStyle 17 stroke:#dc2626,stroke-width:2px
