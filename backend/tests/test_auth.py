@@ -233,7 +233,8 @@ def test_retired_chat_model_names_the_setting(monkeypatch):
         def __init__(self, *a, **k):
             pass
 
-        def generate_content(self, contents):
+        def generate_content(self, contents, generation_config=None,
+                             request_options=None):
             raise RuntimeError(message)
 
     class FakeGenAI:
@@ -291,7 +292,8 @@ def test_chat_and_embed_calls_are_deadline_bounded(monkeypatch):
         def __init__(self, *a, **k):
             pass
 
-        def generate_content(self, contents, request_options=None):
+        def generate_content(self, contents, generation_config=None,
+                             request_options=None):
             seen["chat"] = request_options
             return FakeResp()
 
@@ -313,3 +315,60 @@ def test_chat_and_embed_calls_are_deadline_bounded(monkeypatch):
         assert opts is not None, f"{key} call passed no request_options"
         assert getattr(opts, "timeout", None), f"{key} call has no timeout"
         assert opts.timeout <= 60, f"{key} timeout must beat the 60s client budget"
+
+
+def test_deadline_exceeded_names_the_model_setting(monkeypatch):
+    """A 504 must tell the user which setting to change.
+
+    Regression: the tutor showed "temporarily unavailable (DeadlineExceeded:
+    504 Deadline expired before operation could complete.)". Gemini 3.x Flash
+    models default to extended thinking, so time-to-first-token can exceed the
+    server deadline on a short prompt. That reads like an outage but is a
+    one-line model change.
+    """
+    import app.ai.gemini_client as gc
+
+    assert gc._is_deadline(Exception("504 Deadline expired before operation could complete."))
+    assert not gc._is_deadline(Exception("429 rate limit exceeded"))
+    assert not gc._is_deadline(Exception("404 model is no longer available"))
+
+    class FakeModel:
+        def __init__(self, *a, **k):
+            pass
+
+        def generate_content(self, contents, generation_config=None, request_options=None):
+            raise RuntimeError("504 Deadline expired before operation could complete.")
+
+    class FakeGenAI:
+        GenerativeModel = FakeModel
+
+    monkeypatch.setattr(gc, "_client", lambda: FakeGenAI())
+    with pytest.raises(gc.GeminiUnavailable) as excinfo:
+        gc.generate("hello")
+    assert "GEMINI_CHAT_MODEL" in str(excinfo.value)
+
+
+def test_chat_bounds_output_tokens(monkeypatch):
+    """Thinking tokens bill against max_output_tokens, so it must be set."""
+    import app.ai.gemini_client as gc
+
+    seen = {}
+
+    class FakeModel:
+        def __init__(self, *a, **k):
+            pass
+
+        def generate_content(self, contents, generation_config=None, request_options=None):
+            seen["config"] = generation_config
+
+            class R:
+                text = "ok"
+
+            return R()
+
+    class FakeGenAI:
+        GenerativeModel = FakeModel
+
+    monkeypatch.setattr(gc, "_client", lambda: FakeGenAI())
+    gc.generate("hello")
+    assert seen["config"]["max_output_tokens"] == gc.CHAT_MAX_OUTPUT_TOKENS

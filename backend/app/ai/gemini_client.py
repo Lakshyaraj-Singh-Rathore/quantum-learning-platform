@@ -27,6 +27,13 @@ CHAT_TIMEOUT_SECONDS = 30
 #: Same reasoning for embeddings: bound each individual attempt.
 EMBED_TIMEOUT_SECONDS = 10
 
+#: Ceiling on the answer length.
+#:
+#: On Gemini 3.x models "thinking" tokens are billed against this budget, so it
+#: must leave room for both the reasoning and the visible reply. A tutor answer
+#: is a few paragraphs, so this is generous.
+CHAT_MAX_OUTPUT_TOKENS = 2048
+
 #: Error fragments that indicate a retryable (as opposed to permanent) failure.
 _TRANSIENT_MARKERS = (
     "429",
@@ -60,6 +67,18 @@ def _is_retired_model(exc: Exception) -> bool:
         or "is not found" in blob
         or "not supported for" in blob
     )
+
+
+def _is_deadline(exc: Exception) -> bool:
+    """True for a server-side 504 DEADLINE_EXCEEDED.
+
+    Distinct from a slow network: Google accepted the request and ran out of
+    its own processing window, usually because the model spent too long in
+    extended "thinking" before emitting a first token. Retrying the same
+    request rarely helps, so the message points at the model setting.
+    """
+    blob = f"{type(exc).__name__}: {exc}".lower()
+    return "deadline" in blob and ("504" in blob or "deadlineexceeded" in blob)
 
 
 class GeminiUnavailable(RuntimeError):
@@ -226,23 +245,36 @@ def generate(
         contents.append({"role": role, "parts": [turn.get("content", "")]})
     contents.append({"role": "user", "parts": [prompt]})
 
+    config = {"max_output_tokens": CHAT_MAX_OUTPUT_TOKENS, "temperature": 1.0}
+
     def _call() -> Any:
         opts = _request_options(CHAT_TIMEOUT_SECONDS)
         if opts is None:
-            return model.generate_content(contents)
+            return model.generate_content(contents, generation_config=config)
         try:
-            return model.generate_content(contents, request_options=opts)
+            return model.generate_content(
+                contents, generation_config=config, request_options=opts
+            )
         except TypeError as exc:
             # Only treat this as "SDK too old" when the kwarg itself is
             # rejected. A TypeError raised *inside* the call is a real error and
             # must not be retried into a second, unbounded request.
             if "request_options" not in str(exc):
                 raise
-            return model.generate_content(contents)
+            return model.generate_content(contents, generation_config=config)
 
     try:
         response = _call()
     except Exception as exc:  # noqa: BLE001
+        if _is_deadline(exc):
+            raise GeminiUnavailable(
+                "Gemini took too long to answer and hit its own processing "
+                f"deadline (model '{settings.gemini_chat_model}'). Models in the "
+                "Gemini 3.x 'Flash' family default to extended thinking, which "
+                "can blow past the deadline on a free-tier key. Set "
+                "GEMINI_CHAT_MODEL=gemini-3.1-flash-lite in your .env for a "
+                f"low-latency model. (details: {exc})"
+            ) from exc
         if _is_retired_model(exc):
             raise GeminiUnavailable(
                 f"The configured chat model '{settings.gemini_chat_model}' has been "
