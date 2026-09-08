@@ -243,3 +243,29 @@ def test_retired_chat_model_names_the_setting(monkeypatch):
     with pytest.raises(gc.GeminiUnavailable) as excinfo:
         gc.generate("hello")
     assert "GEMINI_CHAT_MODEL" in str(excinfo.value)
+
+
+def test_chat_retrieval_does_not_block_on_rate_limits(monkeypatch):
+    """Interactive retrieval must fail fast, not burn the retry budget.
+
+    Regression: embed() retries transient 429s with 1.5+3+6s of backoff. That
+    is correct for background ingestion, but rag.retrieve() runs inside a
+    user's chat request, so a rate-limited key added ~10.5s to every question
+    before Gemini was even contacted -- enough to hit the client timeout.
+    """
+    import time
+
+    import app.ai.gemini_client as gc
+
+    class RateLimited:
+        def embed_content(self, model, content, output_dimensionality=None):
+            raise RuntimeError("429 Resource has been exhausted (quota)")
+
+    monkeypatch.setattr(gc, "_client", lambda: RateLimited())
+
+    started = time.monotonic()
+    assert gc.embed("hello", max_attempts=1) is None
+    assert time.monotonic() - started < 0.5, "interactive embed must not sleep"
+
+    # the ingestion path keeps the full budget
+    assert gc.EMBED_MAX_ATTEMPTS > 1

@@ -184,8 +184,14 @@ def ingest_content_folder(db: Session, folder: str | None = None, force: bool = 
 
 
 def retrieve(db: Session, query: str, k: int = 4) -> list[dict[str, Any]]:
-    """Top-k curriculum chunks: vector search when possible, else keywords."""
-    vector = embed(query)
+    """Top-k curriculum chunks: vector search when possible, else keywords.
+
+    This runs inside a user's chat request, so the embedding call gets a
+    single attempt: a rate-limited retry chain would add up to 10.5s of
+    latency before Gemini is even contacted. Keyword search is a good enough
+    fallback and returns immediately.
+    """
+    vector = embed(query, max_attempts=1)
     if vector is not None:
         try:
             rows = db.scalars(

@@ -92,7 +92,7 @@ def _qualified_model(name: str) -> str:
     return f"models/{name}"
 
 
-def embed(text: str) -> Optional[list[float]]:
+def embed(text: str, *, max_attempts: int | None = None) -> Optional[list[float]]:
     """Embed a single chunk of text; returns None when Gemini is unavailable.
 
     ``gemini-embedding-001`` returns 3072 dimensions by default, but the
@@ -124,21 +124,27 @@ def embed(text: str) -> Optional[list[float]]:
 
     # Free-tier keys are rate limited; a burst of ingestion calls otherwise
     # loses most chunks. Retry transient failures with a short backoff.
+    #
+    # Callers on a user-facing request path must pass a small max_attempts:
+    # the full budget blocks for 1.5+3+6 = 10.5s, which is latency a student
+    # waiting on a chat reply should never pay. Retrieval degrades to keyword
+    # search when this returns None, so failing fast is cheap.
+    attempts = EMBED_MAX_ATTEMPTS if max_attempts is None else max(1, max_attempts)
     last: Exception | None = None
-    for attempt in range(EMBED_MAX_ATTEMPTS):
+    for attempt in range(attempts):
         try:
             vector = _vector_of(_call())
             break
         except Exception as exc:  # noqa: BLE001
             last = exc
-            if not _is_transient(exc) or attempt == EMBED_MAX_ATTEMPTS - 1:
+            if not _is_transient(exc) or attempt == attempts - 1:
                 log.warning("embedding failed: %s", exc)
                 return None
             delay = EMBED_BACKOFF_SECONDS * (2**attempt)
             log.info(
                 "embedding rate limited (attempt %d/%d), retrying in %.1fs",
                 attempt + 1,
-                EMBED_MAX_ATTEMPTS,
+                attempts,
                 delay,
             )
             time.sleep(delay)
