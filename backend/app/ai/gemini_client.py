@@ -14,6 +14,19 @@ log = logging.getLogger(__name__)
 EMBED_MAX_ATTEMPTS = 4
 EMBED_BACKOFF_SECONDS = 1.5
 
+#: Wall-clock ceiling for a chat completion, in seconds.
+#:
+#: Without this the SDK falls back to google-api-core's default retry policy,
+#: which keeps retrying until a *600 second* deadline. The Streamlit client
+#: gives up after 60s, so a slow or rate-limited call surfaced as the generic
+#: "Cannot reach the API ... (timed out)" while the backend was still waiting.
+#: Keep this comfortably under the client timeout so the user gets a real
+#: error message from us instead of a dead connection.
+CHAT_TIMEOUT_SECONDS = 30
+
+#: Same reasoning for embeddings: bound each individual attempt.
+EMBED_TIMEOUT_SECONDS = 10
+
 #: Error fragments that indicate a retryable (as opposed to permanent) failure.
 _TRANSIENT_MARKERS = (
     "429",
@@ -79,6 +92,21 @@ def _client():
     return genai
 
 
+def _request_options(timeout: float) -> Any:
+    """Per-call deadline for the SDK, or None if this SDK cannot express one.
+
+    ``google-generativeai`` delegates to google-api-core, whose default retry
+    policy runs to a 600s deadline. Every network call this module makes sits
+    inside a user's HTTP request, so an unbounded deadline turns a transient
+    Google-side slowdown into a client-side timeout with no diagnostic.
+    """
+    try:
+        from google.generativeai.types import helper_types
+    except ImportError:  # pragma: no cover - very old SDK
+        return None
+    return helper_types.RequestOptions(timeout=timeout)
+
+
 def _qualified_model(name: str) -> str:
     """Return a model name the SDK accepts.
 
@@ -114,13 +142,27 @@ def embed(text: str, *, max_attempts: int | None = None) -> Optional[list[float]
         return list(raw)
 
     def _call() -> Any:
+        opts = _request_options(EMBED_TIMEOUT_SECONDS)
         try:
             return genai.embed_content(
-                model=model, content=text, output_dimensionality=dim
+                model=model,
+                content=text,
+                output_dimensionality=dim,
+                request_options=opts,
             )
-        except TypeError:
-            # SDK too old to accept the kwarg
-            return genai.embed_content(model=model, content=text)
+        except TypeError as exc:
+            # Only a rejected kwarg justifies a retry; anything else is real.
+            blob = str(exc)
+            if "output_dimensionality" not in blob and "request_options" not in blob:
+                raise
+            try:
+                return genai.embed_content(
+                    model=model, content=text, request_options=opts
+                )
+            except TypeError as exc2:
+                if "request_options" not in str(exc2):
+                    raise
+                return genai.embed_content(model=model, content=text)
 
     # Free-tier keys are rate limited; a burst of ingestion calls otherwise
     # loses most chunks. Retry transient failures with a short backoff.
@@ -184,8 +226,22 @@ def generate(
         contents.append({"role": role, "parts": [turn.get("content", "")]})
     contents.append({"role": "user", "parts": [prompt]})
 
+    def _call() -> Any:
+        opts = _request_options(CHAT_TIMEOUT_SECONDS)
+        if opts is None:
+            return model.generate_content(contents)
+        try:
+            return model.generate_content(contents, request_options=opts)
+        except TypeError as exc:
+            # Only treat this as "SDK too old" when the kwarg itself is
+            # rejected. A TypeError raised *inside* the call is a real error and
+            # must not be retried into a second, unbounded request.
+            if "request_options" not in str(exc):
+                raise
+            return model.generate_content(contents)
+
     try:
-        response = model.generate_content(contents)
+        response = _call()
     except Exception as exc:  # noqa: BLE001
         if _is_retired_model(exc):
             raise GeminiUnavailable(

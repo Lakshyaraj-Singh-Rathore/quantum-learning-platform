@@ -40,6 +40,16 @@ def _request(
         response = httpx.request(
             method, url, json=json, headers=_headers(auth), timeout=TIMEOUT
         )
+    except httpx.TimeoutException as exc:
+        # Distinguish "no answer in time" from "nothing is listening". Blaming a
+        # down backend for what is usually a slow upstream (Gemini) sends people
+        # to restart healthy containers.
+        raise ApiError(
+            f"The API did not respond within {TIMEOUT:.0f}s. The backend is "
+            "probably up but the request is slow -- AI answers depend on the "
+            "Gemini API, which can be slow or rate limited on a free-tier key. "
+            f"Check `docker compose logs --tail=50 api`. ({type(exc).__name__})"
+        ) from exc
     except httpx.RequestError as exc:
         raise ApiError(
             f"Cannot reach the API at {API_BASE_URL}. Is the backend running? ({exc})"

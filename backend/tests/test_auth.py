@@ -269,3 +269,47 @@ def test_chat_retrieval_does_not_block_on_rate_limits(monkeypatch):
 
     # the ingestion path keeps the full budget
     assert gc.EMBED_MAX_ATTEMPTS > 1
+
+
+def test_chat_and_embed_calls_are_deadline_bounded(monkeypatch):
+    """Every Gemini call must carry a timeout.
+
+    Regression: google-generativeai delegates to google-api-core, whose default
+    retry policy runs to a 600s deadline. Both calls sit inside a user's HTTP
+    request, so an unbounded deadline let the Streamlit client hit its own 60s
+    timeout and report 'Cannot reach the API ... is the backend running?' while
+    the backend was healthy and still waiting on Google.
+    """
+    import app.ai.gemini_client as gc
+
+    seen = {}
+
+    class FakeResp:
+        text = "ok"
+
+    class FakeModel:
+        def __init__(self, *a, **k):
+            pass
+
+        def generate_content(self, contents, request_options=None):
+            seen["chat"] = request_options
+            return FakeResp()
+
+    class FakeGenai:
+        GenerativeModel = FakeModel
+
+        def embed_content(self, model, content, output_dimensionality=None,
+                          request_options=None):
+            seen["embed"] = request_options
+            return {"embedding": [0.0] * output_dimensionality}
+
+    monkeypatch.setattr(gc, "_client", lambda: FakeGenai())
+
+    gc.generate("hi")
+    gc.embed("hi")
+
+    for key in ("chat", "embed"):
+        opts = seen[key]
+        assert opts is not None, f"{key} call passed no request_options"
+        assert getattr(opts, "timeout", None), f"{key} call has no timeout"
+        assert opts.timeout <= 60, f"{key} timeout must beat the 60s client budget"
