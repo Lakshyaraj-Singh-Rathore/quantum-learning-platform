@@ -120,3 +120,20 @@ def test_ideal_run_reports_perfect_metrics():
     assert metrics["fidelity"] == 1.0
     assert metrics["purity"] == 1.0
     assert metrics["total_variation"] == 0.0
+
+
+def test_vector_column_exposes_pgvector_distance_operators():
+    """Regression: TypeDecorator hid pgvector's operators.
+
+    ``VectorType`` resolves to ``Vector`` on Postgres, but a TypeDecorator does
+    not inherit the target type's comparator. ``embedding.cosine_distance(...)``
+    therefore raised AttributeError and every semantic search silently degraded
+    to keyword matching -- on Postgres too, where pgvector was available.
+    """
+    from sqlalchemy.dialects import postgresql
+
+    from app.models.content import ContentChunk
+
+    expr = ContentChunk.embedding.cosine_distance([0.1, 0.2, 0.3])
+    sql = str(expr.compile(dialect=postgresql.dialect()))
+    assert "<=>" in sql, f"expected pgvector cosine operator, got: {sql}"

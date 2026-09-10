@@ -1,4 +1,4 @@
-from sqlalchemy import JSON, create_engine, inspect, text
+from sqlalchemy import JSON, Float, create_engine, inspect, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 from sqlalchemy.types import TypeDecorator
@@ -31,6 +31,26 @@ class VectorType(TypeDecorator):
 
             return dialect.type_descriptor(Vector(self.dim))
         return dialect.type_descriptor(JSON())
+
+    class comparator_factory(TypeDecorator.Comparator):
+        """Expose pgvector's distance operators through the decorator.
+
+        A ``TypeDecorator`` does not inherit the comparator of the type it
+        resolves to, so ``column.cosine_distance(...)`` raised
+        ``AttributeError`` and every semantic search silently fell back to
+        keyword matching. Emitting the operators directly keeps the pgvector
+        behaviour on Postgres; on SQLite the operator is unknown and the
+        caller's existing fallback handles it.
+        """
+
+        def cosine_distance(self, other):
+            return self.op("<=>", return_type=Float)(other)
+
+        def l2_distance(self, other):
+            return self.op("<->", return_type=Float)(other)
+
+        def max_inner_product(self, other):
+            return self.op("<#>", return_type=Float)(other)
 
 
 settings = get_settings()
