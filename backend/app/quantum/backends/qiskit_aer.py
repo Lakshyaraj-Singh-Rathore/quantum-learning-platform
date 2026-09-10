@@ -4,12 +4,19 @@ from __future__ import annotations
 
 from typing import Optional
 
+import numpy as np
+
 from qiskit import transpile
 from qiskit.quantum_info import Statevector
 
 from app.quantum.backends.base import BackendError, Timer, make_result, statevector_to_json
 from app.quantum.ir import CircuitIR
-from app.quantum.noise import NoiseParams, build_noise_model
+from app.quantum.noise import (
+    NoiseParams,
+    build_noise_model,
+    entanglement_entropy,
+    total_variation,
+)
 from app.quantum.normalize import strip_measurements, to_qiskit
 
 NAME = "qiskit_aer"
@@ -59,7 +66,13 @@ def run(
         job = sim.run(compiled, shots=shots, seed_simulator=seed)
         counts = job.result().get_counts()
 
-    counts = {k.replace(" ", ""): int(v) for k, v in counts.items()}
+    # Aer returns only as many bits as there are classical registers, so a
+    # partially-measured 2-qubit circuit yields keys like "0"/"1". Those are
+    # ambiguous in the UI (they read as a 1-qubit result) and Plotly parses
+    # them as numbers. Left-pad to the register width.
+    counts = {
+        k.replace(" ", "").zfill(circ.num_clbits): int(v) for k, v in counts.items()
+    }
 
     statevector = None
     try:
@@ -73,6 +86,50 @@ def run(
             "Statevector shown is the IDEAL state; only the counts carry noise."
         )
 
+    metrics: dict = {}
+    ideal_counts: dict[str, int] | None = None
+
+    if statevector is not None:
+        import numpy as np
+
+        amplitudes = np.array([complex(re, im) for re, im in statevector])
+        entropy, concurrence = entanglement_entropy(amplitudes, ir.n_qubits)
+        metrics["entanglement_entropy"] = entropy
+        metrics["concurrence"] = concurrence
+        metrics["entangled"] = entropy > 0.05
+
+    if noise_meta["enabled"]:
+        # Run the SAME circuit without noise so the UI can put ideal and noisy
+        # side by side, and compute how far the noise pushed the distribution.
+        ideal_job = AerSimulator().run(
+            transpile(circ, AerSimulator()), shots=shots, seed_simulator=seed
+        )
+        ideal_counts = {
+            k.replace(" ", "").zfill(circ.num_clbits): int(v)
+            for k, v in ideal_job.result().get_counts().items()
+        }
+        total_ideal = sum(ideal_counts.values()) or 1
+        total_noisy = sum(counts.values()) or 1
+        ideal_probs = {k: v / total_ideal for k, v in ideal_counts.items()}
+        noisy_probs = {k: v / total_noisy for k, v in counts.items()}
+        metrics["total_variation"] = total_variation(ideal_probs, noisy_probs)
+        support = {k for k, v in ideal_probs.items() if v >= 0.02}
+        metrics["shot_leakage"] = sum(
+            v for k, v in noisy_probs.items() if k not in support
+        )
+
+        try:
+            fidelity, purity = _density_metrics(ir, noise)
+            metrics["fidelity"] = fidelity
+            metrics["purity"] = purity
+        except Exception as exc:  # noqa: BLE001 - non-unitary circuits
+            warnings.append(f"Fidelity/purity unavailable: {exc}")
+    else:
+        metrics["fidelity"] = 1.0
+        metrics["purity"] = 1.0
+        metrics["total_variation"] = 0.0
+        metrics["shot_leakage"] = 0.0
+
     return make_result(
         backend=NAME,
         counts=counts,
@@ -81,8 +138,37 @@ def run(
         runtime=timer.seconds,
         statevector=statevector,
         warnings=warnings,
-        metadata={"mode": "static", "noise": noise_meta},
+        metadata={
+            "mode": "static",
+            "noise": noise_meta,
+            "metrics": metrics,
+            "ideal_counts": ideal_counts,
+        },
     )
+
+
+def _density_metrics(ir: CircuitIR, noise: NoiseParams) -> tuple[float, float]:
+    """State fidelity against the ideal state, and purity of the noisy state.
+
+    Uses the density-matrix simulator with readout error excluded: readout is a
+    measurement fault, not a channel acting on the state, so including it would
+    wrongly depress the reported state fidelity.
+    """
+    from qiskit.quantum_info import DensityMatrix, Statevector, state_fidelity
+    from qiskit_aer import AerSimulator
+
+    pure = strip_measurements(to_qiskit(ir, include_measurements=False))
+    model, _ = build_noise_model(noise, include_readout=False)
+
+    saved = pure.copy()
+    saved.save_density_matrix(label="rho")
+    sim = AerSimulator(method="density_matrix", noise_model=model)
+    data = sim.run(transpile(saved, sim), shots=1).result().data(0)
+    rho = DensityMatrix(data["rho"])
+
+    fidelity = float(np.real(state_fidelity(Statevector.from_instruction(pure), rho)))
+    purity = float(np.real(rho.purity()))
+    return min(1.0, max(0.0, fidelity)), min(1.0, max(0.0, purity))
 
 
 __all__ = ["run", "NAME"]

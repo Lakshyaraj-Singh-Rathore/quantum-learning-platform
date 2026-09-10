@@ -14,9 +14,24 @@ from app.models.circuit import SavedCircuit
 from app.models.user import User
 from app.quantum.ir import CircuitIR
 from app.quantum.qasm3_codec import to_qasm3
-from app.schemas.circuit import CircuitIn, CircuitOut
+from app.schemas.circuit import CircuitIn, CircuitOut, InspectIn
 
 router = APIRouter(prefix="/circuits", tags=["circuits"])
+
+
+@router.post("/timeline")
+def circuit_timeline(
+    payload: InspectIn,
+    user: User = Depends(get_current_user),
+) -> dict:
+    """Step-by-step state evolution for the Timeline panel."""
+    from app.quantum.timeline import build_timeline
+
+    try:
+        ir = CircuitIR.from_dict(payload.circuit_ir)
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=422, detail=f"Invalid circuit: {exc}") from exc
+    return build_timeline(ir)
 
 
 @router.get("", response_model=list[CircuitOut])

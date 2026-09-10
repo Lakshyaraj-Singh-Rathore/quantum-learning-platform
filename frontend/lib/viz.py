@@ -16,7 +16,11 @@ MAX_HISTOGRAM_BARS = 32
 # --------------------------------------------------------------------------- #
 # Counts
 # --------------------------------------------------------------------------- #
-def histogram(result: dict[str, Any], color_by_phase: bool = False) -> None:
+def histogram(
+    result: dict[str, Any],
+    color_by_phase: bool = False,
+    as_probability: bool = False,
+) -> None:
     """Counts histogram, optionally tinted by each outcome's relative phase.
 
     Phase colouring is the only way to see a Z/S/T/RZ gate on a histogram:
@@ -36,7 +40,8 @@ def histogram(result: dict[str, Any], color_by_phase: bool = False) -> None:
 
     total = sum(counts.values()) or 1
     labels = [k for k, _ in items]
-    values = [v for _, v in items]
+    raw_values = [v for _, v in items]
+    values = [v / total for v in raw_values] if as_probability else raw_values
 
     phase_lookup: dict[str, float] = {}
     amplitudes = _amplitudes(result)
@@ -65,19 +70,22 @@ def histogram(result: dict[str, Any], color_by_phase: bool = False) -> None:
             ),
         )
         hover = [
-            f"<b>{k}</b><br>count {v}<br>rel. phase "
+            f"<b>|{k}></b><br>count {v} ({v / total:.2%})<br>rel. phase "
             + (f"{phase_lookup[k]:+.1f} deg" if k in phase_lookup else "n/a")
             for k, v in items
         ]
     else:
         marker = dict(color="#6C5CE7")
-        hover = [f"<b>{k}</b><br>count {v}" for k, v in items]
+        hover = [f"<b>|{k}></b><br>count {v} ({v / total:.2%})" for k, v in items]
 
     figure = go.Figure(
         go.Bar(
             x=labels,
             y=values,
-            text=[f"{v}<br>{v / total:.1%}" for v in values],
+            text=[
+                f"{v / total:.3f}" if as_probability else f"{v}<br>{v / total:.1%}"
+                for v in raw_values
+            ],
             textposition="outside",
             marker=marker,
             hovertext=hover,
@@ -86,11 +94,16 @@ def histogram(result: dict[str, Any], color_by_phase: bool = False) -> None:
     )
     figure.update_layout(
         xaxis_title="Bitstring (qubit 0 = rightmost)",
-        yaxis_title="Counts",
+        yaxis_title="Probability" if as_probability else "Counts",
         margin=dict(l=10, r=10, t=30, b=10),
         height=360,
         showlegend=False,
     )
+    # Bitstrings like "00", "01", "10" are numeric-looking, so Plotly infers a
+    # LINEAR axis and places them at 0, 1, 10, 11 -- which rendered as ticks
+    # 0,2,4,6,8,10 with bars in the wrong places and labels that looked like
+    # plain numbers. Forcing a categorical axis keeps one slot per bitstring.
+    figure.update_xaxes(type="category")
     st.plotly_chart(figure, use_container_width=True)
     if use_phase:
         st.caption(
@@ -753,3 +766,277 @@ def backend_badge(result: dict[str, Any]) -> None:
     columns[3].metric("Runtime", f"{metadata.get('runtime_seconds', 0):.3f}s")
     for warning in metadata.get("warnings") or []:
         st.caption(f":warning: {warning}")
+
+
+# --------------------------------------------------------------------------- #
+# Gauges / meters
+# --------------------------------------------------------------------------- #
+TEAL = "#3dd6c6"
+GOLD = "#ffd166"
+CORAL = "#ff5d5d"
+MUTED = "#8b9bb4"
+
+
+def gauge(
+    value: float,
+    title: str,
+    *,
+    subtitle: str = "",
+    color: str = TEAL,
+    vmax: float = 1.0,
+) -> go.Figure:
+    """A single dial. Kept small so several sit side by side."""
+    heading = (
+        f"<span style='font-size:17px'>{title}</span>"
+        f"<br><span style='font-size:12px;color:{MUTED}'>{subtitle}</span>"
+    )
+    figure = go.Figure(
+        go.Indicator(
+            mode="gauge+number",
+            value=float(value),
+            number={"valueformat": ".3f", "font": {"size": 34}},
+            title={"text": heading, "font": {"size": 16}},
+            domain={"x": [0.05, 0.95], "y": [0.0, 0.72]},
+            gauge={
+                "axis": {"range": [0, vmax], "tickcolor": MUTED},
+                "bar": {"color": color, "thickness": 0.32},
+                "bgcolor": "#1b2030",
+                "borderwidth": 0,
+                "steps": [
+                    {"range": [0, vmax * 0.33], "color": "#18202c"},
+                    {"range": [vmax * 0.33, vmax * 0.66], "color": "#1e2a3c"},
+                    {"range": [vmax * 0.66, vmax], "color": "#24344c"},
+                ],
+            },
+        )
+    )
+    figure.update_layout(height=250, margin=dict(l=10, r=10, t=60, b=4))
+    return figure
+
+
+def metric_meters(result: dict[str, Any]) -> None:
+    """Entanglement / fidelity / purity dials, mirroring the reference app."""
+    metadata = result.get("metadata") or {}
+    metrics = metadata.get("metrics") or {}
+    if not metrics:
+        return
+    noisy = bool((metadata.get("noise") or {}).get("enabled"))
+
+    entropy = float(metrics.get("entanglement_entropy", 0.0))
+    concurrence = metrics.get("concurrence")
+    entangled = bool(metrics.get("entangled"))
+
+    columns = st.columns(3)
+    with columns[0]:
+        subtitle = "ENTANGLED" if entangled else "separable"
+        if concurrence is not None:
+            subtitle += f"  |  C={float(concurrence):.2f}"
+        st.plotly_chart(
+            gauge(
+                entropy,
+                "Entanglement S",
+                subtitle=subtitle,
+                color=GOLD if entangled else TEAL,
+            ),
+            use_container_width=True,
+        )
+    with columns[1]:
+        if "fidelity" in metrics:
+            fidelity = float(metrics["fidelity"])
+            color = TEAL if fidelity > 0.97 else GOLD if fidelity > 0.85 else CORAL
+            st.plotly_chart(
+                gauge(
+                    fidelity,
+                    "Fidelity",
+                    subtitle="F(ideal, noisy rho)" if noisy else "no noise applied",
+                    color=color,
+                ),
+                use_container_width=True,
+            )
+    with columns[2]:
+        if "purity" in metrics:
+            purity = float(metrics["purity"])
+            color = TEAL if purity > 0.97 else GOLD if purity > 0.85 else CORAL
+            st.plotly_chart(
+                gauge(
+                    purity,
+                    "Purity",
+                    subtitle="Tr(rho^2)  |  1 = still pure",
+                    color=color,
+                ),
+                use_container_width=True,
+            )
+
+    if noisy:
+        cols = st.columns(2)
+        cols[0].metric("TV distance (ideal vs noisy)", f"{metrics.get('total_variation', 0.0):.3f}")
+        cols[1].metric("Shot leakage", f"{metrics.get('shot_leakage', 0.0) * 100:.1f}%")
+
+
+def ideal_vs_noisy(result: dict[str, Any]) -> None:
+    """Grouped ideal/noisy histogram plus the per-state difference."""
+    metadata = result.get("metadata") or {}
+    ideal_counts = metadata.get("ideal_counts")
+    if not ideal_counts:
+        st.info(
+            "Enable the noise model on the Qiskit Aer backend to compare an "
+            "ideal run against a noisy one."
+        )
+        return
+
+    noisy_counts = result.get("counts") or {}
+    total_ideal = sum(ideal_counts.values()) or 1
+    total_noisy = sum(noisy_counts.values()) or 1
+    labels = sorted(set(ideal_counts) | set(noisy_counts))
+    ideal = [ideal_counts.get(k, 0) / total_ideal for k in labels]
+    noisy = [noisy_counts.get(k, 0) / total_noisy for k in labels]
+
+    figure = go.Figure()
+    figure.add_bar(name="Ideal", x=labels, y=ideal, marker_color=TEAL)
+    figure.add_bar(name="Noisy", x=labels, y=noisy, marker_color=CORAL)
+    figure.update_layout(
+        barmode="group",
+        height=400,
+        xaxis_title="Basis state (qubit 0 = rightmost)",
+        yaxis_title="Probability",
+        legend=dict(orientation="h", y=1.12),
+        margin=dict(l=10, r=10, t=40, b=10),
+    )
+    figure.update_xaxes(type="category")
+    st.plotly_chart(figure, use_container_width=True)
+
+    delta = go.Figure(
+        go.Bar(
+            x=labels,
+            y=[n - i for i, n in zip(ideal, noisy)],
+            marker_color=[CORAL if n - i > 0 else TEAL for i, n in zip(ideal, noisy)],
+        )
+    )
+    delta.update_layout(
+        height=280,
+        title="Noisy minus ideal (positive = noise added weight here)",
+        xaxis_title="Basis state",
+        yaxis_title="Probability difference",
+        margin=dict(l=10, r=10, t=50, b=10),
+    )
+    delta.update_xaxes(type="category")
+    st.plotly_chart(delta, use_container_width=True)
+
+
+def born_vs_shots(result: dict[str, Any]) -> None:
+    """Exact |amplitude|^2 against the sampled counts.
+
+    This isolates *sampling* error, which students routinely confuse with
+    hardware noise: a finite number of shots never reproduces the exact
+    distribution even on a perfect simulator.
+    """
+    amplitudes = _amplitudes(result)
+    counts = result.get("counts") or {}
+    if amplitudes is None or not counts:
+        st.info("Needs both a statevector and measurement counts.")
+        return
+
+    n_qubits = int(math.log2(len(amplitudes)))
+    exact = {
+        format(i, f"0{n_qubits}b"): float(abs(a) ** 2)
+        for i, a in enumerate(amplitudes)
+        if abs(a) ** 2 > 1e-12
+    }
+    total = sum(counts.values()) or 1
+    sampled = {k: v / total for k, v in counts.items()}
+    labels = sorted(set(exact) | set(sampled))
+
+    figure = go.Figure()
+    figure.add_bar(
+        name="exact |psi|^2", x=labels, y=[exact.get(k, 0.0) for k in labels],
+        marker_color=TEAL,
+    )
+    figure.add_bar(
+        name=f"{total} shots", x=labels, y=[sampled.get(k, 0.0) for k in labels],
+        marker_color="#6C5CE7",
+    )
+    figure.update_layout(
+        barmode="group",
+        height=380,
+        xaxis_title="Basis state",
+        yaxis_title="Probability",
+        legend=dict(orientation="h", y=1.12),
+        margin=dict(l=10, r=10, t=40, b=10),
+    )
+    figure.update_xaxes(type="category")
+    st.plotly_chart(figure, use_container_width=True)
+    st.caption(
+        "Gaps here are **sampling error** from a finite shot count, not "
+        "hardware noise. Raise the shots and the two bars converge."
+    )
+
+
+def density_matrix(result: dict[str, Any]) -> None:
+    """Heatmap of |rho| for the ideal state."""
+    amplitudes = _amplitudes(result)
+    if amplitudes is None:
+        st.info("Density matrix needs a statevector.")
+        return
+    n_qubits = int(math.log2(len(amplitudes)))
+    if n_qubits > 5:
+        st.info("Density matrix view is limited to 5 qubits.")
+        return
+
+    rho = np.outer(amplitudes, amplitudes.conj())
+    labels = [f"|{format(i, f'0{n_qubits}b')}>" for i in range(len(amplitudes))]
+    figure = go.Figure(
+        go.Heatmap(
+            z=np.abs(rho),
+            x=labels,
+            y=labels,
+            colorscale="Viridis",
+            zmin=0,
+            zmax=max(1.0, float(np.abs(rho).max())),
+            colorbar=dict(title="|rho|"),
+            hovertemplate="row %{y}<br>col %{x}<br>|rho|=%{z:.3f}<extra></extra>",
+        )
+    )
+    figure.update_layout(
+        height=440,
+        yaxis=dict(autorange="reversed", title="bra", scaleanchor="x"),
+        xaxis=dict(title="ket", side="top"),
+        margin=dict(l=60, r=40, t=60, b=30),
+    )
+    st.plotly_chart(figure, use_container_width=True)
+    st.caption(
+        "Ideal |rho|. A Bell state lights up the off-diagonal |00><11| corners "
+        "-- those corners ARE the entanglement. A classical mixture would show "
+        "only the diagonal."
+    )
+
+
+def phase_table(result: dict[str, Any]) -> None:
+    """Amplitude and relative phase per basis state."""
+    amplitudes = _amplitudes(result)
+    if amplitudes is None:
+        st.info("Phase table needs a statevector.")
+        return
+    n_qubits = int(math.log2(len(amplitudes)))
+    relative = _relative_phases(amplitudes)
+    rows = []
+    for index, amplitude in enumerate(amplitudes):
+        probability = float(abs(amplitude) ** 2)
+        if probability <= 1e-10:
+            continue
+        rows.append(
+            {
+                "State": f"|{format(index, f'0{n_qubits}b')}>",
+                "Re": round(float(amplitude.real), 6),
+                "Im": round(float(amplitude.imag), 6),
+                "Probability": round(probability, 6),
+                "Percent": round(probability * 100, 3),
+                "Rel. phase (rad)": round(float(relative[index]), 6),
+                "Rel. phase (deg)": round(float(np.degrees(relative[index])), 2),
+            }
+        )
+    if rows:
+        st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+        st.caption(
+            "Phases are **relative** to the first populated state; a global "
+            "phase is physically unobservable."
+        )

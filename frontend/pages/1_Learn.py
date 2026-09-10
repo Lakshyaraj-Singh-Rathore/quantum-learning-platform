@@ -23,9 +23,33 @@ if not lessons:
     )
     st.stop()
 
-titles = [lesson["title"] for lesson in lessons]
-selected = st.sidebar.radio("Lessons", range(len(lessons)), format_func=lambda i: titles[i])
-chosen = lessons[selected]
+# Split the curriculum into a concepts track and a hands-on track so a learner
+# can follow one thread without the other getting in the way.
+track_choice = st.sidebar.radio(
+    "Track",
+    ["Theory", "Circuit", "All"],
+    help=(
+        "**Theory** explains the concepts. **Circuit** is hands-on practice in "
+        "the Composer."
+    ),
+)
+wanted = {"Theory": "theory", "Circuit": "circuit"}.get(track_choice)
+visible = [
+    lesson
+    for lesson in lessons
+    if wanted is None or (lesson.get("track") or "theory") == wanted
+]
+if not visible:
+    st.sidebar.info(f"No lessons in the {track_choice} track yet.")
+    visible = lessons
+
+TRACK_ICON = {"theory": "[T]", "circuit": "[C]"}
+titles = [
+    f"{TRACK_ICON.get(lesson.get('track') or 'theory', '')} {lesson['title']}"
+    for lesson in visible
+]
+selected = st.sidebar.radio("Lessons", range(len(visible)), format_func=lambda i: titles[i])
+chosen = visible[selected]
 
 try:
     detail = api_client.lesson(chosen["slug"])
@@ -33,8 +57,17 @@ except ApiError as exc:
     st.error(str(exc))
     st.stop()
 
+track_label = (chosen.get("track") or "theory").title()
+if track_label == "Circuit":
+    st.info(
+        "**Hands-on lesson.** Open the **Composer** in another tab and build "
+        "each circuit as you read."
+    )
 if detail.get("tags"):
-    st.caption("Concepts: " + ", ".join(f"`{tag}`" for tag in detail["tags"]))
+    st.caption(
+        f"Track: `{track_label}`  |  Concepts: "
+        + ", ".join(f"`{tag}`" for tag in detail["tags"])
+    )
 
 st.markdown(detail["content"])
 

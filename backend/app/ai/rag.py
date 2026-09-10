@@ -39,6 +39,16 @@ def infer_tags(text: str) -> list[str]:
     return sorted({tag for tag, words in TAG_KEYWORDS.items() if any(w in lowered for w in words)})
 
 
+def infer_track(text: str) -> str:
+    """Read an optional ``<!-- track: circuit -->`` marker; default theory.
+
+    Kept as an HTML comment so it renders as nothing in the lesson body and
+    needs no front-matter parser.
+    """
+    match = re.search(r"<!--\s*track:\s*(theory|circuit)\s*-->", text, re.I)
+    return match.group(1).lower() if match else "theory"
+
+
 def chunk_markdown(text: str) -> list[str]:
     """Split on headings, then pack sections up to a target size."""
     sections = re.split(r"\n(?=#{1,3}\s)", text.strip())
@@ -79,6 +89,7 @@ def ingest_content_folder(db: Session, folder: str | None = None, force: bool = 
         slug = path.stem
         text = path.read_text(encoding="utf-8")
         tags = infer_tags(text)
+        track = infer_track(text)
 
         lesson = db.scalar(select(Lesson).where(Lesson.slug == slug))
         if lesson is None:
@@ -88,6 +99,7 @@ def ingest_content_folder(db: Session, folder: str | None = None, force: bool = 
                 path=str(path),
                 tags=tags,
                 order_index=order,
+                track=track,
             )
             db.add(lesson)
             lessons += 1
@@ -95,6 +107,7 @@ def ingest_content_folder(db: Session, folder: str | None = None, force: bool = 
             lesson.title = _title_of(text, slug)
             lesson.tags = tags
             lesson.order_index = order
+            lesson.track = track
 
         existing = db.scalar(
             select(func.count()).select_from(ContentChunk).where(ContentChunk.lesson_slug == slug)

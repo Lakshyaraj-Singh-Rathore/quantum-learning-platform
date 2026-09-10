@@ -136,9 +136,49 @@ def total_variation(p: dict[str, float], q: dict[str, float]) -> float:
     return 0.5 * sum(abs(p.get(k, 0.0) - q.get(k, 0.0)) for k in keys)
 
 
+def entanglement_entropy(amplitudes, n_qubits: int) -> tuple[float, float | None]:
+    """Max single-qubit von Neumann entropy in bits, plus 2-qubit concurrence.
+
+    Entropy 0 means separable; 1 means the qubit is maximally entangled with
+    the rest of the register.
+    """
+    import numpy as np
+
+    data = np.asarray(amplitudes, dtype=complex).ravel()
+    if n_qubits < 2 or data.size != 2**n_qubits:
+        return 0.0, None
+
+    tensor = data.reshape([2] * n_qubits)
+    best = 0.0
+    for qubit in range(n_qubits):
+        axis = n_qubits - 1 - qubit
+        moved = np.moveaxis(tensor, axis, 0).reshape(2, -1)
+        rho = moved @ moved.conj().T
+        eigenvalues = np.clip(np.real(np.linalg.eigvalsh(rho)), 0.0, 1.0)
+        nonzero = eigenvalues[eigenvalues > 1e-12]
+        entropy = float(-np.sum(nonzero * np.log2(nonzero))) if nonzero.size else 0.0
+        best = max(best, min(1.0, entropy))
+
+    concurrence = None
+    if n_qubits == 2:
+        sigma_y = np.array([[0, -1j], [1j, 0]], dtype=complex)
+        yy = np.kron(sigma_y, sigma_y)
+        rho = np.outer(data, data.conj())
+        product = rho @ (yy @ rho.conj() @ yy)
+        eigenvalues = np.sort(
+            np.sqrt(np.clip(np.real(np.linalg.eigvals(product)), 0.0, None))
+        )[::-1]
+        concurrence = float(
+            min(1.0, max(0.0, eigenvalues[0] - eigenvalues[1:].sum()))
+        )
+
+    return best, concurrence
+
+
 __all__ = [
     "NoiseParams",
     "build_noise_model",
     "total_variation",
+    "entanglement_entropy",
     "BASIS_GATES",
 ]

@@ -131,6 +131,10 @@ def submit_job(
     return _request("POST", "/jobs", json=payload)
 
 
+def circuit_timeline(ir: dict) -> dict:
+    return _request("POST", "/circuits/timeline", json={"circuit_ir": ir})
+
+
 def job_status(job_id: int) -> dict:
     return _request("GET", f"/jobs/{job_id}")
 

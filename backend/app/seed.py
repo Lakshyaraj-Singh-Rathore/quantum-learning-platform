@@ -118,6 +118,176 @@ QUIZZES = [
         ],
     },
     {
+        "slug": "quantum-noise",
+        "title": "Quantum Noise and Decoherence",
+        "tags": ["noise", "decoherence"],
+        "questions": [
+            {
+                "prompt": "T1 describes which process?",
+                "qtype": "mcq",
+                "options": [
+                    "Energy relaxation: |1> decaying to |0>",
+                    "Loss of phase coherence only",
+                    "Misreporting a measured bit",
+                    "Crosstalk between neighbouring qubits",
+                ],
+                "answer": "Energy relaxation: |1> decaying to |0>",
+                "explanation": (
+                    "T1 is amplitude damping. The excited state loses energy to "
+                    "the environment, so it is directional: it pushes toward |0>."
+                ),
+                "tags": ["noise"],
+            },
+            {
+                "prompt": "Why can T2 never exceed 2*T1?",
+                "qtype": "mcq",
+                "options": [
+                    "Because energy relaxation also destroys phase information",
+                    "Because T2 is measured in different units",
+                    "It is only a convention, not a physical limit",
+                    "Because readout error dominates at long times",
+                ],
+                "answer": "Because energy relaxation also destroys phase information",
+                "explanation": (
+                    "A T1 event necessarily randomises phase, so dephasing can "
+                    "never be slower than the bound set by relaxation. The "
+                    "platform clamps T2 to 2*T1 and warns you."
+                ),
+                "tags": ["noise"],
+            },
+            {
+                "prompt": (
+                    "You set T1 and T2 extremely high and readout error to 20%. "
+                    "What happens to state fidelity?"
+                ),
+                "qtype": "mcq",
+                "options": [
+                    "It stays near 1.000; only the counts are corrupted",
+                    "It drops to about 0.80",
+                    "It drops to 0.50",
+                    "Fidelity cannot be computed with readout error",
+                ],
+                "answer": "It stays near 1.000; only the counts are corrupted",
+                "explanation": (
+                    "Readout error is a measurement fault, not a channel acting "
+                    "on the state. The state was correct; the reported bit was "
+                    "not. That is why the platform excludes readout when "
+                    "computing state fidelity."
+                ),
+                "tags": ["noise", "measurement"],
+            },
+            {
+                "prompt": "Purity Tr(rho^2) falls below 1. What does that mean?",
+                "qtype": "mcq",
+                "options": [
+                    "The state has become a statistical mixture (decohered)",
+                    "The circuit used too many shots",
+                    "The state is entangled",
+                    "A gate was applied incorrectly",
+                ],
+                "answer": "The state has become a statistical mixture (decohered)",
+                "explanation": (
+                    "Purity 1 means a definite pure state. Lower means the "
+                    "register is a mixture, which is the signature of "
+                    "decoherence."
+                ),
+                "tags": ["noise"],
+            },
+            {
+                "prompt": (
+                    "Why do Z, S, T and RZ pick up no thermal error in this "
+                    "simulation?"
+                ),
+                "qtype": "mcq",
+                "options": [
+                    "They are virtual gates: a phase-frame change taking zero time",
+                    "They are too small to matter",
+                    "It is a simplification with no hardware basis",
+                    "They are applied after the noise model runs",
+                ],
+                "answer": "They are virtual gates: a phase-frame change taking zero time",
+                "explanation": (
+                    "Hardware implements Z-type rotations by redefining the "
+                    "phase reference for later pulses. No pulse is emitted, so "
+                    "no decoherence accumulates."
+                ),
+                "tags": ["noise", "gates"],
+            },
+            {
+                "prompt": (
+                    "Name the noise channel that models |1> decaying to |0>. "
+                    "(two words)"
+                ),
+                "qtype": "short",
+                "options": [],
+                "answer": "amplitude damping|amplitude-damping",
+                "explanation": "Amplitude damping is the channel form of T1.",
+                "tags": ["noise"],
+            },
+        ],
+    },
+    {
+        "slug": "bell-states-quiz",
+        "title": "The Four Bell States",
+        "tags": ["entanglement"],
+        "questions": [
+            {
+                "prompt": (
+                    "Phi+ and Phi- give identical histograms. What distinguishes "
+                    "them?"
+                ),
+                "qtype": "mcq",
+                "options": [
+                    "The relative phase on the |11> term",
+                    "The number of shots required",
+                    "Phi- is not physically realisable",
+                    "Nothing; they are the same state",
+                ],
+                "answer": "The relative phase on the |11> term",
+                "explanation": (
+                    "They are orthogonal states with the same measurement "
+                    "statistics. Use the phase disk or phase table to tell them "
+                    "apart, or undo the Bell circuit."
+                ),
+                "tags": ["entanglement"],
+            },
+            {
+                "prompt": "Measuring Psi+ = (|01> + |10>)/sqrt(2) can give:",
+                "qtype": "mcq",
+                "options": [
+                    "01 or 10 only",
+                    "00 or 11 only",
+                    "any of the four outcomes",
+                    "always 01",
+                ],
+                "answer": "01 or 10 only",
+                "explanation": "Psi states are anti-correlated: the bits always differ.",
+                "tags": ["entanglement"],
+            },
+            {
+                "prompt": (
+                    "Why is each qubit of a Bell pair shown with a zero-length "
+                    "Bloch vector?"
+                ),
+                "qtype": "mcq",
+                "options": [
+                    "Its reduced state is maximally mixed, so it has no state of its own",
+                    "The visualisation is broken",
+                    "The qubit was measured",
+                    "Bloch vectors are undefined for two qubits",
+                ],
+                "answer": (
+                    "Its reduced state is maximally mixed, so it has no state of its own"
+                ),
+                "explanation": (
+                    "Tracing out the partner leaves I/2. All the information is "
+                    "in the correlation, not in either qubit."
+                ),
+                "tags": ["entanglement"],
+            },
+        ],
+    },
+    {
         "slug": "grover",
         "title": "Grover Search",
         "tags": ["grover", "algorithms"],

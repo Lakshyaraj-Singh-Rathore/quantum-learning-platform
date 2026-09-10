@@ -116,3 +116,63 @@ def test_qsphere_places_all_zeros_north_and_all_ones_south():
     }
     assert by_label["|00>"] > 0.99, "all-zeros must sit at the north pole"
     assert by_label["|11>"] < -0.99, "all-ones must sit at the south pole"
+
+
+def test_histogram_forces_a_categorical_axis():
+    """Bitstrings are numeric-looking and Plotly infers a linear axis.
+
+    Reported symptom: the x-axis showed 0, 2, 4, 6, 8, 10 with bars in the
+    wrong slots, and outcomes read as bare numbers rather than basis states.
+    Cause: "00", "01", "10" parse as 0, 1, 10.
+    """
+    captured = []
+
+    class Recorder:
+        def plotly_chart(self, figure, **kwargs):
+            captured.append(figure)
+
+        def caption(self, *a, **k):
+            pass
+
+        def info(self, *a, **k):
+            raise AssertionError("histogram bailed out")
+
+        def checkbox(self, *a, **k):
+            return False
+
+    original = viz.st
+    viz.st = Recorder()
+    try:
+        viz.histogram({"counts": {"00": 471, "01": 485, "10": 16, "11": 18}})
+    finally:
+        viz.st = original
+
+    figure = captured[0]
+    assert figure.layout.xaxis.type == "category", (
+        "numeric-looking bitstrings must not be placed on a linear axis"
+    )
+
+
+def test_histogram_probability_mode_normalises():
+    captured = []
+
+    class Recorder:
+        def plotly_chart(self, figure, **kwargs):
+            captured.append(figure)
+
+        def caption(self, *a, **k):
+            pass
+
+        def info(self, *a, **k):
+            raise AssertionError("histogram bailed out")
+
+    original = viz.st
+    viz.st = Recorder()
+    try:
+        viz.histogram({"counts": {"00": 750, "11": 250}}, as_probability=True)
+    finally:
+        viz.st = original
+
+    ys = list(captured[0].data[0].y)
+    assert abs(sum(ys) - 1.0) < 1e-9
+    assert abs(max(ys) - 0.75) < 1e-9

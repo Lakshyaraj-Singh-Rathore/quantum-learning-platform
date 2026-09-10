@@ -18,6 +18,8 @@ class Lesson(Base):
     path: Mapped[str] = mapped_column(String(255))
     tags: Mapped[list] = mapped_column(JSONType, default=list)
     order_index: Mapped[int] = mapped_column(Integer, default=0)
+    #: "theory" (concepts) or "circuit" (hands-on). Drives the Learn tabs.
+    track: Mapped[str] = mapped_column(String(20), default="theory")
 
 
 class ContentChunk(Base):

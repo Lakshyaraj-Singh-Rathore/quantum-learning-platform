@@ -70,35 +70,53 @@ backend_options = [b for b in catalogue["backends"] if ("dynamic" if is_dynamic 
 if not backend_options:
     backend_options = catalogue["backends"]
 
-controls = st.columns([2, 1.2, 1.2, 1.4])
+# Beginner-friendly default: sensible backend + 1024 shots, everything else
+# tucked away. A student running their first Bell state should not have to read
+# six settings before pressing Run.
+default_backend = "qiskit_aer" if not is_dynamic else "qiskit_dynamic"
+available_ids = [b["id"] for b in backend_options]
+if default_backend not in available_ids:
+    default_backend = available_ids[0]
 
-with controls[0]:
-    labels = {b["id"]: b["label"] + ("" if b["available"] else "  (unavailable)") for b in backend_options}
-    backend = st.selectbox(
-        "Backend",
-        [b["id"] for b in backend_options],
-        format_func=lambda i: labels[i],
-    )
-    chosen = next(b for b in backend_options if b["id"] == backend)
-    if not chosen["available"]:
-        st.warning(chosen["reason"])
-
-with controls[1]:
-    max_shots = catalogue["limits"]["max_dynamic_shots"] if is_dynamic else 8192
-    shots = st.number_input("Shots", 1, max_shots, min(1024, max_shots))
-
-with controls[2]:
-    st.metric("Qubits", ir.n_qubits)
-    st.metric("Depth", ir.depth())
-
-with controls[3]:
+summary = st.columns([1, 1, 2])
+summary[0].metric("Qubits", ir.n_qubits)
+summary[1].metric("Depth", ir.depth())
+with summary[2]:
     if is_dynamic:
-        st.info("**Dynamic circuit** — execution uses the Qiskit dynamic engine.")
+        st.info("**Dynamic circuit** - runs on the Qiskit dynamic engine.")
     else:
-        st.success("**Static circuit** — runnable on all backends.")
+        st.success("**Static circuit** - runnable on all backends.")
+
+with st.expander("Run settings", expanded=False):
+    setting_cols = st.columns(2)
+    with setting_cols[0]:
+        labels = {
+            b["id"]: b["label"] + ("" if b["available"] else "  (unavailable)")
+            for b in backend_options
+        }
+        backend = st.selectbox(
+            "Backend",
+            available_ids,
+            index=available_ids.index(default_backend),
+            format_func=lambda i: labels[i],
+        )
+    with setting_cols[1]:
+        max_shots = (
+            catalogue["limits"]["max_dynamic_shots"] if is_dynamic else 8192
+        )
+        shots = st.select_slider(
+            "Shots",
+            options=[s for s in (128, 256, 512, 1024, 2048, 4096, 8192) if s <= max_shots],
+            value=min(1024, max_shots),
+            help="More shots means less sampling noise, and a slower run.",
+        )
+
+chosen = next(b for b in backend_options if b["id"] == backend)
+if not chosen["available"]:
+    st.warning(chosen["reason"])
 
 noise_payload = None
-with st.expander("Noise model (T1 / T2 / readout)"):
+with st.expander("Noise model (T1 / T2 / readout)", expanded=False):
     if backend != "qiskit_aer":
         st.info(
             "The noise model runs on **Qiskit Aer** only. Select Qiskit Aer above "
@@ -150,11 +168,84 @@ try:
         st.error(error)
     for warning in report["warnings"]:
         st.warning(warning)
-    with st.expander("Circuit analysis"):
+    with st.expander("Circuit analysis", expanded=False):
         st.json(report["summary"])
 except ApiError as exc:
     report = {"ok": False}
     st.error(str(exc))
+
+with st.expander("Timeline - step through the circuit", expanded=False):
+    if st.button("Build timeline", key="build_timeline"):
+        try:
+            st.session_state["timeline"] = api_client.circuit_timeline(ir_dict)
+        except ApiError as exc:
+            st.error(str(exc))
+
+    timeline = st.session_state.get("timeline")
+    if not timeline:
+        st.caption(
+            "Walk the circuit gate by gate and watch the state evolve. "
+            "Press **Build timeline** after editing the circuit."
+        )
+    elif not timeline.get("supported"):
+        st.info(timeline.get("reason", "Timeline unavailable."))
+    else:
+        steps = timeline["steps"]
+        last = len(steps) - 1
+        st.session_state.setdefault("tl_step", last)
+        st.session_state["tl_step"] = min(st.session_state["tl_step"], last)
+
+        nav = st.columns(4)
+        if nav[0].button("|< Reset", use_container_width=True, key="tl_reset"):
+            st.session_state["tl_step"] = 0
+        if nav[1].button("< Prev", use_container_width=True, key="tl_prev"):
+            st.session_state["tl_step"] = max(0, st.session_state["tl_step"] - 1)
+        if nav[2].button("Next >", use_container_width=True, key="tl_next"):
+            st.session_state["tl_step"] = min(last, st.session_state["tl_step"] + 1)
+        if nav[3].button("End >|", use_container_width=True, key="tl_end"):
+            st.session_state["tl_step"] = last
+
+        # A slider needs a range; a circuit with no gates has only step 0.
+        if last > 0:
+            st.session_state["tl_step"] = st.slider(
+                "Step", 0, last, st.session_state["tl_step"]
+            )
+        entry = steps[st.session_state["tl_step"]]
+
+        head = st.columns(4)
+        head[0].metric("Step", f"{entry['step']} / {last}")
+        head[1].metric("Gate", entry["label"])
+        head[2].metric("Depth", entry["depth"])
+        if entry.get("entanglement_entropy") is not None:
+            head[3].metric(
+                "Entanglement S", f"{entry['entanglement_entropy']:.3f}"
+            )
+
+        st.info(entry["narration"])
+
+        if entry.get("state_unavailable"):
+            st.warning(entry["state_unavailable"])
+        elif entry.get("top_states"):
+            st.dataframe(
+                [
+                    {
+                        "State": f"|{row['state']}>",
+                        "Probability": round(row["probability"], 5),
+                        "Percent": f"{row['probability'] * 100:.2f}%",
+                        "Rel. phase (deg)": round(row["phase_deg"], 2),
+                    }
+                    for row in entry["top_states"]
+                ],
+                use_container_width=True,
+                hide_index=True,
+            )
+            if entry.get("entangled"):
+                extra = ""
+                if entry.get("concurrence") is not None:
+                    extra = f"  Concurrence = {entry['concurrence']:.2f}."
+                st.success(
+                    "These qubits are **entangled** at this step." + extra
+                )
 
 run_disabled = not report.get("ok") or not chosen["available"]
 if st.button("▶ Run simulation", type="primary", disabled=run_disabled, use_container_width=True):
@@ -191,40 +282,63 @@ if job_id:
         result = payload["result"]
         viz.backend_badge(result)
 
+        viz.metric_meters(result)
+
         tabs = st.tabs(
             [
                 "Histogram",
+                "Ideal vs noisy",
+                "Born vs shots",
                 "Probabilities",
+                "Phase table",
                 "Phase disk",
                 "Q-sphere",
+                "Density matrix",
                 "Bloch",
-                "Amplitudes",
                 "Diagram",
             ]
         )
         with tabs[0]:
-            color_by_phase = st.checkbox(
-                "Colour bars by relative phase",
-                value=False,
-                help=(
-                    "Z, S, T and RZ change the phase without moving any counts. "
-                    "With colouring on, those gates change the bar colour while "
-                    "the heights stay identical."
-                ),
-                key="hist_phase",
+            opts = st.columns(2)
+            with opts[0]:
+                as_probability = st.checkbox(
+                    "Show probability instead of counts",
+                    value=False,
+                    key="hist_prob",
+                )
+            with opts[1]:
+                color_by_phase = st.checkbox(
+                    "Colour bars by relative phase",
+                    value=False,
+                    help=(
+                        "Z, S, T and RZ change the phase without moving any "
+                        "counts, so the bars stay the same height and only the "
+                        "colour changes."
+                    ),
+                    key="hist_phase",
+                )
+            viz.histogram(
+                result,
+                color_by_phase=color_by_phase,
+                as_probability=as_probability,
             )
-            viz.histogram(result, color_by_phase=color_by_phase)
         with tabs[1]:
-            viz.probability_table(result)
+            viz.ideal_vs_noisy(result)
         with tabs[2]:
-            viz.phase_disk(result)
+            viz.born_vs_shots(result)
         with tabs[3]:
-            viz.qsphere(result)
+            viz.probability_table(result)
         with tabs[4]:
-            viz.bloch_sphere(result, report.get("summary"))
+            viz.phase_table(result)
         with tabs[5]:
-            viz.amplitude_table(result)
+            viz.phase_disk(result)
         with tabs[6]:
+            viz.qsphere(result)
+        with tabs[7]:
+            viz.density_matrix(result)
+        with tabs[8]:
+            viz.bloch_sphere(result, report.get("summary"))
+        with tabs[9]:
             viz.circuit_diagram(ir_dict)
 
         st.divider()

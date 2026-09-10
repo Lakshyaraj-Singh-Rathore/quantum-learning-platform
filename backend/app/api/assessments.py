@@ -48,7 +48,13 @@ router = APIRouter(tags=["assessments"])
 def list_lessons(db: Session = Depends(get_db)) -> list[dict[str, Any]]:
     rows = db.scalars(select(Lesson).order_by(Lesson.order_index)).all()
     return [
-        {"slug": r.slug, "title": r.title, "tags": r.tags or [], "order_index": r.order_index}
+        {
+            "slug": r.slug,
+            "title": r.title,
+            "tags": r.tags or [],
+            "order_index": r.order_index,
+            "track": getattr(r, "track", "theory") or "theory",
+        }
         for r in rows
     ]
 
