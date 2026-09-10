@@ -14,7 +14,7 @@ from app.database import get_db
 from app.deps import get_current_user
 from app.models.job import SimulationJob
 from app.models.user import User
-from app.quantum import codegen_cirq, codegen_qiskit
+from app.quantum import codegen_cirq, codegen_pennylane, codegen_qbraid, codegen_qiskit
 from app.quantum.backends import qbraid_sim
 from app.quantum.inspect import compute_run_hash, inspect_circuit
 from app.quantum.ir import CircuitIR
@@ -252,6 +252,13 @@ def export_code(
         return codegen_qiskit.generate(ir, shots)
     if framework == "cirq":
         return codegen_cirq.generate(ir, shots)
+    if framework == "pennylane":
+        return codegen_pennylane.generate(ir, shots)
+    if framework == "qbraid":
+        return codegen_qbraid.generate(ir, shots)
     if framework == "qasm3":
         return to_qasm3(ir)
-    raise HTTPException(status_code=400, detail="framework must be qiskit, cirq or qasm3")
+    raise HTTPException(
+        status_code=400,
+        detail="framework must be qiskit, cirq, pennylane, qbraid or qasm3",
+    )

@@ -365,7 +365,9 @@ if job_id:
 st.divider()
 st.subheader("Code & export")
 
-code_tabs = st.tabs(["OpenQASM 3", "Qiskit", "Cirq", "Import QASM3", "Save"])
+code_tabs = st.tabs(
+    ["OpenQASM 3", "Qiskit", "Cirq", "PennyLane", "qBraid", "Import QASM3", "Save"]
+)
 
 with code_tabs[0]:
     try:
@@ -397,6 +399,37 @@ with code_tabs[2]:
         st.error(str(exc))
 
 with code_tabs[3]:
+    try:
+        code = api_client.export_code("pennylane", ir_dict, int(shots))
+        if is_dynamic:
+            st.info(
+                "Dynamic circuits run on the Qiskit dynamic engine, not PennyLane. "
+                "Use the **Qiskit** tab for a runnable script."
+            )
+        st.code(code, language="python")
+        st.download_button("Download .py", code, file_name="circuit_pennylane.py")
+    except ApiError as exc:
+        st.error(str(exc))
+
+with code_tabs[4]:
+    try:
+        code = api_client.export_code("qbraid", ir_dict, int(shots))
+        if is_dynamic:
+            st.info(
+                "qBraid devices here accept static OpenQASM 3. Use the **Qiskit** "
+                "tab for a runnable dynamic script."
+            )
+        else:
+            st.caption(
+                "Submits to a qBraid device and polls for results. Needs "
+                "`QBRAID_API_KEY`; free public simulators cost 0 credits."
+            )
+        st.code(code, language="python")
+        st.download_button("Download .py", code, file_name="circuit_qbraid.py")
+    except ApiError as exc:
+        st.error(str(exc))
+
+with code_tabs[5]:
     uploaded = st.file_uploader("Upload a .qasm file", type=["qasm", "txt"])
     pasted = st.text_area("...or paste OpenQASM 3 here", height=180)
     if st.button("Import"):
@@ -414,7 +447,7 @@ with code_tabs[3]:
             except ApiError as exc:
                 st.error(str(exc))
 
-with code_tabs[4]:
+with code_tabs[6]:
     name = st.text_input("Circuit name", ir.name)
     if st.button("Save circuit"):
         try:
