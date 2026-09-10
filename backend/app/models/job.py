@@ -17,6 +17,7 @@ class SimulationJob(Base):
     mode: Mapped[str] = mapped_column(String(32), default="auto")  # auto|static|dynamic
     shots: Mapped[int] = mapped_column(Integer, default=1024)
     circuit_ir: Mapped[dict] = mapped_column(JSONType)
+    noise: Mapped[dict | None] = mapped_column(JSONType, nullable=True)
     qasm3: Mapped[str] = mapped_column(Text, default="")
     run_hash: Mapped[str] = mapped_column(String(64), index=True, default="")
     result: Mapped[dict | None] = mapped_column(JSONType, nullable=True)

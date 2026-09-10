@@ -64,6 +64,12 @@ def run_simulation(self, job_id: int) -> dict:
 
             if engine == "qiskit_dynamic":
                 result = dynamic_qiskit.run(ir, shots=job.shots)
+            elif engine == "qiskit_aer" and job.noise:
+                from app.quantum.noise import NoiseParams
+
+                result = STATIC_RUNNERS[engine](
+                    ir, shots=job.shots, noise=NoiseParams(**job.noise)
+                )
             else:
                 result = STATIC_RUNNERS[engine](ir, shots=job.shots)
 

@@ -19,9 +19,27 @@ STATIC_BACKENDS = ["qiskit_aer", "cirq", "pennylane", "qbraid"]
 DYNAMIC_BACKENDS = ["qiskit_dynamic"]
 
 
-def compute_run_hash(circuit_ir: dict[str, Any], backend: str, shots: int, mode: str) -> str:
+def compute_run_hash(
+    circuit_ir: dict[str, Any],
+    backend: str,
+    shots: int,
+    mode: str,
+    noise: dict[str, Any] | None = None,
+) -> str:
+    """Cache key for a run.
+
+    ``noise`` must participate: two runs of the same circuit with different
+    T1/T2/readout are different experiments, and omitting it would serve a
+    cached ideal result for a noisy request.
+    """
     payload = json.dumps(
-        {"ir": _strip_ids(circuit_ir), "backend": backend, "shots": shots, "mode": mode},
+        {
+            "ir": _strip_ids(circuit_ir),
+            "backend": backend,
+            "shots": shots,
+            "mode": mode,
+            "noise": noise or None,
+        },
         sort_keys=True,
         separators=(",", ":"),
     )

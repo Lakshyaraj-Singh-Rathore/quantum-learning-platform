@@ -103,7 +103,24 @@ def create_job(
         raise HTTPException(status_code=422, detail={"errors": report["errors"]})
 
     engine, _notes = resolve_backend(ir, payload.backend, payload.mode)
-    run_hash = compute_run_hash(ir.to_dict(), engine, payload.shots, payload.mode)
+    noise_dict = (
+        payload.noise.model_dump()
+        if payload.noise is not None and payload.noise.enabled
+        else None
+    )
+    if noise_dict is not None and engine != "qiskit_aer":
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "errors": [
+                    "The noise model is only implemented for the Qiskit Aer backend. "
+                    f"Select Qiskit Aer, or turn noise off to run on '{engine}'."
+                ]
+            },
+        )
+    run_hash = compute_run_hash(
+        ir.to_dict(), engine, payload.shots, payload.mode, noise_dict
+    )
 
     cached = db.scalar(
         select(SimulationJob)
@@ -131,6 +148,7 @@ def create_job(
         mode=payload.mode,
         shots=payload.shots,
         circuit_ir=ir.to_dict(),
+        noise=noise_dict,
         qasm3=to_qasm3(ir),
         run_hash=run_hash,
     )

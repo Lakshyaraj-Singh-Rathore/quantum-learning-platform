@@ -97,6 +97,53 @@ with controls[3]:
     else:
         st.success("**Static circuit** — runnable on all backends.")
 
+noise_payload = None
+with st.expander("Noise model (T1 / T2 / readout)"):
+    if backend != "qiskit_aer":
+        st.info(
+            "The noise model runs on **Qiskit Aer** only. Select Qiskit Aer above "
+            "to enable it."
+        )
+    else:
+        st.caption(
+            "These are **teaching parameters you choose**, not calibration data "
+            "from any real quantum computer. They reproduce the *kind* of errors "
+            "hardware shows: energy loss (T1), dephasing (T2) and misread bits."
+        )
+        noise_on = st.toggle("Enable noise", value=False, key="noise_on")
+        ncols = st.columns(3)
+        with ncols[0]:
+            t1 = st.slider("T1 relaxation (us)", 1.0, 200.0, 50.0, key="noise_t1")
+        with ncols[1]:
+            t2 = st.slider("T2 dephasing (us)", 1.0, 200.0, 30.0, key="noise_t2")
+        with ncols[2]:
+            readout = st.slider("Readout error (%)", 0.0, 20.0, 2.0, key="noise_ro")
+        gcols = st.columns(3)
+        with gcols[0]:
+            g1 = st.slider("1-qubit pulse (us)", 0.02, 2.0, 0.10, 0.02, key="noise_g1")
+        with gcols[1]:
+            g2 = st.slider("2-qubit pulse (us)", 0.05, 4.0, 0.40, 0.05, key="noise_g2")
+        with gcols[2]:
+            g3 = st.slider("3-qubit pulse (us)", 0.10, 6.0, 1.00, 0.10, key="noise_g3")
+        if t2 > 2 * t1:
+            st.warning(
+                f"T2 cannot exceed 2xT1; it will be clamped to {2 * t1:.1f} us."
+            )
+        st.caption(
+            "Longer pulses mean more decoherence per gate. Z / S / T / RZ are "
+            "virtual (frame changes in software), so they pick up no thermal error."
+        )
+        if noise_on:
+            noise_payload = {
+                "enabled": True,
+                "t1_us": float(t1),
+                "t2_us": float(t2),
+                "readout_error": float(readout) / 100.0,
+                "gate_time_1q_us": float(g1),
+                "gate_time_2q_us": float(g2),
+                "gate_time_3q_us": float(g3),
+            }
+
 try:
     report = api_client.inspect_circuit(ir_dict, backend, int(shots))
     for error in report["errors"]:
@@ -112,7 +159,7 @@ except ApiError as exc:
 run_disabled = not report.get("ok") or not chosen["available"]
 if st.button("▶ Run simulation", type="primary", disabled=run_disabled, use_container_width=True):
     try:
-        job = api_client.submit_job(ir_dict, backend, int(shots))
+        job = api_client.submit_job(ir_dict, backend, int(shots), noise=noise_payload)
         placeholder = st.empty()
         for _ in range(120):
             status = api_client.job_status(job["id"])
@@ -145,19 +192,39 @@ if job_id:
         viz.backend_badge(result)
 
         tabs = st.tabs(
-            ["Histogram", "Probabilities", "Phase disk", "Bloch", "Amplitudes", "Diagram"]
+            [
+                "Histogram",
+                "Probabilities",
+                "Phase disk",
+                "Q-sphere",
+                "Bloch",
+                "Amplitudes",
+                "Diagram",
+            ]
         )
         with tabs[0]:
-            viz.histogram(result)
+            color_by_phase = st.checkbox(
+                "Colour bars by relative phase",
+                value=False,
+                help=(
+                    "Z, S, T and RZ change the phase without moving any counts. "
+                    "With colouring on, those gates change the bar colour while "
+                    "the heights stay identical."
+                ),
+                key="hist_phase",
+            )
+            viz.histogram(result, color_by_phase=color_by_phase)
         with tabs[1]:
             viz.probability_table(result)
         with tabs[2]:
             viz.phase_disk(result)
         with tabs[3]:
-            viz.bloch_sphere(result, report.get("summary"))
+            viz.qsphere(result)
         with tabs[4]:
-            viz.amplitude_table(result)
+            viz.bloch_sphere(result, report.get("summary"))
         with tabs[5]:
+            viz.amplitude_table(result)
+        with tabs[6]:
             viz.circuit_diagram(ir_dict)
 
         st.divider()

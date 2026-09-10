@@ -118,12 +118,17 @@ def inspect_circuit(ir: dict, backend: Optional[str] = None, shots: Optional[int
     )
 
 
-def submit_job(ir: dict, backend: str, shots: int, mode: str = "auto") -> dict:
-    return _request(
-        "POST",
-        "/jobs",
-        json={"circuit_ir": ir, "backend": backend, "shots": shots, "mode": mode},
-    )
+def submit_job(
+    ir: dict,
+    backend: str,
+    shots: int,
+    mode: str = "auto",
+    noise: dict | None = None,
+) -> dict:
+    payload = {"circuit_ir": ir, "backend": backend, "shots": shots, "mode": mode}
+    if noise is not None:
+        payload["noise"] = noise
+    return _request("POST", "/jobs", json=payload)
 
 
 def job_status(job_id: int) -> dict:

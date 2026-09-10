@@ -9,12 +9,19 @@ from qiskit.quantum_info import Statevector
 
 from app.quantum.backends.base import BackendError, Timer, make_result, statevector_to_json
 from app.quantum.ir import CircuitIR
+from app.quantum.noise import NoiseParams, build_noise_model
 from app.quantum.normalize import strip_measurements, to_qiskit
 
 NAME = "qiskit_aer"
 
 
-def run(ir: CircuitIR, shots: int = 1024, *, seed: Optional[int] = None) -> dict:
+def run(
+    ir: CircuitIR,
+    shots: int = 1024,
+    *,
+    seed: Optional[int] = None,
+    noise: Optional[NoiseParams] = None,
+) -> dict:
     try:
         from qiskit_aer import AerSimulator
     except ImportError as exc:  # pragma: no cover
@@ -29,7 +36,24 @@ def run(ir: CircuitIR, shots: int = 1024, *, seed: Optional[int] = None) -> dict
             circ.measure(q, q)
         warnings.append("No measurements in circuit; measured all qubits automatically.")
 
-    sim = AerSimulator()
+    noise_model = None
+    noise_meta: dict = {"enabled": False}
+    if noise is not None and noise.enabled:
+        noise_model, noise_notes = build_noise_model(noise)
+        warnings.extend(noise_notes)
+        clean, _ = noise.clamped()
+        noise_meta = {
+            "enabled": True,
+            "t1_us": clean.t1_us,
+            "t2_us": clean.t2_us,
+            "readout_error": clean.readout_error,
+        }
+        warnings.append(
+            "Noise model is a teaching approximation with parameters you chose, "
+            "not calibration from any real device."
+        )
+
+    sim = AerSimulator(noise_model=noise_model) if noise_model else AerSimulator()
     with Timer() as timer:
         compiled = transpile(circ, sim)
         job = sim.run(compiled, shots=shots, seed_simulator=seed)
@@ -44,6 +68,11 @@ def run(ir: CircuitIR, shots: int = 1024, *, seed: Optional[int] = None) -> dict
     except Exception:  # noqa: BLE001 - reset/mid-measure make this undefined
         warnings.append("Statevector unavailable (circuit is not purely unitary).")
 
+    if noise_meta["enabled"] and statevector is not None:
+        warnings.append(
+            "Statevector shown is the IDEAL state; only the counts carry noise."
+        )
+
     return make_result(
         backend=NAME,
         counts=counts,
@@ -52,7 +81,7 @@ def run(ir: CircuitIR, shots: int = 1024, *, seed: Optional[int] = None) -> dict
         runtime=timer.seconds,
         statevector=statevector,
         warnings=warnings,
-        metadata={"mode": "static"},
+        metadata={"mode": "static", "noise": noise_meta},
     )
 
 
