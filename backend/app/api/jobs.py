@@ -19,7 +19,8 @@ from app.quantum.backends import qbraid_sim
 from app.quantum.inspect import compute_run_hash, inspect_circuit
 from app.quantum.ir import CircuitIR
 from app.quantum.qasm3_codec import from_qasm3, to_qasm3
-from app.schemas.circuit import InspectIn, QasmIn
+from app.services import codelab
+from app.schemas.circuit import CodeLabIn, InspectIn, QasmIn
 from app.schemas.job import JobCreate, JobOut, JobResultOut
 from app.workers.tasks import resolve_backend, run_simulation
 
@@ -262,3 +263,37 @@ def export_code(
         status_code=400,
         detail="framework must be qiskit, cirq, pennylane, qbraid or qasm3",
     )
+
+
+# --------------------------------------------------------------------------- #
+# Code lab: build a circuit from a learner-written program
+# --------------------------------------------------------------------------- #
+@router.post("/codelab/build")
+def codelab_build(
+    payload: CodeLabIn, user: User = Depends(get_current_user)
+) -> dict[str, Any]:
+    """Compile learner code into the platform IR.
+
+    The program runs in a restricted subprocess. On success the caller gets
+    back an IR it can submit to /jobs like any composed circuit, so the code
+    path shares execution, caching and visualisation with the composer.
+    """
+    try:
+        built = codelab.build_circuit(payload.code, payload.framework)
+    except codelab.CodeLabError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    ir = built["ir"]
+    return {
+        "circuit_ir": ir.to_dict(),
+        "qasm3": built["qasm3"],
+        "stdout": built["stdout"],
+        "is_dynamic": ir.is_dynamic(),
+        "n_qubits": ir.n_qubits,
+        "depth": ir.depth(),
+    }
+
+
+@router.get("/codelab/starters")
+def codelab_starters(user: User = Depends(get_current_user)) -> dict[str, Any]:
+    return {"frameworks": list(codelab.FRAMEWORKS), "starters": codelab.STARTERS}

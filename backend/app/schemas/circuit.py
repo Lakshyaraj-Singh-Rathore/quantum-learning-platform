@@ -27,3 +27,10 @@ class InspectIn(BaseModel):
     circuit_ir: dict[str, Any]
     backend: Optional[str] = None
     shots: Optional[int] = None
+
+
+class CodeLabIn(BaseModel):
+    """A learner-written program to be compiled into a circuit."""
+
+    code: str
+    framework: str = "qiskit"
