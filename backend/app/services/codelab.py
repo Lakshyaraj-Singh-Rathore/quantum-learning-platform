@@ -116,7 +116,15 @@ def _guarded_import(name, globals=None, locals=None, fromlist=(), level=0):
     cirq outright, so the check applies only when the import statement is in
     the user's own file -- identified by the filename given to compile().
     """
-    caller = (globals or {{}}).get("__name__")
+    # SECURITY: the ``globals`` argument is only populated by the ``import``
+    # statement. A direct call -- __builtins__['__import__']('os'), or the
+    # same thing from eval() -- passes None, which used to skip the allowlist
+    # entirely and hand the learner arbitrary code execution. Trust the actual
+    # calling frame instead, exactly as _guarded_open does.
+    try:
+        caller = sys._getframe(1).f_globals.get("__name__")
+    except Exception:
+        caller = (globals or {{}}).get("__name__")
     if caller == "__codelab__":
         root = name.split(".")[0]
         if root not in ALLOWED:
@@ -145,6 +153,106 @@ def _blocked_input(*a, **k):
 builtins.__import__ = _guarded_import
 builtins.open = _guarded_open
 builtins.input = _blocked_input
+
+# SECURITY: the import hook only sees *new* imports. Dangerous modules that a
+# trusted library already pulled in stay reachable as plain attributes --
+# numpy.ctypeslib.ctypes.CDLL('libc.so.6').system(...) was a working escape
+# that never triggered __import__ at all. Neutralise the dangerous modules in
+# the child's module table before the learner's code runs; qiskit, cirq and
+# pennylane have all finished importing by this point.
+class _Denied:
+    def __init__(self, name):
+        object.__setattr__(self, "_name", name)
+
+    def _fail(self, *a, **k):
+        raise PermissionError(
+            "'%s' is not available in the code lab"
+            % object.__getattribute__(self, "_name")
+        )
+
+    __getattr__ = _fail
+    __call__ = _fail
+
+
+# Only modules the trusted libraries do not need at *call* time can be
+# revoked. os/shutil are used internally by qiskit and numpy long after
+# import, so replacing them breaks legitimate programs; ctypes is the one that
+# grants raw syscalls, and nothing in the science stack calls it on these
+# paths. The import hook still blocks every one of them by name.
+#
+# Swapping sys.modules['ctypes'] is not enough on its own: numpy has not been
+# imported yet here, so its own later ``import ctypes`` (made from trusted
+# code, which the hook allows) would pull a pristine copy back in. But qiskit
+# and numpy genuinely call CDLL while loading, so the module cannot be
+# disarmed yet either. _seal_ctypes() is therefore called later, after the
+# framework has finished importing and immediately before the learner's code
+# runs.
+_CTYPES_SAVED = {{}}
+
+
+def _unseal_ctypes():
+    """Restore ctypes for trusted post-processing (QASM conversion)."""
+    try:
+        import ctypes as _ctypes
+    except Exception:
+        return
+    for _k, _v in _CTYPES_SAVED.items():
+        try:
+            setattr(_ctypes, _k, _v)
+        except Exception:
+            pass
+
+
+def _seal_subprocess():
+    """Disarm subprocess.Popen.
+
+    Blocking ``import subprocess`` is not sufficient: the class is reachable
+    without any import at all by walking the type hierarchy --
+    ``[c for c in ().__class__.__base__.__subclasses__()
+       if 'Popen' in c.__name__][0](['touch', '/tmp/x'])``
+    was a working escape. Patching __init__ on the class object itself covers
+    every route to it.
+    """
+    try:
+        import subprocess as _sp
+    except Exception:
+        return
+
+    def _no_popen(*a, **k):
+        raise PermissionError("subprocess is not available in the code lab")
+
+    try:
+        _sp.Popen.__init__ = _no_popen
+    except Exception:
+        pass
+    for _fn in ("run", "call", "check_call", "check_output", "getoutput"):
+        if hasattr(_sp, _fn):
+            try:
+                setattr(_sp, _fn, _no_popen)
+            except Exception:
+                pass
+
+
+def _seal_ctypes():
+    try:
+        import ctypes as _ctypes
+    except Exception:
+        return
+
+    def _no_ctypes(*a, **k):
+        raise PermissionError("ctypes is not available in the code lab")
+
+    for _attr in (
+        "CDLL", "PyDLL", "OleDLL", "WinDLL",
+        "cdll", "pydll", "windll", "oledll",
+        "LibraryLoader", "dlopen", "memmove", "memset", "string_at", "cast",
+    ):
+        if hasattr(_ctypes, _attr):
+            try:
+                _CTYPES_SAVED.setdefault(_attr, getattr(_ctypes, _attr))
+                setattr(_ctypes, _attr, _no_ctypes)
+            except Exception:
+                pass
 
 
 def emit(payload):
@@ -186,6 +294,22 @@ def to_qasm3(obj, framework):
 
 env = {{"__name__": "__codelab__"}}
 stdout = io.StringIO()
+
+# Warm the framework up while ctypes still works (qiskit/numpy call CDLL on
+# the import path), then revoke it before any learner code executes.
+try:
+    if FRAMEWORK == "qiskit":
+        import qiskit  # noqa: F401
+    elif FRAMEWORK == "cirq":
+        import cirq  # noqa: F401
+    elif FRAMEWORK == "pennylane":
+        import pennylane  # noqa: F401
+    import numpy  # noqa: F401
+except Exception:
+    pass
+_seal_ctypes()
+_seal_subprocess()
+
 try:
     with contextlib.redirect_stdout(stdout):
         exec(compile(USER_CODE, "<your code>", "exec"), env)
@@ -202,6 +326,9 @@ if obj is None:
     sys.exit(0)
 
 try:
+    # The learner's code has finished; conversion is our own trusted code and
+    # cirq/pennylane touch ctypes on this path.
+    _unseal_ctypes()
     qasm = to_qasm3(obj, FRAMEWORK)
 except BaseException as exc:
     emit({{"ok": False, "stdout": stdout.getvalue(),
