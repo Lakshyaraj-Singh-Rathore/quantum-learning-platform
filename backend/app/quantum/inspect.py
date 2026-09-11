@@ -140,6 +140,33 @@ def inspect_circuit(ir: CircuitIR, backend: str | None = None, shots: int | None
                     f"({qlist}); only the last measurement survives in the counts."
                 )
 
+    # A controlled-X whose control qubit was never touched by anything is
+    # almost always a reversed CNOT: the learner meant H(q0) + CX(control=q0,
+    # target=q1) but dropped the X on q0 and the control on q1. That produces
+    # a separable |00> + |01> instead of a Bell pair, and nothing else in the
+    # UI flags it -- the histogram just looks inexplicably wrong.
+    if not dynamic:
+        touched_before: dict[int, int] = {}
+        for op in sorted(ir.ops, key=lambda o: o.layer):
+            if op.kind == "gate" and op.controls:
+                idle = [
+                    c
+                    for c in op.controls
+                    if touched_before.get(c) is None
+                ]
+                if idle and len(idle) == len(op.controls):
+                    clist = ", ".join(f"q{c}" for c in sorted(idle))
+                    tlist = ", ".join(f"q{q}" for q in op.qubits)
+                    warnings.append(
+                        f"Controlled {(op.gate or '').upper()} at layer {op.layer} is "
+                        f"controlled by {clist}, which is still |0> at that point, so "
+                        f"the gate never fires and {tlist} is unchanged. Did you mean "
+                        f"to swap the control and the target?"
+                    )
+            if op.kind in {"gate", "measure", "reset"}:
+                for q in op.involved_qubits():
+                    touched_before.setdefault(q, op.layer)
+
     if not ir.ops:
         warnings.append("Circuit is empty.")
     if not summary["has_measurements"]:

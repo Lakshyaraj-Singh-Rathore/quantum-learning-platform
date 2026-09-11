@@ -117,7 +117,7 @@ export const MULTI_PALETTE: PaletteItem[] = [
     gate: "x",
     kind: "gate",
     controls: 1,
-    hint: "Drop on target, then click 1 control",
+    hint: "Drop on the TARGET (the qubit that flips), then click its control",
     color: "#14b8a6",
   },
   {
@@ -126,7 +126,7 @@ export const MULTI_PALETTE: PaletteItem[] = [
     gate: "x",
     kind: "gate",
     controls: 2,
-    hint: "Drop on target, then click 2 controls",
+    hint: "Drop on the TARGET (the qubit that flips), then click 2 controls",
     color: "#14b8a6",
   },
   {
@@ -135,7 +135,7 @@ export const MULTI_PALETTE: PaletteItem[] = [
     gate: "x",
     kind: "gate",
     controls: -1,
-    hint: "Drop on target, then click any controls, then Done",
+    hint: "Drop on the TARGET (the qubit that flips), then click controls, then Done",
     color: "#14b8a6",
   },
   {

@@ -29,6 +29,10 @@ function label(op: Op): string {
   switch (op.kind) {
     case "gate": {
       const g = (op.gate ?? "").toUpperCase()
+      // A controlled X is drawn as the standard ⊕ target marker. Showing a
+      // plain "X" box made a CNOT look identical whichever way round it was,
+      // so a reversed control/target was impossible to spot on the grid.
+      if (g === "X" && op.controls.length) return "⊕"
       const names: Record<string, string> = { ID: "I", SDG: "S†", TDG: "T†", SX: "√X" }
       const base = names[g] ?? g
       if (op.params.length) return `${base}(${op.params[0].expr})`

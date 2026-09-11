@@ -177,10 +177,16 @@ function ComposerInner({ args, theme }: ComponentProps) {
       if (item.controls && item.controls !== 0) {
         update((prev) => ({ ...prev, ops: placeOp(prev, { ...op, layer }, layer) }))
         setPending({ op: { ...op, layer }, need: item.controls, mode: "controls" })
+        // Name the target explicitly. "Click 1 control qubit" gave no clue
+        // which qubit had just become the target, so it was very easy to end
+        // up with the control and target the wrong way round -- an H on q0
+        // plus a reversed CNOT yields a separable |00>+|01>, not a Bell pair.
         setNotice(
           item.controls < 0
-            ? "Click control qubits in the same column, then press Done."
-            : `Click ${item.controls} control qubit${item.controls > 1 ? "s" : ""} in the same column.`,
+            ? `Target is q[${qubit}]. Click control qubits in the same column, then press Done.`
+            : `Target is q[${qubit}] (it flips). Now click ${item.controls} control qubit${
+                item.controls > 1 ? "s" : ""
+              } in the same column.`,
         )
         return
       }
