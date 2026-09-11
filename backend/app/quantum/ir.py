@@ -287,6 +287,14 @@ class CircuitIR(BaseModel):
                 occ |= op.involved_qubits()
         return occ
 
+    def clbits_written_at(self, layer: int) -> set[int]:
+        """Classical bits written by ops already sitting in ``layer``."""
+        written: set[int] = set()
+        for op in self.ops:
+            if op.layer == layer and op.kind == "measure":
+                written |= set(op.clbits)
+        return written
+
     def walk(self) -> list[Op]:
         out: list[Op] = []
 
@@ -320,7 +328,14 @@ class CircuitIR(BaseModel):
         """
         if layer < 0:
             layer = 0
-        if op.involved_qubits() & self.occupied_at(layer):
+        # A qubit collision is the obvious case, but two measurements writing
+        # the same classical bit in one column also conflict: the second
+        # silently overwrote the first, so the earlier result vanished from
+        # the counts with nothing to indicate it had happened.
+        clbit_clash = bool(
+            op.kind == "measure" and set(op.clbits) & self.clbits_written_at(layer)
+        )
+        if op.involved_qubits() & self.occupied_at(layer) or clbit_clash:
             self.shift_layers(layer)
         op.layer = layer
         self.ops.append(op)

@@ -98,14 +98,25 @@ def _toolbar(ir: CircuitIR, key_prefix: str) -> None:
     columns = st.columns([1.1, 1.6, 1.6, 1.1, 1.0])
 
     with columns[0]:
+        # The 15-qubit ceiling only applies to the dynamic engine, but a wider
+        # circuit can still arrive via QASM import. Hard-coding max_value=15
+        # made Streamlit raise StreamlitValueAboveMaxError and took the whole
+        # Composer page down with an unrecoverable traceback, so the limit has
+        # to stretch to whatever circuit is actually loaded.
+        qubit_ceiling = max(15, ir.n_qubits)
         qubits = st.number_input(
             "Qubits",
             min_value=1,
-            max_value=15,
+            max_value=qubit_ceiling,
             value=ir.n_qubits,
             key=f"{key_prefix}_nq",
             help="Dynamic circuits are limited to 15 qubits.",
         )
+        if ir.n_qubits > 15:
+            st.warning(
+                f"This circuit has {ir.n_qubits} qubits. Dynamic control flow "
+                "is limited to 15, so it can only run as a static circuit."
+            )
         if qubits != ir.n_qubits:
             _resize(ir, int(qubits))
             st.rerun()

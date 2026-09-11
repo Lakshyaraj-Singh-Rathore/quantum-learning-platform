@@ -122,6 +122,24 @@ def inspect_circuit(ir: CircuitIR, backend: str | None = None, shots: int | None
                 )
             seen |= op.involved_qubits()
 
+    # A classical bit written by two different measurements keeps only the
+    # last value. That is legitimate in dynamic circuits (measure, branch,
+    # re-measure) but in a static circuit it silently discards a result, and
+    # the counts look inexplicably wrong.
+    if not dynamic:
+        writers: dict[int, list[int]] = {}
+        for op in ir.walk():
+            if op.kind == "measure":
+                for c in op.clbits:
+                    writers.setdefault(c, []).extend(op.qubits)
+        for cbit, sources in sorted(writers.items()):
+            if len(sources) > 1:
+                qlist = ", ".join(f"q{q}" for q in sources)
+                warnings.append(
+                    f"Classical bit c{cbit} is measured into {len(sources)} times "
+                    f"({qlist}); only the last measurement survives in the counts."
+                )
+
     if not ir.ops:
         warnings.append("Circuit is empty.")
     if not summary["has_measurements"]:

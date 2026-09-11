@@ -150,11 +150,21 @@ def _emit_condition(cond: Optional[Condition]) -> str:
 def from_qasm3(source: str, name: str = "imported") -> CircuitIR:
     """Parse QASM3 into the platform IR (openqasm3 parser, regex fallback)."""
     try:
-        return _parse_with_openqasm3(source, name)
+        ir = _parse_with_openqasm3(source, name)
     except QasmError:
         raise
     except Exception:  # noqa: BLE001 - fall back to the simple parser
-        return _parse_fallback(source, name)
+        ir = _parse_fallback(source, name)
+
+    # Both parsers build an empty CircuitIR (which validates) and then append
+    # ops, so the model's qubit/clbit range check never sees them. Without this
+    # re-validation, QASM referencing q[7] in a qubit[2] register imports as a
+    # corrupt circuit that only blows up later, deep inside a backend.
+    try:
+        CircuitIR.model_validate(ir.to_dict())
+    except ValueError as exc:
+        raise QasmError(str(exc)) from exc
+    return ir
 
 
 def _parse_with_openqasm3(source: str, name: str) -> CircuitIR:

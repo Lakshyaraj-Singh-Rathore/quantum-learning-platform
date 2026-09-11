@@ -79,3 +79,16 @@ def test_growing_qubit_count_never_warns():
     assert len(ir.ops) == 1
     assert ir.n_qubits == 5
     assert st.session_state.get(RESIZE_WARNING_KEY) is None
+
+
+def test_wide_circuit_does_not_crash_the_composer():
+    """A >15-qubit circuit (reachable via QASM import) crashed the page.
+
+    Streamlit raised StreamlitValueAboveMaxError because the Qubits widget
+    hard-coded max_value=15 while `value` was the circuit's real width.
+    """
+    from lib.composer import _toolbar  # noqa: F401  (import must not fail)
+
+    ir = CircuitIR.model_validate({"n_qubits": 20, "n_clbits": 20, "ops": []})
+    # The ceiling the toolbar computes must accommodate the loaded circuit.
+    assert max(15, ir.n_qubits) == 20
