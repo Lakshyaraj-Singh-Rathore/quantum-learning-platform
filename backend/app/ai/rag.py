@@ -39,13 +39,16 @@ def infer_tags(text: str) -> list[str]:
     return sorted({tag for tag, words in TAG_KEYWORDS.items() if any(w in lowered for w in words)})
 
 
+TRACK_MARKER_RE = re.compile(r"<!--\s*track:\s*(theory|circuit)\s*-->", re.I)
+
+
 def infer_track(text: str) -> str:
     """Read an optional ``<!-- track: circuit -->`` marker; default theory.
 
     Kept as an HTML comment so it renders as nothing in the lesson body and
     needs no front-matter parser.
     """
-    match = re.search(r"<!--\s*track:\s*(theory|circuit)\s*-->", text, re.I)
+    match = TRACK_MARKER_RE.search(text)
     return match.group(1).lower() if match else "theory"
 
 
@@ -78,6 +81,14 @@ def ingest_content_folder(db: Session, folder: str | None = None, force: bool = 
     settings = get_settings()
     root = Path(folder or settings.content_dir)
     if not root.exists():
+        # The default (/content) is the Docker mount point. Running the API
+        # straight from a checkout left the Learn page silently empty, so fall
+        # back to the repository's own content/ directory.
+        local = Path(__file__).resolve().parents[3] / "content"
+        if local.is_dir():
+            log.info("content folder %s not found; using %s", root, local)
+            root = local
+    if not root.exists():
         log.info("content folder %s not found; skipping ingestion", root)
         return {"lessons": 0, "chunks": 0, "skipped": True}
 
@@ -90,6 +101,10 @@ def ingest_content_folder(db: Session, folder: str | None = None, force: bool = 
         text = path.read_text(encoding="utf-8")
         tags = infer_tags(text)
         track = infer_track(text)
+        # Streamlit renders markdown with HTML escaped, so the marker comment
+        # showed up as literal "<!-- track: theory -->" at the top of the
+        # lesson. Drop it once the track has been read.
+        text = TRACK_MARKER_RE.sub("", text, count=1).lstrip()
 
         lesson = db.scalar(select(Lesson).where(Lesson.slug == slug))
         if lesson is None:

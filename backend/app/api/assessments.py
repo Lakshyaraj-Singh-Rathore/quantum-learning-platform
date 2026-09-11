@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import desc, select
 from sqlalchemy.orm import Session
 
+from app.ai.rag import TRACK_MARKER_RE
 from app.config import get_settings
 from app.database import get_db
 from app.deps import get_current_user
@@ -68,6 +69,10 @@ def get_lesson(slug: str, db: Session = Depends(get_db)) -> dict[str, Any]:
     if not path.exists():
         path = Path(get_settings().content_dir) / f"{slug}.md"
     content = path.read_text(encoding="utf-8") if path.exists() else "_Lesson content missing._"
+    # The "<!-- track: circuit -->" marker is metadata for the ingester.
+    # Streamlit escapes HTML, so left in place it renders as literal text at
+    # the top of the lesson.
+    content = TRACK_MARKER_RE.sub("", content, count=1).lstrip()
     return {"slug": lesson.slug, "title": lesson.title, "tags": lesson.tags or [], "content": content}
 
 
