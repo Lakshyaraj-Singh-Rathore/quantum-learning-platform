@@ -37,6 +37,13 @@ PALETTE = [
     ("swap", "SWAP", "Swap two qubits"),
 ]
 
+# Smallest circuit each gate can legally act on (controls + target must all be
+# distinct qubits).
+MIN_QUBITS = {"cx": 2, "swap": 2, "ccx": 3}
+
+# Set by _resize() and drained on the next render.
+RESIZE_WARNING_KEY = "composer_resize_warning"
+
 STRUCTURAL = [
     ("measure", "Measure", "Measure one qubit into a classical bit"),
     ("reset", "Reset", "Reset a qubit to |0>"),
@@ -140,10 +147,32 @@ def _toolbar(ir: CircuitIR, key_prefix: str) -> None:
     for warning in st.session_state.pop(f"{key_prefix}_norm_warnings", []) or []:
         st.warning(warning)
 
+    resize_warning = st.session_state.pop(RESIZE_WARNING_KEY, None)
+    if resize_warning:
+        st.warning(resize_warning)
+
 
 def _resize(ir: CircuitIR, n_qubits: int) -> None:
     if n_qubits < ir.n_qubits:
-        ir.ops = [op for op in ir.ops if all(q < n_qubits for q in op.involved_qubits())]
+        kept, dropped = [], []
+        for op in ir.ops:
+            if all(q < n_qubits for q in op.involved_qubits()):
+                kept.append(op)
+            else:
+                dropped.append(op)
+        ir.ops = kept
+        if dropped:
+            # Shrinking used to delete these silently, so a learner could lose
+            # half a circuit and never be told.
+            names = ", ".join(
+                sorted({(op.gate or op.kind).upper() for op in dropped})
+            )
+            st.session_state[RESIZE_WARNING_KEY] = (
+                f"Reducing to {n_qubits} qubit{'s' if n_qubits != 1 else ''} "
+                f"removed {len(dropped)} operation"
+                f"{'s' if len(dropped) != 1 else ''} that acted on qubits "
+                f"q{n_qubits} and above ({names})."
+            )
     ir.n_qubits = n_qubits
     ir.n_clbits = max(n_qubits, ir.n_clbits)
     set_circuit(CircuitIR.from_dict(ir.to_dict()))
@@ -184,6 +213,18 @@ def _palette(ir: CircuitIR, key_prefix: str) -> None:
     # far too easy to fill them in the wrong order and silently get
     # |00> + |01> (control and target swapped) instead of a Bell pair.
     n_controls = {"cx": 1, "ccx": 2}.get(gate)
+
+    # A multi-qubit gate needs somewhere to put every control *and* the target.
+    # Without this guard the pickers still render on an undersized circuit and
+    # "Add gate" fails with the misleading "target cannot also be a control".
+    min_qubits = MIN_QUBITS.get(gate, 1)
+    if ir.n_qubits < min_qubits:
+        st.warning(
+            f"**{_label}** needs at least {min_qubits} qubits, but this circuit "
+            f"has {ir.n_qubits}. Raise **Qubits** above to use it."
+        )
+        return
+
     if n_controls:
         emit_gate = "x"
         cols = st.columns(2)

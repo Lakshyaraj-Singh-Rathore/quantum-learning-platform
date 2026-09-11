@@ -54,6 +54,9 @@ framework = st.selectbox(
 if st.session_state.get("codelab_framework") != framework:
     st.session_state["codelab_framework"] = framework
     st.session_state["codelab_code"] = starters["starters"][framework]
+    # The previously built circuit came from the old language's code, so
+    # leaving it on screen shows results that no longer match the editor.
+    st.session_state.pop("codelab_built", None)
 
 code = st.text_area(
     "Your program",
