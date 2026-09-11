@@ -20,6 +20,8 @@ from app.quantum.params import ParamError, eval_param_expr
 PALETTE = [
     ("h", "H", "Hadamard - creates superposition"),
     ("x", "X", "Pauli-X / NOT - bit flip"),
+    ("cx", "CNOT (CX)", "Controlled-NOT - flips the target when the control is |1>"),
+    ("ccx", "Toffoli (CCX)", "Flips the target when BOTH controls are |1>"),
     ("y", "Y", "Pauli-Y"),
     ("z", "Z", "Pauli-Z - phase flip"),
     ("id", "I", "Identity"),
@@ -175,21 +177,60 @@ def _palette(ir: CircuitIR, key_prefix: str) -> None:
             st.error(str(exc))
 
     qubit_options = list(range(ir.n_qubits))
-    if gate == "swap":
+
+    # CNOT and Toffoli are stored as X with controls, but a learner should not
+    # have to know that. Picking them gives explicit, labelled control/target
+    # pickers -- previously the only route was "X + add a control", and it was
+    # far too easy to fill them in the wrong order and silently get
+    # |00> + |01> (control and target swapped) instead of a Bell pair.
+    n_controls = {"cx": 1, "ccx": 2}.get(gate)
+    if n_controls:
+        emit_gate = "x"
+        cols = st.columns(2)
+        with cols[0]:
+            controls = st.multiselect(
+                f"Control qubit{'s' if n_controls > 1 else ''} "
+                f"(pick exactly {n_controls})",
+                qubit_options,
+                key=f"{key_prefix}_cx_controls",
+                help="The gate fires only when every control qubit is |1>.",
+            )
+        with cols[1]:
+            target = st.selectbox(
+                "Target qubit (gets flipped)",
+                [q for q in qubit_options if q not in controls] or qubit_options,
+                key=f"{key_prefix}_cx_target",
+            )
+        targets = [target]
+
+        if len(controls) == n_controls and target not in controls:
+            ctrl_txt = " and ".join(f"q{c}" for c in controls)
+            st.caption(
+                f"Flips **q{target}** when {ctrl_txt} "
+                f"{'are' if n_controls > 1 else 'is'} |1>. "
+                f"For a Bell pair: H on q0, then control q0, target q1."
+            )
+    elif gate == "swap":
+        emit_gate = gate
         targets = st.multiselect(
             "Target qubits (exactly 2)", qubit_options, key=f"{key_prefix}_swap_targets"
         )
+        controls = st.multiselect(
+            "Control qubits (optional)",
+            [q for q in qubit_options if q not in targets],
+            key=f"{key_prefix}_controls",
+        )
     else:
+        emit_gate = gate
         targets = [
             st.selectbox("Target qubit", qubit_options, key=f"{key_prefix}_target")
         ]
-
-    controls = st.multiselect(
-        "Control qubits (optional)",
-        [q for q in qubit_options if q not in targets],
-        key=f"{key_prefix}_controls",
-        help="Select one control for CX, two for Toffoli, or many for a general MCX.",
-    )
+        controls = st.multiselect(
+            "Control qubits (optional)",
+            [q for q in qubit_options if q not in targets],
+            key=f"{key_prefix}_controls",
+            help="Select one control for CX, two for Toffoli, or many for a general MCX.",
+        )
 
     layer = st.number_input(
         "Layer (column)",
@@ -201,11 +242,20 @@ def _palette(ir: CircuitIR, key_prefix: str) -> None:
     )
 
     if st.button("Add gate", type="primary", use_container_width=True, key=f"{key_prefix}_add"):
+        if n_controls and len(controls) != n_controls:
+            st.error(
+                f"{_label} needs exactly {n_controls} control "
+                f"qubit{'s' if n_controls > 1 else ''}; you picked {len(controls)}."
+            )
+            return
+        if n_controls and targets[0] in controls:
+            st.error("The target qubit cannot also be a control.")
+            return
         try:
             params = [param_expr] if param_expr else []
             op = Op(
                 kind="gate",
-                gate=gate,
+                gate=emit_gate,
                 qubits=[int(q) for q in targets],
                 controls=[int(c) for c in controls],
                 params=params,
