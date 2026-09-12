@@ -349,6 +349,40 @@ def emit(payload):
     sys.stdout.flush()
 
 
+def _qasm2_to_qasm3(text):
+    """Parse framework-emitted QASM 2 and re-emit it as QASM 3.
+
+    Cirq and PennyLane both emit gates from qelib1.inc -- swap, sx, u3 and
+    friends. Qiskit's strict qasm2.loads does not define those, so a plain
+    SWAP failed with "'swap' is not defined in this scope". The legacy
+    instruction set is exactly the qelib1 compatibility layer these emitters
+    assume.
+    """
+    from qiskit import qasm2, qasm3 as q3
+
+    try:
+        qc = qasm2.loads(text, custom_instructions=qasm2.LEGACY_CUSTOM_INSTRUCTIONS)
+    except Exception:
+        qc = qasm2.loads(text)
+
+    out = q3.dumps(qc)
+    # q3.dumps happily emits gates the platform's own importer does not know
+    # (u3 from a Cirq PhasedXZGate, for one), so a successful dump is not
+    # enough. Confirm the result actually imports, and decompose to the IR's
+    # basis if it does not.
+    try:
+        from_qasm3(out, name="probe")
+        return out
+    except Exception:
+        from qiskit import transpile
+
+        basis = [
+            "rx", "ry", "rz", "h", "x", "y", "z", "s", "sdg", "t", "tdg",
+            "sx", "cx", "swap", "measure", "reset", "barrier",
+        ]
+        return q3.dumps(transpile(qc, basis_gates=basis, optimization_level=0))
+
+
 def to_qasm3(obj, framework):
     """Convert a framework circuit object into OpenQASM 3."""
     if framework == "qiskit":
@@ -366,26 +400,34 @@ def to_qasm3(obj, framework):
 
     if framework == "cirq":
         import cirq
-        from qiskit import qasm2, qasm3 as q3
         # Cirq exports QASM 2; round-trip through Qiskit to get QASM 3 so the
         # platform has a single import path.
-        text = cirq.qasm(obj)
-        return q3.dumps(qasm2.loads(text))
+        return _qasm2_to_qasm3(cirq.qasm(obj))
 
     if framework == "pennylane":
         import pennylane as qml
-        from qiskit import qasm2, qasm3 as q3
         # qml.to_openqasm works on a QNode directly and returns QASM 2;
         # round-trip through Qiskit so the platform has one import path.
         if isinstance(obj, qml.QNode):
-            text = qml.to_openqasm(obj)()
+            try:
+                text = qml.to_openqasm(obj)()
+            except TypeError as exc:
+                if "required positional argument" in str(exc):
+                    raise TypeError(
+                        "your QNode takes arguments, so the platform does not "
+                        "know what values to draw the circuit with. Call it "
+                        "once with concrete values and assign the result, e.g. "
+                        "'circuit(0.5)', or give the parameters defaults like "
+                        "'def circuit(theta=0.5):'."
+                    ) from exc
+                raise
         elif isinstance(obj, qml.tape.QuantumScript):
             text = qml.to_openqasm(obj)
         else:
             raise TypeError(
                 "expected a QNode or QuantumScript, got %s" % type(obj).__name__
             )
-        return q3.dumps(qasm2.loads(text))
+        return _qasm2_to_qasm3(text)
 
     raise ValueError("unknown framework " + framework)
 
