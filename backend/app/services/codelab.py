@@ -44,7 +44,7 @@ MEMORY_LIMIT_MB = 1024
 
 MAX_CODE_CHARS = 20_000
 
-FRAMEWORKS = ("qiskit", "cirq", "pennylane")
+FRAMEWORKS = ("qiskit", "cirq", "pennylane", "qasm3")
 
 #: Modules the learner's program may import. Everything needed to build a
 #: circuit, nothing that reaches the filesystem, network or other processes.
@@ -74,6 +74,45 @@ ALLOWED_MODULES = {
     "warnings",
     "sympy",
     "scipy",
+    # Quantum ecosystem packages a learner will reasonably reach for. These
+    # were missing, so ordinary textbook code (e.g. importing AerSimulator to
+    # run a circuit before returning it) failed with a confusing ImportError.
+    "qiskit_aer",
+    "qiskit_algorithms",
+    "qiskit_ibm_runtime",
+    "pennylane_lightning",
+    "openqasm3",
+    "matplotlib",
+    "pylatexenc",
+    "networkx",
+    "pandas",
+    # Pure-computation stdlib modules with no filesystem, network or process
+    # reach. Blocking these bought no safety and only broke normal programs.
+    "heapq",
+    "bisect",
+    "array",
+    "struct",
+    "textwrap",
+    "pprint",
+    "time",
+    "datetime",
+    "unicodedata",
+    "types",
+    "numbers",
+    "contextlib",
+    "hashlib",
+    "base64",
+    "binascii",
+    "uuid",
+    "secrets",
+    "queue",
+    "graphlib",
+    "difflib",
+    "keyword",
+    "reprlib",
+    "traceback",
+    "inspect",
+    "logging",
 }
 
 
@@ -203,6 +242,56 @@ def _unseal_ctypes():
             pass
 
 
+_OS_SAVED = {{}}
+
+
+def _unseal_os():
+    """Restore os for trusted post-processing (QASM conversion)."""
+    try:
+        import os as _os
+    except Exception:
+        return
+    for _k, _v in _OS_SAVED.items():
+        try:
+            setattr(_os, _k, _v)
+        except Exception:
+            pass
+
+
+def _seal_os():
+    """Disarm the process/filesystem entry points on the real os module.
+
+    Blocking ``import os`` does not help when a permitted library already
+    holds a reference: ``logging.os`` and ``matplotlib.os`` are the same
+    module object, and ``logging.os.system(...)`` was a working escape. The
+    module cannot simply be replaced -- qiskit, numpy and matplotlib call
+    os.path, os.environ and os.fspath constantly -- so only the dangerous
+    callables are revoked, leaving path handling intact.
+    """
+    try:
+        import os as _os
+    except Exception:
+        return
+
+    def _no_os(*a, **k):
+        raise PermissionError("this os function is not available in the code lab")
+
+    for _attr in (
+        "system", "popen", "execv", "execve", "execvp", "execvpe", "execl",
+        "execle", "execlp", "execlpe", "spawnv", "spawnve", "spawnl", "spawnle",
+        "fork", "forkpty", "posix_spawn", "posix_spawnp", "kill", "killpg",
+        "remove", "unlink", "rmdir", "removedirs", "rename", "renames",
+        "replace", "truncate", "chmod", "chown", "link", "symlink", "mkdir",
+        "makedirs", "open", "fdopen", "pipe", "dup", "dup2", "setuid", "setgid",
+    ):
+        if hasattr(_os, _attr):
+            try:
+                _OS_SAVED.setdefault(_attr, getattr(_os, _attr))
+                setattr(_os, _attr, _no_os)
+            except Exception:
+                pass
+
+
 def _seal_subprocess():
     """Disarm subprocess.Popen.
 
@@ -264,7 +353,16 @@ def to_qasm3(obj, framework):
     """Convert a framework circuit object into OpenQASM 3."""
     if framework == "qiskit":
         from qiskit import qasm3 as q3
-        return q3.dumps(obj)
+        try:
+            return q3.dumps(obj)
+        except Exception:
+            # initialize(), unitary() and other opaque instructions are not
+            # directly expressible in QASM3. Decomposing into a standard basis
+            # keeps these perfectly ordinary programs working instead of
+            # failing with a raw exporter error.
+            from qiskit import transpile
+            basis = ["rx", "ry", "rz", "h", "x", "y", "z", "s", "t", "cx", "measure", "reset", "barrier"]
+            return q3.dumps(transpile(obj, basis_gates=basis, optimization_level=0))
 
     if framework == "cirq":
         import cirq
@@ -309,6 +407,7 @@ except Exception:
     pass
 _seal_ctypes()
 _seal_subprocess()
+_seal_os()
 
 try:
     with contextlib.redirect_stdout(stdout):
@@ -329,6 +428,7 @@ try:
     # The learner's code has finished; conversion is our own trusted code and
     # cirq/pennylane touch ctypes on this path.
     _unseal_ctypes()
+    _unseal_os()
     qasm = to_qasm3(obj, FRAMEWORK)
 except BaseException as exc:
     emit({{"ok": False, "stdout": stdout.getvalue(),
@@ -354,6 +454,15 @@ def build_circuit(code: str, framework: str) -> dict[str, Any]:
         raise CodeLabError(
             f"Program is too long ({len(code)} chars, limit {MAX_CODE_CHARS})."
         )
+
+    # OpenQASM 3 is the platform's own format: it is data, not a program, so
+    # it is parsed directly and never reaches the code sandbox.
+    if framework == "qasm3":
+        try:
+            ir = from_qasm3(code, name="code-lab")
+        except Exception as exc:  # noqa: BLE001
+            raise CodeLabError(f"Could not parse your OpenQASM 3: {exc}") from exc
+        return {"ir": ir, "qasm3": code, "stdout": ""}
 
     child = _CHILD.format(
         limit_mb=MEMORY_LIMIT_MB,
@@ -394,6 +503,17 @@ def build_circuit(code: str, framework: str) -> dict[str, Any]:
     try:
         ir = from_qasm3(qasm3, name="code-lab")
     except Exception as exc:  # noqa: BLE001
+        # An unbound Parameter reaches here as a symbolic name the platform's
+        # numeric-only parameter grammar rejects. Say so plainly rather than
+        # surfacing "parameter may only contain pi, numbers...", which gives
+        # no hint that the real problem is a free variable.
+        if "may only contain" in str(exc):
+            raise CodeLabError(
+                "Your circuit still has an unbound Parameter. The platform "
+                "stores concrete angles, so bind it before returning the "
+                "circuit, e.g. "
+                "circuit = qc.assign_parameters({theta: 3.14159 / 2})."
+            ) from exc
         raise CodeLabError(
             "Your circuit was built but the platform could not import it "
             f"({exc}). Gates outside the supported set can cause this."
@@ -427,6 +547,22 @@ STARTERS: dict[str, str] = {
             cirq.CNOT(q[0], q[1]),
             cirq.measure(q[0], q[1], key="m"),
         )
+        '''
+    ),
+    "qasm3": textwrap.dedent(
+        '''\
+        // Write OpenQASM 3 directly -- this is the platform's native format,
+        // so it is parsed as-is with no Python involved.
+        OPENQASM 3.0;
+        include "stdgates.inc";
+
+        qubit[2] q;
+        bit[2] c;
+
+        h q[0];
+        cx q[0], q[1];
+        c[0] = measure q[0];
+        c[1] = measure q[1];
         '''
     ),
     "pennylane": textwrap.dedent(

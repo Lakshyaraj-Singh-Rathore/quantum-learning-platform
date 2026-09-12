@@ -1010,12 +1010,83 @@ def density_matrix(result: dict[str, Any]) -> None:
     )
 
 
+def _format_amplitude_latex(z: complex, places: int = 4) -> str:
+    """Render a complex amplitude the way a textbook would.
+
+    Real amplitudes print bare (``0.7071``), imaginary ones as ``0.7071i``,
+    and genuinely complex ones as ``(a + bi)`` so the coefficient reads as a
+    single unit in front of the ket.
+    """
+    re = round(float(z.real), places)
+    im = round(float(z.imag), places)
+    tol = 10.0 ** (-places)
+
+    def _trim(x: float) -> str:
+        text = f"{abs(x):.{places}f}".rstrip("0").rstrip(".")
+        return text or "0"
+
+    if abs(im) < tol:
+        return ("-" if re < 0 else "") + _trim(re)
+    if abs(re) < tol:
+        return f"{_trim(im)}i" if im > 0 else f"-{_trim(im)}i"
+    sign = "+" if im > 0 else "-"
+    return f"({_trim(re)} {sign} {_trim(im)}i)"
+
+
+def statevector_ket(result: dict[str, Any], max_terms: int = 16) -> None:
+    """Show the full statevector in Dirac (ket) notation.
+
+    The dataframe below gives exact numbers, but a learner reading a textbook
+    needs to see the state written the same way the book writes it:
+    |psi> = a|0> + b|1>.
+    """
+    amplitudes = _amplitudes(result)
+    if amplitudes is None:
+        return
+    n_qubits = int(math.log2(len(amplitudes)))
+
+    terms: list[str] = []
+    hidden = 0
+    for index, amplitude in enumerate(amplitudes):
+        if abs(amplitude) ** 2 <= 1e-10:
+            continue
+        if len(terms) >= max_terms:
+            hidden += 1
+            continue
+        coefficient = _format_amplitude_latex(amplitude)
+        basis = format(index, f"0{n_qubits}b")
+        negative = coefficient.startswith("-")
+        if negative:
+            coefficient = coefficient[1:]
+        # Drop a coefficient of exactly 1 the way a textbook would.
+        body = "" if coefficient == "1" else coefficient + r"\,"
+        term = rf"{body}\left|{basis}\right\rangle"
+        terms.append(("-" if negative else "+", term))
+
+    if not terms:
+        return
+
+    sign, first = terms[0]
+    expression = ("-" if sign == "-" else "") + first
+    for sign, term in terms[1:]:
+        expression += f" {sign} {term}"
+
+    st.latex(rf"\left|\psi\right\rangle = {expression}")
+    if hidden:
+        st.caption(f"{hidden} further term(s) with smaller amplitudes are not shown.")
+    st.caption(
+        "Amplitudes are complex numbers; each squared magnitude is the "
+        "probability of measuring that basis state."
+    )
+
+
 def phase_table(result: dict[str, Any]) -> None:
     """Amplitude and relative phase per basis state."""
     amplitudes = _amplitudes(result)
     if amplitudes is None:
         st.info("Phase table needs a statevector.")
         return
+    statevector_ket(result)
     n_qubits = int(math.log2(len(amplitudes)))
     relative = _relative_phases(amplitudes)
     rows = []

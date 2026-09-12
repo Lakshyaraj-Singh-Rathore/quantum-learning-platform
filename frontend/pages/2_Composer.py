@@ -290,7 +290,7 @@ if job_id:
                 "Ideal vs noisy",
                 "Born vs shots",
                 "Probabilities",
-                "Phase table",
+                "Statevector",
                 "Phase disk",
                 "Q-sphere",
                 "Density matrix",

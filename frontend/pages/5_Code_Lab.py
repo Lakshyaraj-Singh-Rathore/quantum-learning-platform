@@ -46,6 +46,7 @@ framework = st.selectbox(
         "qiskit": "Qiskit",
         "cirq": "Cirq",
         "pennylane": "PennyLane",
+        "qasm3": "OpenQASM 3",
     }.get(f, f),
 )
 
@@ -83,6 +84,16 @@ access to files, the network, or other programs. You can import `qiskit`,
 - **Qiskit** - a `QuantumCircuit`
 - **Cirq** - a `cirq.Circuit`
 - **PennyLane** - a `QNode` (the decorated function)
+- **OpenQASM 3** - no Python at all: write QASM directly and it is parsed
+  as-is (this is the platform's native format)
+
+Beyond the quantum SDKs you can import `qiskit_aer`, `matplotlib`, `pandas`,
+`networkx`, `scipy`, `sympy` and the pure-computation parts of the standard
+library (`time`, `itertools`, `heapq`, `textwrap`, ...). Anything that
+reaches the filesystem, network or other processes stays blocked.
+
+Angles must be concrete numbers: bind a Qiskit `Parameter` with
+`qc.assign_parameters({theta: 3.14159 / 2})` before returning the circuit.
 
 Your program's `print()` output is shown back to you, so you can debug.
 Circuits are converted to OpenQASM 3 internally, so a gate outside the
