@@ -14,8 +14,12 @@ FROM python:3.11-slim
 WORKDIR /app
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PYTHONPATH=/backend
 
+# media-types installs /etc/mime.types. Without it Python's mimetypes module
+# falls back to "application/javascript" for .js, which some browsers refuse to
+# execute as an ES module -- the drag-and-drop composer then renders as a blank
+# white iframe with no console error.
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential && rm -rf /var/lib/apt/lists/*
+    build-essential media-types && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt

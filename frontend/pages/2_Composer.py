@@ -19,14 +19,27 @@ if not auth.require_login():
 # Editor: React component when built, Python grid otherwise
 # --------------------------------------------------------------------------- #
 try:
-    from circuit_composer import build_instructions, circuit_composer, is_available
+    from circuit_composer import (
+        build_instructions,
+        build_is_consistent,
+        circuit_composer,
+        is_available,
+    )
 
     react_available = is_available()
+    _bundle_ok, _bundle_problem = build_is_consistent()
 except Exception:  # noqa: BLE001
     react_available = False
+    _bundle_ok, _bundle_problem = True, ""
 
     def build_instructions() -> str:
         return "React composer module not found; using the Python grid composer."
+
+# A stale bundle renders as a blank white iframe with nothing in the console,
+# so say what is wrong rather than leaving the user staring at it.
+if react_available and not _bundle_ok:
+    st.error(_bundle_problem)
+    react_available = False
 
 
 ir = composer.get_circuit()
