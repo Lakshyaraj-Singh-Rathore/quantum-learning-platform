@@ -26,6 +26,10 @@ import type { PendingSelection } from "./Grid"
 import BlockEditor from "./BlockEditor"
 
 /** Walk an index path (["body",0,"else_body",1]) down to a nested op. */
+/** Floor for the reported iframe height, so a 0 measurement can never
+ *  collapse the component into an invisible strip. */
+const MIN_FRAME_HEIGHT = 560
+
 type PathStep = { branch: "body" | "else_body"; index: number }
 
 function getAtPath(ops: Op[], rootIndex: number, path: PathStep[]): Op | null {
@@ -74,15 +78,45 @@ function ComposerInner({ args, theme }: ComponentProps) {
   const [editing, setEditing] = useState<{ rootIndex: number; path: PathStep[] } | null>(null)
 
   const lastSent = useRef<string>("")
+  const rootRef = useRef<HTMLDivElement>(null)
 
   // theme -> css variables
   useEffect(() => {
     document.body.classList.toggle("dark", theme?.base === "dark")
   }, [theme])
 
+  // Streamlit sizes the iframe from document.body.scrollHeight at the moment
+  // we call this. If layout is not settled yet (web font still loading, grid
+  // not measured) the reported height can be 0 and the component shows as a
+  // blank area. Re-measure after paint and whenever the body resizes.
+  const resize = useCallback(() => {
+    // Never report 0: Streamlit would collapse the iframe to nothing and the
+    // component looks like a blank white box with no error anywhere.
+    const measured = Math.max(
+      document.body.scrollHeight,
+      document.documentElement?.scrollHeight ?? 0,
+      rootRef.current?.scrollHeight ?? 0,
+    )
+    Streamlit.setFrameHeight(Math.max(measured, MIN_FRAME_HEIGHT))
+  }, [])
+
   useEffect(() => {
-    Streamlit.setFrameHeight()
+    resize()
+    const raf = window.requestAnimationFrame(resize)
+    const later = window.setTimeout(resize, 250)
+    return () => {
+      window.cancelAnimationFrame(raf)
+      window.clearTimeout(later)
+    }
   })
+
+  useEffect(() => {
+    if (typeof ResizeObserver === "undefined") return
+    const ro = new ResizeObserver(resize)
+    ro.observe(document.body)
+    if (rootRef.current) ro.observe(rootRef.current)
+    return () => ro.disconnect()
+  }, [resize])
 
   /** Push the circuit back to Python (only when it actually changed). */
   const commit = useCallback((next: CircuitIR) => {
@@ -94,8 +128,15 @@ function ComposerInner({ args, theme }: ComponentProps) {
     }
   }, [])
 
+  // Every setComponentValue triggers a full Python rerun of the page, and the
+  // whole Composer (timeline, analysis, export tabs) re-renders. Committing
+  // synchronously on each keystroke/click made the +/- Qubit buttons feel
+  // laggy and unresponsive. The React state is authoritative and updates
+  // instantly; debounce the trip back to Python so a burst of clicks costs one
+  // rerun instead of one per click.
   useEffect(() => {
-    commit(ir)
+    const id = window.setTimeout(() => commit(ir), 250)
+    return () => window.clearTimeout(id)
   }, [ir, commit])
 
   const nCols = Math.max(maxLayer(ir.ops) + 2, 8) // auto-grow right
@@ -276,7 +317,7 @@ function ComposerInner({ args, theme }: ComponentProps) {
   )
 
   return (
-    <div className="composer">
+    <div className="composer" ref={rootRef}>
       {/* toolbar */}
       <div className="toolbar">
         <button

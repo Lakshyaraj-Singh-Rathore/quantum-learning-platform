@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import time
 
 import streamlit as st
@@ -205,6 +206,10 @@ if st.button("▶ Run simulation", type="primary", disabled=run_disabled, use_co
             time.sleep(0.5)
         placeholder.empty()
         st.session_state["last_job_id"] = job["id"]
+        # Remember exactly which circuit produced this job, so the results
+        # below can tell when they no longer describe what is on the grid.
+        st.session_state["last_job_circuit"] = json.dumps(ir_dict, sort_keys=True)
+        st.session_state["last_job_qubits"] = ir.n_qubits
     except ApiError as exc:
         st.error(str(exc))
 
@@ -212,9 +217,29 @@ if st.button("▶ Run simulation", type="primary", disabled=run_disabled, use_co
 # Results
 # --------------------------------------------------------------------------- #
 job_id = st.session_state.get("last_job_id")
+
+# Results are keyed by job id and survive edits to the circuit, so after
+# dropping from 15 qubits back to 2 the old 15-qubit histogram kept rendering
+# as if it were current. Compare against the circuit the job actually ran on.
+stale_result = bool(job_id) and st.session_state.get("last_job_circuit") != json.dumps(
+    ir_dict, sort_keys=True
+)
+
 if job_id:
     st.divider()
     st.subheader(f"Results — job #{job_id}")
+    if stale_result:
+        ran_with = st.session_state.get("last_job_qubits")
+        detail = (
+            f" It ran on {ran_with} qubit{'s' if ran_with != 1 else ''}; "
+            f"the grid now has {ir.n_qubits}."
+            if ran_with is not None and ran_with != ir.n_qubits
+            else ""
+        )
+        st.warning(
+            f"These results are from an earlier version of the circuit.{detail} "
+            "Press **Run simulation** to refresh them."
+        )
     try:
         payload = api_client.job_result(job_id)
     except ApiError as exc:

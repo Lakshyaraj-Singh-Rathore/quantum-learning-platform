@@ -384,3 +384,43 @@ button.tb:disabled {
   color: var(--muted);
   font-size: 12px;
 }
+
+/* ------------------------------------------------- responsive layout */
+/* The composer is embedded in a Streamlit iframe whose width follows the
+   browser window, so it has to cope with narrow viewports. The circuit grid
+   itself stays horizontally scrollable (a 15-qubit circuit is genuinely wide),
+   but the chrome around it reflows instead of overflowing. */
+@media (max-width: 720px) {
+  .palette-label {
+    width: 100%;
+    margin-bottom: 2px;
+  }
+
+  .toolbar {
+    gap: 4px;
+    padding: 6px;
+  }
+
+  button.tb {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .chip {
+    padding: 5px 9px;
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .toolbar button.tb {
+    flex-basis: calc(50% - 4px);
+  }
+}
+
+/* Never let a long error/notice banner force the iframe to scroll sideways. */
+.banner,
+.error,
+.notice {
+  overflow-wrap: anywhere;
+}
