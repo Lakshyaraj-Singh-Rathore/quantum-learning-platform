@@ -22,6 +22,7 @@ from app.quantum.qasm3_codec import from_qasm3, to_qasm3
 from app.services import codelab
 from app.schemas.circuit import CodeLabIn, InspectIn, QasmIn
 from app.schemas.job import JobCreate, JobOut, JobResultOut
+from app.quantum.backends.base import BackendError
 from app.workers.tasks import resolve_backend, run_simulation
 
 router = APIRouter(tags=["jobs"])
@@ -103,7 +104,13 @@ def create_job(
     if not report["ok"]:
         raise HTTPException(status_code=422, detail={"errors": report["errors"]})
 
-    engine, _notes = resolve_backend(ir, payload.backend, payload.mode)
+    try:
+        engine, _notes = resolve_backend(ir, payload.backend, payload.mode)
+    except BackendError as exc:
+        # An unknown backend name is a client mistake, not a server fault.
+        # This used to escape as an unhandled 500.
+        raise HTTPException(status_code=422, detail={"errors": [str(exc)]}) from exc
+
     noise_dict = (
         payload.noise.model_dump()
         if payload.noise is not None and payload.noise.enabled

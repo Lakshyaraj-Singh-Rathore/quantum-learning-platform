@@ -36,6 +36,10 @@ class Settings(BaseSettings):
     bootstrap_admin_password: str = "admin123"
 
     max_dynamic_qubits: int = 15
+    # Statevector memory is 16 bytes * 2**n: 20 qubits is ~400 MB and 24+ gets
+    # the worker OOM-killed. Cap static circuits too, or any user can take the
+    # backend down with a 30-qubit circuit.
+    max_static_qubits: int = 20
     max_dynamic_shots: int = 4096
     while_cap: int = 32
     embedding_dim: int = 768

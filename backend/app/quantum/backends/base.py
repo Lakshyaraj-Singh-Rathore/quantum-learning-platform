@@ -62,6 +62,25 @@ class Timer:
         return getattr(self, "elapsed", time.perf_counter() - self.start)
 
 
+def guard_static_size(ir: Any) -> None:
+    """Refuse circuits whose statevector will not fit in memory.
+
+    Every static backend allocates 16 bytes * 2**n. At 24 qubits that is 268 MB
+    for the amplitudes alone and the worker gets OOM-killed, which takes down
+    the whole API rather than failing one job. Fail fast with a message that
+    explains the limit instead.
+    """
+    from app.config import get_settings
+
+    limit = get_settings().max_static_qubits
+    if ir.n_qubits > limit:
+        raise BackendError(
+            f"Static simulation is limited to {limit} qubits (got {ir.n_qubits}). "
+            f"A statevector for {ir.n_qubits} qubits needs about "
+            f"{2 ** ir.n_qubits * 16 / 1e9:.1f} GB of memory."
+        )
+
+
 def statevector_to_json(sv: Any, fix_global_phase: bool = True) -> list[list[float]]:
     """Serialize a complex statevector as [[re, im], ...].
 
@@ -83,6 +102,7 @@ def statevector_to_json(sv: Any, fix_global_phase: bool = True) -> list[list[flo
 
 __all__ = [
     "make_result",
+    "guard_static_size",
     "statevector_to_json",
     "Timer",
     "BackendError",

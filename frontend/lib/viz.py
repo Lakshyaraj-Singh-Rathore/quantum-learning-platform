@@ -151,7 +151,13 @@ def _amplitudes(result: dict[str, Any]) -> np.ndarray | None:
     raw = result.get("statevector")
     if not raw:
         return None
-    return np.array([complex(re, im) for re, im in raw])
+    amps = np.array([complex(re, im) for re, im in raw])
+    # Every qubit visualization reshapes this into (2,) * n. A length that is
+    # not a power of two means the payload is truncated or came from a
+    # non-qubit backend; reshaping would raise deep inside plotting code.
+    if amps.size == 0 or amps.size & (amps.size - 1):
+        return None
+    return amps
 
 
 PHASE_CSCALE = [

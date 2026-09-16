@@ -9,7 +9,13 @@ import numpy as np
 from qiskit import transpile
 from qiskit.quantum_info import Statevector
 
-from app.quantum.backends.base import BackendError, Timer, make_result, statevector_to_json
+from app.quantum.backends.base import (
+    BackendError,
+    Timer,
+    guard_static_size,
+    make_result,
+    statevector_to_json,
+)
 from app.quantum.ir import CircuitIR
 from app.quantum.noise import (
     NoiseParams,
@@ -33,6 +39,8 @@ def run(
         from qiskit_aer import AerSimulator
     except ImportError as exc:  # pragma: no cover
         raise BackendError("qiskit-aer is not installed") from exc
+
+    guard_static_size(ir)
 
     circ = to_qiskit(ir, include_measurements=True)
     warnings: list[str] = []

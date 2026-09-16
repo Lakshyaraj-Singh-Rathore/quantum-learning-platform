@@ -61,6 +61,10 @@ LEAF_KINDS = {"gate", "measure", "reset", "barrier"}
 
 WHILE_CAP = 32
 
+#: A for-loop is unrolled into real gates, so N needs a ceiling or a single
+#: op can build an arbitrarily large circuit and hang the worker.
+FOR_LOOP_CAP = 1024
+
 
 class Param(BaseModel):
     expr: str
@@ -130,7 +134,9 @@ class Op(BaseModel):
     controls: list[int] = Field(default_factory=list)
     params: list[Param] = Field(default_factory=list)
     clbits: list[int] = Field(default_factory=list)
-    layer: int = 0
+    # A layer is a column index, so it can never be negative. Allowing it made
+    # depth() wrong: ops at layer -5 and 0 reported a depth of 1.
+    layer: int = Field(default=0, ge=0)
     condition: Optional[Condition] = None
     body: list["Op"] = Field(default_factory=list)
     else_body: list["Op"] = Field(default_factory=list)
@@ -170,6 +176,10 @@ class Op(BaseModel):
                 )
             if self.gate == "swap" and len(self.qubits) != 2:
                 raise ValueError("swap requires exactly 2 target qubits")
+            if self.gate == "swap" and len(set(self.qubits)) != 2:
+                # swap q[0], q[0] is a no-op the user never meant, and Qiskit
+                # rejects it much later with "duplicate qubit arguments".
+                raise ValueError("swap requires two different target qubits")
             if self.gate != "swap" and len(self.qubits) != 1:
                 raise ValueError(f"gate {self.gate} requires exactly 1 target qubit")
             overlap = set(self.controls) & set(self.qubits)
@@ -190,6 +200,14 @@ class Op(BaseModel):
         if self.kind == "for":
             if self.loop_n is None or self.loop_n < 0:
                 raise ValueError("for-loop requires a compile-time constant N >= 0")
+            # A for-loop is unrolled at compile time, so N gates really are
+            # emitted. Without a ceiling, N = 10_000_000 builds a ten-million
+            # gate circuit and hangs the worker.
+            if self.loop_n > FOR_LOOP_CAP:
+                raise ValueError(
+                    f"for-loop N is capped at {FOR_LOOP_CAP} (got {self.loop_n}); "
+                    "the loop is unrolled, so every iteration emits real gates"
+                )
 
         if self.kind == "while":
             if self.loop_bit is None and self.condition is None:

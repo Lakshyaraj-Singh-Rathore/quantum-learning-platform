@@ -11,7 +11,13 @@ from typing import Optional
 
 import numpy as np
 
-from app.quantum.backends.base import BackendError, Timer, make_result, statevector_to_json
+from app.quantum.backends.base import (
+    BackendError,
+    Timer,
+    guard_static_size,
+    make_result,
+    statevector_to_json,
+)
 from app.quantum.ir import CircuitIR
 from app.quantum.normalize import measured_qubit_map, normalize, strip_barriers, strip_measurements
 
@@ -19,6 +25,7 @@ NAME = "pennylane"
 
 
 def run(ir: CircuitIR, shots: int = 1024, *, seed: Optional[int] = None) -> dict:
+    guard_static_size(ir)
     try:
         import pennylane as qml
     except ImportError as exc:  # pragma: no cover

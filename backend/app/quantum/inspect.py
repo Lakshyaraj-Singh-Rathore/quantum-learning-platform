@@ -206,6 +206,14 @@ def inspect_circuit(ir: CircuitIR, backend: str | None = None, shots: int | None
             )
     else:
         info.append("Circuit is static - runnable on Qiskit Aer, Cirq, PennyLane and qBraid.")
+        # Statevector memory is 16 bytes * 2**n. Without a cap a 24-qubit
+        # circuit gets the worker OOM-killed and takes the whole API with it.
+        if ir.n_qubits > settings.max_static_qubits:
+            errors.append(
+                f"Static simulation is limited to {settings.max_static_qubits} qubits "
+                f"(got {ir.n_qubits}). A statevector for {ir.n_qubits} qubits needs "
+                f"about {2 ** ir.n_qubits * 16 / 1e9:.1f} GB of memory."
+            )
 
     if backend == "qbraid":
         if not (settings.qbraid_api_key and settings.qbraid_device_id):

@@ -8,7 +8,13 @@ from __future__ import annotations
 
 from typing import Optional
 
-from app.quantum.backends.base import BackendError, Timer, make_result, statevector_to_json
+from app.quantum.backends.base import (
+    BackendError,
+    Timer,
+    guard_static_size,
+    make_result,
+    statevector_to_json,
+)
 from app.quantum.ir import CircuitIR
 from app.quantum.normalize import measured_qubit_map, normalize
 
@@ -49,6 +55,7 @@ def qiskit_to_cirq(circ, n_qubits: int):
 
 
 def run(ir: CircuitIR, shots: int = 1024, *, seed: Optional[int] = None) -> dict:
+    guard_static_size(ir)
     try:
         import cirq
     except ImportError as exc:  # pragma: no cover
