@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -171,17 +171,49 @@ def student_list(
     db: Session = Depends(get_db),
     user: User = Depends(require_roles("instructor", "admin")),
 ) -> list[dict[str, Any]]:
+    """Every learner an instructor can follow, most active first.
+
+    This deliberately does not filter on ``role == "student"``. Instructors and
+    admins also work through the lessons, and a cohort where the only accounts
+    are staff used to render as "No students registered yet", which reads as a
+    broken dashboard rather than an empty one.
+    """
     out: list[dict[str, Any]] = []
-    for student in db.scalars(select(User).where(User.role == "student").order_by(User.id)).all():
+    for student in db.scalars(select(User).order_by(User.id)).all():
         progress = recommendations.learner_progress(db, student.id)
+        jobs = db.scalar(
+            select(func.count(SimulationJob.id)).where(SimulationJob.user_id == student.id)
+        )
         out.append(
             {
                 "id": student.id,
                 "email": student.email,
                 "display_name": student.display_name,
+                "role": student.role,
                 "quizzes_taken": progress["quizzes_taken"],
+                "challenges_attempted": progress["challenges_attempted"],
                 "challenges_passed": progress["challenges_passed"],
                 "average_quiz_percentage": progress["average_quiz_percentage"],
+                "simulations_run": int(jobs or 0),
             }
         )
+    out.sort(
+        key=lambda row: (
+            row["quizzes_taken"] + row["challenges_attempted"] + row["simulations_run"]
+        ),
+        reverse=True,
+    )
     return out
+
+
+@router.get("/students/{student_id}", response_model=LearnerProgressOut)
+def student_detail(
+    student_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_roles("instructor", "admin")),
+) -> LearnerProgressOut:
+    """Drill into one learner: the same detail the learner sees themselves."""
+    student = db.get(User, student_id)
+    if student is None:
+        raise HTTPException(status_code=404, detail="Student not found")
+    return LearnerProgressOut(**recommendations.learner_progress(db, student.id))

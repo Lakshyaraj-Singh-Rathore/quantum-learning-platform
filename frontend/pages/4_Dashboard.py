@@ -141,7 +141,43 @@ if auth.is_instructor():
                 st.dataframe(
                     pd.DataFrame(students), use_container_width=True, hide_index=True
                 )
+
+                st.markdown("**Inspect a learner**")
+                labels = {
+                    f"{s.get('display_name') or s['email']} ({s['email']})": s["id"]
+                    for s in students
+                }
+                chosen = st.selectbox(
+                    "Student", list(labels), key="instructor_student_pick"
+                )
+                detail = api_client.student_detail(labels[chosen])
+
+                cols = st.columns(4)
+                cols[0].metric("Quizzes taken", detail["quizzes_taken"])
+                cols[1].metric("Challenges attempted", detail["challenges_attempted"])
+                cols[2].metric("Challenges passed", detail["challenges_passed"])
+                cols[3].metric(
+                    "Average quiz score", f"{detail['average_quiz_percentage']}%"
+                )
+
+                detail_left, detail_right = st.columns(2)
+                with detail_left:
+                    st.caption("Concept mastery")
+                    rows = detail.get("mastery") or []
+                    if rows:
+                        frame = pd.DataFrame(rows)
+                        st.bar_chart(frame.set_index("tag")["score"], height=240)
+                    else:
+                        st.info("No mastery data for this learner yet.")
+                with detail_right:
+                    st.caption("Recommended next")
+                    for item in detail.get("recommendations") or []:
+                        icon = "📘" if item["kind"] == "lesson" else "🧩"
+                        st.markdown(f"{icon} **{item.get('title', item['slug'])}**")
+                        st.caption(item["reason"])
+                    if not detail.get("recommendations"):
+                        st.info("No recommendations yet.")
             else:
-                st.info("No students registered yet.")
+                st.info("No learner accounts yet.")
         except ApiError as exc:
             st.warning(str(exc))

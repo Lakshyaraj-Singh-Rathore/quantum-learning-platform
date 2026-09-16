@@ -251,6 +251,10 @@ def student_list() -> list[dict]:
     return _request("GET", "/dashboard/students")
 
 
+def student_detail(student_id: int) -> dict:
+    return _request("GET", f"/dashboard/students/{student_id}")
+
+
 def codelab_build(code: str, framework: str) -> dict:
     return _request("POST", "/codelab/build", json={"code": code, "framework": framework})
 
