@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     gemini_embed_model: str = "gemini-embedding-001"
 
     qbraid_api_key: str = ""
-    qbraid_device_id: str = ""
+    qbraid_device_id: str = "ionq:ionq:sim:simulator"
 
     celery_soft_time_limit: int = 8
     celery_hard_time_limit: int = 15

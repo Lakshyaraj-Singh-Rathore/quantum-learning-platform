@@ -32,6 +32,9 @@ services:
     environment:
       DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://quantum:quantum@postgres:5432/quantum_learn}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      QBRAID_API_KEY: ${QBRAID_API_KEY:-}
+      QBRAID_DEVICE_ID: ${QBRAID_DEVICE_ID:-}
     volumes:
       - ./backend:/app
       - ./content:/content:ro
@@ -52,6 +55,9 @@ services:
     environment:
       DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://quantum:quantum@postgres:5432/quantum_learn}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      QBRAID_API_KEY: ${QBRAID_API_KEY:-}
+      QBRAID_DEVICE_ID: ${QBRAID_DEVICE_ID:-}
     volumes:
       - ./backend:/app
       - ./content:/content:ro

@@ -59,12 +59,21 @@ if st.session_state.get("codelab_framework") != framework:
     # leaving it on screen shows results that no longer match the editor.
     st.session_state.pop("codelab_built", None)
 
+_SYNTAX = {"qiskit": "python", "cirq": "python", "pennylane": "python", "qasm3": "qasm"}
+
 code = st.text_area(
     "Your program",
     value=st.session_state.get("codelab_code", starters["starters"][framework]),
     height=320,
     key="codelab_code",
 )
+
+with st.expander("🎨 Syntax-highlighted view", expanded=False):
+    st.caption(
+        "Streamlit's editor is plain text. This is the same code with "
+        "highlighting, so you can spot typos before building."
+    )
+    st.code(code, language=_SYNTAX.get(framework, "python"), line_numbers=True)
 
 action = st.columns([1, 1, 3])
 build_clicked = action[0].button("Build circuit", use_container_width=True)
@@ -133,7 +142,7 @@ if built:
     with view[0]:
         viz.circuit_diagram(ir_dict)
     with view[1]:
-        st.code(built["qasm3"], language="text")
+        st.code(built["qasm3"], language="qasm", line_numbers=True)
 
     st.divider()
     st.subheader("Run it")

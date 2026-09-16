@@ -6,7 +6,7 @@ import time
 
 import streamlit as st
 
-from lib import api_client, auth, composer, viz
+from lib import api_client, auth, composer, timeline_strip, viz
 from lib.api_client import ApiError
 
 st.title("🛠 Composer & Playground")
@@ -31,6 +31,12 @@ except Exception:  # noqa: BLE001
 
 ir = composer.get_circuit()
 
+# The timeline sits above the circuit, mirroring IBM Quantum Composer's
+# Inspect transport bar. It is never collapsed into an expander.
+timeline_strip.render(ir.to_dict())
+
+st.divider()
+
 if react_available:
     st.caption("Drag gates from the palette onto the grid. Drop on the target, then pick controls.")
     edited = circuit_composer(value=ir.to_dict(), n_qubits=ir.n_qubits, key="react_composer")
@@ -42,11 +48,10 @@ if react_available:
             ir = composer.get_circuit()
         except Exception as exc:  # noqa: BLE001
             st.error(f"Composer returned an invalid circuit: {exc}")
-    # NB: composer.render() opens its own expanders, and Streamlit forbids
-    # nesting them -- so this section must not be wrapped in one.
-    st.divider()
-    st.subheader("Measurement buttons and block editing")
-    composer.render("grid")
+    # Drag-and-drop is the primary editor, so the secondary Python controls
+    # (measurement, structure, control-flow blocks) collapse into dropdowns.
+    # The timeline and the operations list stay expanded.
+    composer.render("grid", secondary=True)
 else:
     with st.expander("About the drag-and-drop component", expanded=False):
         st.info(build_instructions())
@@ -174,79 +179,6 @@ except ApiError as exc:
     report = {"ok": False}
     st.error(str(exc))
 
-with st.expander("Timeline - step through the circuit", expanded=False):
-    if st.button("Build timeline", key="build_timeline"):
-        try:
-            st.session_state["timeline"] = api_client.circuit_timeline(ir_dict)
-        except ApiError as exc:
-            st.error(str(exc))
-
-    timeline = st.session_state.get("timeline")
-    if not timeline:
-        st.caption(
-            "Walk the circuit gate by gate and watch the state evolve. "
-            "Press **Build timeline** after editing the circuit."
-        )
-    elif not timeline.get("supported"):
-        st.info(timeline.get("reason", "Timeline unavailable."))
-    else:
-        steps = timeline["steps"]
-        last = len(steps) - 1
-        st.session_state.setdefault("tl_step", last)
-        st.session_state["tl_step"] = min(st.session_state["tl_step"], last)
-
-        nav = st.columns(4)
-        if nav[0].button("|< Reset", use_container_width=True, key="tl_reset"):
-            st.session_state["tl_step"] = 0
-        if nav[1].button("< Prev", use_container_width=True, key="tl_prev"):
-            st.session_state["tl_step"] = max(0, st.session_state["tl_step"] - 1)
-        if nav[2].button("Next >", use_container_width=True, key="tl_next"):
-            st.session_state["tl_step"] = min(last, st.session_state["tl_step"] + 1)
-        if nav[3].button("End >|", use_container_width=True, key="tl_end"):
-            st.session_state["tl_step"] = last
-
-        # A slider needs a range; a circuit with no gates has only step 0.
-        if last > 0:
-            st.session_state["tl_step"] = st.slider(
-                "Step", 0, last, st.session_state["tl_step"]
-            )
-        entry = steps[st.session_state["tl_step"]]
-
-        head = st.columns(4)
-        head[0].metric("Step", f"{entry['step']} / {last}")
-        head[1].metric("Gate", entry["label"])
-        head[2].metric("Depth", entry["depth"])
-        if entry.get("entanglement_entropy") is not None:
-            head[3].metric(
-                "Entanglement S", f"{entry['entanglement_entropy']:.3f}"
-            )
-
-        st.info(entry["narration"])
-
-        if entry.get("state_unavailable"):
-            st.warning(entry["state_unavailable"])
-        elif entry.get("top_states"):
-            st.dataframe(
-                [
-                    {
-                        "State": f"|{row['state']}>",
-                        "Probability": round(row["probability"], 5),
-                        "Percent": f"{row['probability'] * 100:.2f}%",
-                        "Rel. phase (deg)": round(row["phase_deg"], 2),
-                    }
-                    for row in entry["top_states"]
-                ],
-                use_container_width=True,
-                hide_index=True,
-            )
-            if entry.get("entangled"):
-                extra = ""
-                if entry.get("concurrence") is not None:
-                    extra = f"  Concurrence = {entry['concurrence']:.2f}."
-                st.success(
-                    "These qubits are **entangled** at this step." + extra
-                )
-
 run_disabled = not report.get("ok") or not chosen["available"]
 if st.button("▶ Run simulation", type="primary", disabled=run_disabled, use_container_width=True):
     try:
@@ -372,7 +304,7 @@ code_tabs = st.tabs(
 with code_tabs[0]:
     try:
         qasm = api_client.export_qasm(ir_dict)
-        st.code(qasm, language="text")
+        st.code(qasm, language="qasm", line_numbers=True)
         st.download_button("Download .qasm", qasm, f"{ir.name}.qasm", "text/plain")
     except ApiError as exc:
         st.error(str(exc))

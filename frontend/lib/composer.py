@@ -82,10 +82,23 @@ def circuit_dict() -> dict[str, Any]:
 # --------------------------------------------------------------------------- #
 # Rendering
 # --------------------------------------------------------------------------- #
-def render(key_prefix: str = "main") -> CircuitIR:
+def render(key_prefix: str = "main", secondary: bool = False) -> CircuitIR:
+    """Draw the Python composer.
+
+    When ``secondary`` is True the drag-and-drop React grid is the primary
+    editor, so the palette's supporting sections (measurement & structure,
+    control-flow blocks) are tucked into dropdowns. The operations list stays
+    visible either way.
+    """
     ir = get_circuit()
     _toolbar(ir, key_prefix)
     st.divider()
+    if secondary:
+        _palette(ir, key_prefix, collapsed=True)
+        st.divider()
+        _grid(ir, key_prefix, show_diagram=False)
+        return ir
+
     left, right = st.columns([1, 2.4], gap="medium")
     with left:
         _palette(ir, key_prefix)
@@ -189,7 +202,31 @@ def _resize(ir: CircuitIR, n_qubits: int) -> None:
     set_circuit(CircuitIR.from_dict(ir.to_dict()))
 
 
-def _palette(ir: CircuitIR, key_prefix: str) -> None:
+def _palette(ir: CircuitIR, key_prefix: str, collapsed: bool = False) -> None:
+    """Gate palette plus the measurement/structure and control-flow sections.
+
+    ``collapsed`` puts each of the three sections behind its own dropdown, for
+    when the React drag-and-drop grid is the primary editor.
+    """
+    if collapsed:
+        with st.expander("🎛 Palette — add a gate by hand", expanded=False):
+            _palette_gates(ir, key_prefix)
+        with st.expander("📏 Measurement & structure", expanded=False):
+            _palette_structural(ir, key_prefix, nested=True)
+        with st.expander("🔀 Control flow blocks", expanded=False):
+            _block_builder(ir, key_prefix)
+        return
+
+    _palette_gates(ir, key_prefix)
+    st.divider()
+    st.markdown("#### Measurement & structure")
+    _palette_structural(ir, key_prefix, nested=False)
+    st.divider()
+    st.markdown("#### Control flow blocks")
+    _block_builder(ir, key_prefix)
+
+
+def _palette_gates(ir: CircuitIR, key_prefix: str) -> None:
     st.markdown("#### Palette")
     st.caption("Pick a gate, choose the target, then optionally add controls.")
 
@@ -318,35 +355,50 @@ def _palette(ir: CircuitIR, key_prefix: str) -> None:
         except (ValueError, ParamError) as exc:
             st.error(str(exc))
 
-    st.divider()
-    st.markdown("#### Measurement & structure")
+
+def _palette_structural(ir: CircuitIR, key_prefix: str, nested: bool = False) -> None:
+    """Measure / reset / barrier controls.
+
+    Streamlit forbids an expander inside an expander, so when this section is
+    already inside one we present the choices as a selectbox instead.
+    """
+    qubit_options = list(range(ir.n_qubits))
+
+    def _body(kind: str, label: str, help_text: str) -> None:
+        st.caption(help_text)
+        if kind == "barrier":
+            chosen = st.multiselect(
+                "Qubits (empty = all)", qubit_options, key=f"{key_prefix}_{kind}_q"
+            )
+        else:
+            chosen = [st.selectbox("Qubit", qubit_options, key=f"{key_prefix}_{kind}_q")]
+        clbit = None
+        if kind == "measure":
+            clbit = st.selectbox(
+                "Classical bit", list(range(ir.n_clbits)), key=f"{key_prefix}_{kind}_c"
+            )
+        if st.button(f"Add {label}", key=f"{key_prefix}_{kind}_add", use_container_width=True):
+            op = Op(
+                kind=kind,
+                qubits=[int(q) for q in chosen],
+                clbits=[int(clbit)] if clbit is not None else [],
+            )
+            ir.place(op, ir.depth())
+            set_circuit(CircuitIR.from_dict(ir.to_dict()))
+            st.rerun()
+
+    if nested:
+        labels = {label: (kind, help_text) for kind, label, help_text in STRUCTURAL}
+        picked = st.selectbox(
+            "Operation", list(labels), key=f"{key_prefix}_structural_pick"
+        )
+        kind, help_text = labels[picked]
+        _body(kind, picked, help_text)
+        return
+
     for kind, label, help_text in STRUCTURAL:
         with st.expander(label):
-            st.caption(help_text)
-            if kind == "barrier":
-                chosen = st.multiselect(
-                    "Qubits (empty = all)", qubit_options, key=f"{key_prefix}_{kind}_q"
-                )
-            else:
-                chosen = [st.selectbox("Qubit", qubit_options, key=f"{key_prefix}_{kind}_q")]
-            clbit = None
-            if kind == "measure":
-                clbit = st.selectbox(
-                    "Classical bit", list(range(ir.n_clbits)), key=f"{key_prefix}_{kind}_c"
-                )
-            if st.button(f"Add {label}", key=f"{key_prefix}_{kind}_add", use_container_width=True):
-                op = Op(
-                    kind=kind,
-                    qubits=[int(q) for q in chosen],
-                    clbits=[int(clbit)] if clbit is not None else [],
-                )
-                ir.place(op, ir.depth())
-                set_circuit(CircuitIR.from_dict(ir.to_dict()))
-                st.rerun()
-
-    st.divider()
-    st.markdown("#### Control flow blocks")
-    _block_builder(ir, key_prefix)
+            _body(kind, label, help_text)
 
 
 def _block_builder(ir: CircuitIR, key_prefix: str) -> None:
@@ -416,15 +468,16 @@ def _block_builder(ir: CircuitIR, key_prefix: str) -> None:
 # --------------------------------------------------------------------------- #
 # Grid + editing
 # --------------------------------------------------------------------------- #
-def _grid(ir: CircuitIR, key_prefix: str) -> None:
-    st.markdown("#### Timeline")
+def _grid(ir: CircuitIR, key_prefix: str, show_diagram: bool = True) -> None:
     if not ir.ops:
         st.info("Empty circuit. Add a gate from the palette to get started.")
         return
 
-    from lib import viz
+    if show_diagram:
+        from lib import viz
 
-    viz.circuit_diagram(ir.to_dict())
+        st.markdown("#### Circuit")
+        viz.circuit_diagram(ir.to_dict())
 
     st.markdown("#### Operations")
     for op in sorted(ir.ops, key=lambda o: o.layer):
