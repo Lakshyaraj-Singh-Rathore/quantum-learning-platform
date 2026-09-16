@@ -4,6 +4,12 @@ from __future__ import annotations
 
 import streamlit as st
 
+# Streamlit only honours set_page_config from the script that runs, and each
+# page in pages/ can be opened directly. Without this the page falls back
+# to the narrow default layout and the composer looks squeezed.
+st.set_page_config(page_title="QuantumLearn", page_icon="⚛", layout="wide",
+                   initial_sidebar_state="expanded")
+
 from lib import api_client, auth
 from lib.api_client import ApiError
 

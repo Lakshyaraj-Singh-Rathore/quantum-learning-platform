@@ -386,35 +386,18 @@ button.tb:disabled {
 }
 
 /* ------------------------------------------------- responsive layout */
-/* The composer is embedded in a Streamlit iframe whose width follows the
-   browser window, so it has to cope with narrow viewports. The circuit grid
-   itself stays horizontally scrollable (a 15-qubit circuit is genuinely wide),
-   but the chrome around it reflows instead of overflowing. */
-@media (max-width: 720px) {
+/* Only reflow on genuinely narrow viewports (phones). On a desktop the
+   composer keeps its original, roomy sizing -- shrinking chips and buttons at
+   720px made it feel cramped on ordinary laptop windows. */
+@media (max-width: 560px) {
   .palette-label {
     width: 100%;
     margin-bottom: 2px;
   }
 
-  .toolbar {
-    gap: 4px;
-    padding: 6px;
-  }
-
   button.tb {
     flex: 1 1 auto;
     min-width: 0;
-  }
-
-  .chip {
-    padding: 5px 9px;
-    font-size: 12px;
-  }
-}
-
-@media (max-width: 480px) {
-  .toolbar button.tb {
-    flex-basis: calc(50% - 4px);
   }
 }
 
