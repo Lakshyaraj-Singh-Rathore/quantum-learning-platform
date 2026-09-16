@@ -7,6 +7,7 @@ Static circuits only; disabled with a clear message when credentials are absent.
 
 from __future__ import annotations
 
+import re
 import time
 from typing import Any, Optional
 
@@ -23,12 +24,31 @@ TERMINAL_OK = {"COMPLETED", "DONE", "SUCCESS", "FINISHED"}
 TERMINAL_BAD = {"FAILED", "CANCELLED", "CANCELED", "ERROR"}
 
 
+#: A qBraid device id looks like "ionq:ionq:sim:simulator" -- lowercase words
+#: joined by colons. Anything else is almost always a malformed .env.
+_DEVICE_ID_RE = re.compile(r"^[A-Za-z0-9._-]+(?::[A-Za-z0-9._-]+)+$")
+
+
 def is_available() -> tuple[bool, str]:
     settings = get_settings()
     if not settings.qbraid_api_key:
         return False, "Missing qBraid credentials (set QBRAID_API_KEY)."
-    if not settings.qbraid_device_id:
+
+    device = settings.qbraid_device_id
+    if not device:
         return False, "No qBraid device selected (set QBRAID_DEVICE_ID)."
+
+    # A .env line with no trailing newline silently swallows the next line, so
+    # QBRAID_DEVICE_ID ends up as "ionq:...:simulatorCELERY_SOFT_TIME_LIMIT=8".
+    # Catch it here: otherwise the backend advertises itself as ready and then
+    # fails at submit time with an opaque "device not found" from the API.
+    if "=" in device or not _DEVICE_ID_RE.match(device):
+        return False, (
+            f"QBRAID_DEVICE_ID looks malformed ({device!r}). This usually means "
+            "the line in your .env file is missing a newline and has run into "
+            "the next setting. Put each variable on its own line, e.g. "
+            "QBRAID_DEVICE_ID=ionq:ionq:sim:simulator"
+        )
     return True, ""
 
 
