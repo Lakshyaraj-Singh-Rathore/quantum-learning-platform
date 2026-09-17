@@ -163,6 +163,18 @@ chosen = next(b for b in backend_options if b["id"] == backend)
 if not chosen["available"]:
     st.warning(chosen["reason"])
 
+if backend == "qbraid":
+    # qBraid is the only backend that costs real credits and waits on someone
+    # else's queue. Say so before the run, not after the credits are gone.
+    st.info(
+        "**qBraid runs on a remote device and spends credits on every run.** "
+        "Credits are consumed at submission, so a run that later times out "
+        "still costs them. The local backends (Qiskit Aer, Cirq, PennyLane) "
+        "are free, instant, and give identical results for static circuits - "
+        "use qBraid to demonstrate real hardware submission, not for "
+        "iterating on a circuit."
+    )
+
 noise_payload = None
 with st.expander("Noise model (T1 / T2 / readout)", expanded=False):
     if backend != "qiskit_aer":

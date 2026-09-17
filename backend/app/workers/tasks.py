@@ -70,6 +70,15 @@ def run_simulation(self, job_id: int) -> dict:
                 result = STATIC_RUNNERS[engine](
                     ir, shots=job.shots, noise=NoiseParams(**job.noise)
                 )
+            elif engine == "qbraid":
+                # qBraid is the only backend that waits on a remote queue. Its
+                # own default is 300 s, but Celery kills the task at
+                # celery_hard_time_limit (15 s), so the wait was guaranteed to
+                # be cut off mid-flight -- after the credits had already been
+                # spent on the submission. Give it the real budget, minus a
+                # margin to record the result before Celery pulls the plug.
+                budget = max(5.0, get_settings().celery_soft_time_limit - 1.0)
+                result = STATIC_RUNNERS[engine](ir, shots=job.shots, timeout=budget)
             else:
                 result = STATIC_RUNNERS[engine](ir, shots=job.shots)
 

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 from typing import Any, Optional
 
@@ -108,14 +109,41 @@ def me() -> dict:
 # --------------------------------------------------------------------------- #
 # Circuits, jobs and exports
 # --------------------------------------------------------------------------- #
-def backends() -> dict:
+# Streamlit re-runs the whole page on every interaction, and it renders the
+# body of EVERY tab even when only one is visible. Without memoisation a single
+# gate drop fired eight API round-trips (backends, inspect, timeline, and four
+# code exports), which is what made composing feel sluggish.
+#
+# These endpoints are pure functions of the circuit: same input, same output,
+# no side effects. Caching them on a short TTL keeps the UI responsive while
+# still picking up backend changes. Anything that mutates state -- submit_job,
+# save_circuit -- is deliberately NOT cached.
+_CACHE_TTL = 300
+
+
+def _key(ir: dict) -> str:
+    """Stable cache key for a circuit, ignoring volatile op ids."""
+    return json.dumps(ir, sort_keys=True, default=str)
+
+
+@st.cache_data(ttl=_CACHE_TTL, show_spinner=False)
+def _backends_cached() -> dict:
     return _request("GET", "/backends", auth=False)
 
 
-def inspect_circuit(ir: dict, backend: Optional[str] = None, shots: Optional[int] = None) -> dict:
+def backends() -> dict:
+    return _backends_cached()
+
+
+@st.cache_data(ttl=_CACHE_TTL, show_spinner=False)
+def _inspect_cached(key: str, backend: Optional[str], shots: Optional[int]) -> dict:
     return _request(
-        "POST", "/inspect", json={"circuit_ir": ir, "backend": backend, "shots": shots}
+        "POST", "/inspect", json={"circuit_ir": json.loads(key), "backend": backend, "shots": shots}
     )
+
+
+def inspect_circuit(ir: dict, backend: Optional[str] = None, shots: Optional[int] = None) -> dict:
+    return _inspect_cached(_key(ir), backend, shots)
 
 
 def submit_job(
@@ -131,8 +159,13 @@ def submit_job(
     return _request("POST", "/jobs", json=payload)
 
 
+@st.cache_data(ttl=_CACHE_TTL, show_spinner=False)
+def _timeline_cached(key: str) -> dict:
+    return _request("POST", "/circuits/timeline", json={"circuit_ir": json.loads(key)})
+
+
 def circuit_timeline(ir: dict) -> dict:
-    return _request("POST", "/circuits/timeline", json={"circuit_ir": ir})
+    return _timeline_cached(_key(ir))
 
 
 def job_status(job_id: int) -> dict:
@@ -147,18 +180,29 @@ def list_jobs(limit: int = 20) -> list[dict]:
     return _request("GET", f"/jobs?limit={limit}")
 
 
+@st.cache_data(ttl=_CACHE_TTL, show_spinner=False)
+def _export_qasm_cached(key: str) -> str:
+    return _request("POST", "/qasm/export", json={"circuit_ir": json.loads(key)}, raw=True)
+
+
 def export_qasm(ir: dict) -> str:
-    return _request("POST", "/qasm/export", json={"circuit_ir": ir}, raw=True)
+    return _export_qasm_cached(_key(ir))
 
 
 def import_qasm(qasm: str, name: str = "imported") -> dict:
     return _request("POST", "/qasm/import", json={"qasm3": qasm, "name": name})
 
 
-def export_code(framework: str, ir: dict, shots: int = 1024) -> str:
+@st.cache_data(ttl=_CACHE_TTL, show_spinner=False)
+def _export_code_cached(framework: str, key: str, shots: int) -> str:
     return _request(
-        "POST", f"/export/{framework}", json={"circuit_ir": ir, "shots": shots}, raw=True
+        "POST", f"/export/{framework}",
+        json={"circuit_ir": json.loads(key), "shots": shots}, raw=True,
     )
+
+
+def export_code(framework: str, ir: dict, shots: int = 1024) -> str:
+    return _export_code_cached(framework, _key(ir), shots)
 
 
 def save_circuit(name: str, ir: dict, description: str = "") -> dict:

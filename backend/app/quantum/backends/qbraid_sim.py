@@ -185,7 +185,13 @@ def _wait_for(job: Any, timeout: float) -> None:
             raise BackendError(f"qBraid job ended with status {status}")
         time.sleep(POLL_INTERVAL)
         waited += POLL_INTERVAL
-    raise BackendError(f"qBraid job did not finish within {timeout:.0f}s")
+    raise BackendError(
+        f"qBraid job did not finish within {timeout:.0f}s. The circuit was "
+        "submitted and any credits for it are already spent -- the device "
+        "queue is simply slower than this platform's time limit. Raise "
+        "CELERY_SOFT_TIME_LIMIT and CELERY_HARD_TIME_LIMIT to wait longer, or "
+        "use Qiskit Aer, Cirq or PennyLane, which run locally and cost nothing."
+    )
 
 
 def _extract_counts(result: Any) -> dict[str, int]:
