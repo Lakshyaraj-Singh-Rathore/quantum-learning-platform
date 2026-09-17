@@ -43,8 +43,13 @@ class NoiseParams:
     def clamped(self) -> tuple["NoiseParams", list[str]]:
         """Return physically valid parameters plus notes on what was changed.
 
-        Physics constrains T2 <= 2*T1; Aer raises if that is violated, so we
-        clamp and say so rather than failing the student's run.
+        The relaxation bound is **T2 <= 2*T1**, not T2 <= T1. Pure dephasing
+        adds to the decoherence rate as 1/T2 = 1/(2*T1) + 1/T_phi, so the
+        slowest possible dephasing (T_phi -> infinity) still leaves
+        T2 = 2*T1. The region T1 < T2 < 2*T1 is therefore legal and is left
+        untouched; only values above 2*T1 are clamped. Aer raises on a
+        violation, so clamping keeps a student's run alive with an
+        explanation instead of an error.
         """
         notes: list[str] = []
         t1 = max(float(self.t1_us), 1e-6)
