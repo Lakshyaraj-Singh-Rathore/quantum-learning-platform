@@ -450,6 +450,97 @@ def amplitude_table(result: dict[str, Any]) -> None:
         st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
 
 
+#: Pauli matrices, used to read a Bloch vector out of a density matrix.
+_PAULI_X = np.array([[0, 1], [1, 0]], dtype=complex)
+_PAULI_Y = np.array([[0, -1j], [1j, 0]], dtype=complex)
+_PAULI_Z = np.array([[1, 0], [0, -1]], dtype=complex)
+
+
+def reduced_density_matrix(amplitudes: np.ndarray, n_qubits: int, qubit: int) -> np.ndarray:
+    """Partial trace of a pure state down to one qubit.
+
+    Amplitudes are in Qiskit order, so qubit 0 is the least significant index
+    and therefore the LAST axis of the reshaped tensor.
+    """
+    tensor = amplitudes.reshape([2] * n_qubits)
+    axis = n_qubits - 1 - qubit
+    moved = np.moveaxis(tensor, axis, 0).reshape(2, -1)
+    return moved @ moved.conj().T
+
+
+def bloch_vector(rho: np.ndarray) -> tuple[float, float, float]:
+    """Bloch vector r = (Tr(rho X), Tr(rho Y), Tr(rho Z)).
+
+    Computed from the Pauli traces directly rather than by picking matrix
+    entries apart, so the definition in the code matches the textbook one.
+    """
+    return (
+        float(np.real(np.trace(rho @ _PAULI_X))),
+        float(np.real(np.trace(rho @ _PAULI_Y))),
+        float(np.real(np.trace(rho @ _PAULI_Z))),
+    )
+
+
+def bloch_angles(x: float, y: float, z: float) -> tuple[float, float]:
+    """Polar and azimuthal angles in degrees for a Bloch vector.
+
+    theta is measured from +Z (so |0> is 0 deg and |1> is 180 deg) and phi
+    anticlockwise from +X in the XY plane, normalised to [0, 360).
+    """
+    length = math.sqrt(x * x + y * y + z * z)
+    if length < 1e-12:
+        return float("nan"), float("nan")
+    theta = math.degrees(math.acos(max(-1.0, min(1.0, z / length))))
+    phi = math.degrees(math.atan2(y, x)) % 360.0
+    return theta, phi
+
+
+def _bloch_frame(figure: "go.Figure") -> None:
+    """Draw the reference frame: equator, meridians, axes and pole labels.
+
+    A bare shaded ball gives the eye nothing to judge direction against, so a
+    vector at 45 degrees is indistinguishable from one at 60. The great
+    circles and labelled poles are what make the arrow readable.
+    """
+    circle = np.linspace(0, 2 * np.pi, 180)
+    zeros = np.zeros_like(circle)
+    guides = (
+        (np.cos(circle), np.sin(circle), zeros),   # equator, XY plane
+        (np.cos(circle), zeros, np.sin(circle)),   # meridian, XZ plane
+        (zeros, np.cos(circle), np.sin(circle)),   # meridian, YZ plane
+    )
+    for gx, gy, gz in guides:
+        figure.add_trace(
+            go.Scatter3d(
+                x=gx, y=gy, z=gz, mode="lines",
+                line=dict(width=2, color="rgba(150,160,170,0.55)"),
+                hoverinfo="skip", showlegend=False,
+            )
+        )
+
+    for ax, label in (((1, 0, 0), "x"), ((0, 1, 0), "y"), ((0, 0, 1), "z")):
+        figure.add_trace(
+            go.Scatter3d(
+                x=[-ax[0], ax[0]], y=[-ax[1], ax[1]], z=[-ax[2], ax[2]],
+                mode="lines", line=dict(width=2, color="rgba(150,160,170,0.8)"),
+                hoverinfo="skip", showlegend=False,
+            )
+        )
+
+    # Label the six cardinal states so the axes mean something physically.
+    figure.add_trace(
+        go.Scatter3d(
+            x=[0, 0, 1.18, -1.18, 0, 0],
+            y=[0, 0, 0, 0, 1.18, -1.18],
+            z=[1.18, -1.18, 0, 0, 0, 0],
+            mode="text",
+            text=["|0⟩", "|1⟩", "|+⟩", "|−⟩", "|+i⟩", "|−i⟩"],
+            textfont=dict(size=11, color="#8899A6"),
+            hoverinfo="skip", showlegend=False,
+        )
+    )
+
+
 def bloch_sphere(result: dict[str, Any], summary: dict[str, Any] | None = None) -> None:
     """Bloch vectors per qubit - only meaningful for unitary circuits."""
     amplitudes = _amplitudes(result)
@@ -514,30 +605,27 @@ def bloch_sphere(result: dict[str, Any], summary: dict[str, Any] | None = None) 
     columns = st.columns(min(n_qubits, 3))
 
     for qubit in range(n_qubits):
-        # partial trace down to a single-qubit density matrix
-        axis = n_qubits - 1 - qubit  # qubit 0 is the least significant index
-        moved = np.moveaxis(tensor, axis, 0).reshape(2, -1)
-        rho = moved @ moved.conj().T
-
-        x = 2 * float(np.real(rho[0, 1]))
-        y = 2 * float(np.imag(rho[1, 0]))
-        z = float(np.real(rho[0, 0] - rho[1, 1]))
+        rho = reduced_density_matrix(amplitudes, n_qubits, qubit)
+        x, y, z = bloch_vector(rho)
         purity = purities[qubit]
         entropy = entropies[qubit]
         length = float(np.sqrt(x * x + y * y + z * z))
 
         with columns[qubit % len(columns)]:
             figure = go.Figure()
-            u, v = np.mgrid[0 : 2 * np.pi : 40j, 0 : np.pi : 20j]
+            # 80x40 mesh: facet sag drops from 0.34% of the radius to 0.08%,
+            # so the outline reads as a circle rather than a polygon.
+            u, v = np.mgrid[0 : 2 * np.pi : 80j, 0 : np.pi : 40j]
             figure.add_surface(
                 x=np.cos(u) * np.sin(v),
                 y=np.sin(u) * np.sin(v),
                 z=np.cos(v),
-                opacity=0.18,
+                opacity=0.12,
                 colorscale=[[0, "#B2BEC3"], [1, "#B2BEC3"]],
                 showscale=False,
                 hoverinfo="skip",
             )
+            _bloch_frame(figure)
             if length < 0.02:
                 # Zero vector: nothing to draw, so mark the centre explicitly
                 # rather than rendering an empty sphere that reads as a bug.
@@ -555,21 +643,50 @@ def bloch_sphere(result: dict[str, Any], summary: dict[str, Any] | None = None) 
                     )
                 )
             else:
+                theta, phi = bloch_angles(x, y, z)
+                # Dropping a line to the equatorial plane fixes the classic 3D
+                # ambiguity: without it you cannot tell how much of the arrow
+                # is "up" and how much is "towards you".
+                figure.add_trace(
+                    go.Scatter3d(
+                        x=[x, x, 0], y=[y, y, 0], z=[z, 0, 0],
+                        mode="lines",
+                        line=dict(width=2, color="rgba(225,112,85,0.45)", dash="dot"),
+                        hoverinfo="skip", showlegend=False,
+                    )
+                )
                 figure.add_trace(
                     go.Scatter3d(
                         x=[0, x],
                         y=[0, y],
                         z=[0, z],
-                        mode="lines+markers",
-                        line=dict(width=8, color="#E17055"),
-                        marker=dict(size=[2, 7], color="#E17055"),
-                        hovertemplate=f"({x:.3f}, {y:.3f}, {z:.3f})<extra></extra>",
+                        mode="lines",
+                        line=dict(width=7, color="#E17055"),
+                        hovertemplate=(
+                            f"r = ({x:.4f}, {y:.4f}, {z:.4f})"
+                            f"<br>|r| = {length:.4f}"
+                            f"<br>θ = {theta:.1f}°, φ = {phi:.1f}°"
+                            "<extra></extra>"
+                        ),
+                        showlegend=False,
+                    )
+                )
+                # A real arrowhead, so the direction is unambiguous.
+                figure.add_trace(
+                    go.Cone(
+                        x=[x], y=[y], z=[z], u=[x], v=[y], w=[z],
+                        sizemode="absolute", sizeref=0.12, anchor="tip",
+                        colorscale=[[0, "#E17055"], [1, "#E17055"]],
+                        showscale=False, hoverinfo="skip",
                     )
                 )
             if purity > 0.99:
-                subtitle = "pure"
+                theta, phi = bloch_angles(x, y, z)
+                subtitle = f"pure | θ={theta:.0f}° φ={phi:.0f}°"
+            elif length < 0.02:
+                subtitle = f"maximally mixed | S={entropy:.2f} bits"
             else:
-                subtitle = f"mixed | r={length:.2f} | S={entropy:.2f} bits"
+                subtitle = f"mixed | |r|={length:.2f} | S={entropy:.2f} bits"
             figure.update_layout(
                 title=f"q{qubit}  ({subtitle})",
                 margin=dict(l=0, r=0, t=30, b=0),
