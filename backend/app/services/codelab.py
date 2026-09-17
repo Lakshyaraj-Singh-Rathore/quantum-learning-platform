@@ -44,7 +44,7 @@ MEMORY_LIMIT_MB = 1024
 
 MAX_CODE_CHARS = 20_000
 
-FRAMEWORKS = ("qiskit", "cirq", "pennylane", "qasm3")
+FRAMEWORKS = ("qiskit", "cirq", "pennylane", "qasm3", "qbraid")
 
 #: Modules the learner's program may import. Everything needed to build a
 #: circuit, nothing that reaches the filesystem, network or other processes.
@@ -52,6 +52,11 @@ ALLOWED_MODULES = {
     "qiskit",
     "cirq",
     "pennylane",
+    # qBraid's transpiler is pure local computation -- it converts between
+    # circuit formats and does not touch the network or spend credits. The
+    # runtime submission client is a separate module and stays blocked, so
+    # learner code cannot submit a job (or spend credits) from the Code Lab.
+    "qbraid",
     "numpy",
     "math",
     "cmath",
@@ -170,6 +175,15 @@ def _guarded_import(name, globals=None, locals=None, fromlist=(), level=0):
             raise ImportError(
                 "import of '%s' is not allowed in the code lab. Allowed: %s"
                 % (root, ", ".join(sorted(ALLOWED)))
+            )
+        # qbraid is allowed for its local transpiler only. qbraid.runtime is
+        # the submission client: it reaches the network and spends real
+        # credits, so it must never be reachable from learner code.
+        if name == "qbraid.runtime" or name.startswith("qbraid.runtime."):
+            raise ImportError(
+                "qbraid.runtime is not available in the code lab because it "
+                "submits jobs and spends credits. Build a circuit here, then "
+                "run it on the qBraid backend from the Composer."
             )
     return _real_import(name, globals, locals, fromlist, level)
 
@@ -429,6 +443,16 @@ def to_qasm3(obj, framework):
             )
         return _qasm2_to_qasm3(text)
 
+    if framework == "qbraid":
+        # qBraid's value here is its transpiler: learners convert between
+        # formats and hand back whatever it produced. Accept a QASM string
+        # directly, otherwise ask qbraid to render the program as QASM 3.
+        if isinstance(obj, str):
+            text = obj
+            return text if "OPENQASM 3" in text else _qasm2_to_qasm3(text)
+        from qbraid.transpiler import transpile as _qbraid_transpile
+        return _qbraid_transpile(obj, "qasm3")
+
     raise ValueError("unknown framework " + framework)
 
 
@@ -444,6 +468,9 @@ try:
         import cirq  # noqa: F401
     elif FRAMEWORK == "pennylane":
         import pennylane  # noqa: F401
+    elif FRAMEWORK == "qbraid":
+        import qbraid  # noqa: F401
+        import qiskit  # noqa: F401
     import numpy  # noqa: F401
 except Exception:
     pass
@@ -620,6 +647,24 @@ STARTERS: dict[str, str] = {
             qml.Hadamard(wires=0)
             qml.CNOT(wires=[0, 1])
             return qml.probs(wires=[0, 1])
+        '''
+    ),
+    "qbraid": textwrap.dedent(
+        '''\
+        # qBraid's transpiler converts a circuit between frameworks locally.
+        # Nothing here touches the network or spends credits -- to actually
+        # run on a qBraid device, build the circuit and pick the qBraid
+        # backend in the Composer.
+        from qbraid.transpiler import transpile
+        from qiskit import QuantumCircuit
+
+        qc = QuantumCircuit(2, 2)
+        qc.h(0)
+        qc.cx(0, 1)
+        qc.measure([0, 1], [0, 1])
+
+        # Hand back whatever qBraid produced; the platform imports it as IR.
+        circuit = transpile(qc, "qasm3")
         '''
     ),
 }

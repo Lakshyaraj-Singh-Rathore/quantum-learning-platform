@@ -303,5 +303,18 @@ def codelab_build(code: str, framework: str) -> dict:
     return _request("POST", "/codelab/build", json={"code": code, "framework": framework})
 
 
-def codelab_starters() -> dict:
+@st.cache_data(ttl=_CACHE_TTL, show_spinner=False)
+def _codelab_starters_cached() -> dict:
     return _request("GET", "/codelab/starters")
+
+
+def codelab_starters() -> dict:
+    return _codelab_starters_cached()
+
+
+def codelab_generate(prompt: str, framework: str) -> str:
+    """Ask Gemini to draft Code Lab source. Not cached: each request is new."""
+    payload = _request(
+        "POST", "/codelab/generate", json={"prompt": prompt, "framework": framework}
+    )
+    return payload["code"]

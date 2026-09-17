@@ -19,8 +19,9 @@ from app.quantum.backends import qbraid_sim
 from app.quantum.inspect import compute_run_hash, inspect_circuit
 from app.quantum.ir import CircuitIR
 from app.quantum.qasm3_codec import from_qasm3, to_qasm3
-from app.services import codelab
-from app.schemas.circuit import CodeLabIn, InspectIn, QasmIn
+from app.ai import gemini_client
+from app.services import codelab, codelab_ai
+from app.schemas.circuit import CodeLabGenerateIn, CodeLabIn, InspectIn, QasmIn
 from app.schemas.job import JobCreate, JobOut, JobResultOut
 from app.quantum.backends.base import BackendError
 from app.workers.tasks import resolve_backend, run_simulation
@@ -304,3 +305,34 @@ def codelab_build(
 @router.get("/codelab/starters")
 def codelab_starters(user: User = Depends(get_current_user)) -> dict[str, Any]:
     return {"frameworks": list(codelab.FRAMEWORKS), "starters": codelab.STARTERS}
+
+
+@router.post("/codelab/generate")
+def codelab_generate(
+    payload: CodeLabGenerateIn,
+    user: User = Depends(get_current_user),
+) -> dict[str, Any]:
+    """Draft Code Lab source for a framework from a natural-language request.
+
+    The model only ever writes code. It never runs it: the returned text goes
+    back into the editor, and the learner presses Build, which takes the same
+    sandboxed path as hand-written code. That keeps the standing rule that the
+    AI cannot execute or simulate anything.
+    """
+    if payload.framework not in codelab.FRAMEWORKS:
+        raise HTTPException(
+            status_code=422,
+            detail="framework must be one of " + ", ".join(codelab.FRAMEWORKS),
+        )
+    if not gemini_client.is_configured():
+        raise HTTPException(
+            status_code=503,
+            detail="AI code generation needs GEMINI_API_KEY to be set.",
+        )
+
+    try:
+        code = codelab_ai.generate_code(payload.prompt, payload.framework)
+    except gemini_client.GeminiUnavailable as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    return {"framework": payload.framework, "code": code}

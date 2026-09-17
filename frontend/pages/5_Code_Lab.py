@@ -65,7 +65,38 @@ if st.session_state.get("codelab_framework") != framework:
     # leaving it on screen shows results that no longer match the editor.
     st.session_state.pop("codelab_built", None)
 
-_SYNTAX = {"qiskit": "python", "cirq": "python", "pennylane": "python", "qasm3": "qasm"}
+_SYNTAX = {
+    "qiskit": "python",
+    "cirq": "python",
+    "pennylane": "python",
+    "qasm3": "qasm",
+    "qbraid": "python",
+}
+
+# Ask Gemini for a draft. The model only writes text into the editor -- nothing
+# is executed until you press Build, which uses the same sandbox as code you
+# typed yourself.
+with st.expander("✨ Generate code with AI", expanded=False):
+    st.caption(
+        f"Describe the circuit and Gemini drafts **{framework}** code into the "
+        "editor. Nothing runs until you press Build, and you can edit the "
+        "draft first — treat it as a starting point, not an answer."
+    )
+    prompt = st.text_input(
+        "What should the circuit do?",
+        placeholder="a GHZ state on 3 qubits, then measure everything",
+        key="codelab_ai_prompt",
+    )
+    if st.button("Generate", key="codelab_ai_go", disabled=not prompt.strip()):
+        with st.spinner("Asking Gemini..."):
+            try:
+                st.session_state["codelab_code"] = api_client.codelab_generate(
+                    prompt, framework
+                )
+                st.session_state.pop("codelab_built", None)
+                st.rerun()
+            except ApiError as exc:
+                st.error(str(exc))
 
 code = st.text_area(
     "Your program",

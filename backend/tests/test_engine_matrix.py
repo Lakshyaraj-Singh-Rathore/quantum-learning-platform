@@ -104,11 +104,14 @@ def test_qasm3_round_trip_preserves_semantics():
 
 
 # ---------------------------------------------------------------- authoring
-def test_codelab_advertises_four_frameworks():
-    assert set(FRAMEWORKS) == {"qiskit", "cirq", "pennylane", "qasm3"}
+def test_codelab_advertises_its_frameworks():
+    """qBraid joined as an authoring target via its local transpiler."""
+    assert set(FRAMEWORKS) == {"qiskit", "cirq", "pennylane", "qasm3", "qbraid"}
 
 
-@pytest.mark.parametrize("framework", ["qiskit", "cirq", "pennylane", "qasm3"])
+@pytest.mark.parametrize(
+    "framework", ["qiskit", "cirq", "pennylane", "qasm3", "qbraid"]
+)
 def test_codelab_starter_compiles_and_runs(framework):
     """The starter shown in the UI must not be broken."""
     result = build_circuit(STARTERS[framework], framework)

@@ -1,6 +1,6 @@
 from typing import Any, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class CircuitIn(BaseModel):
@@ -33,4 +33,11 @@ class CodeLabIn(BaseModel):
     """A learner-written program to be compiled into a circuit."""
 
     code: str
+    framework: str = "qiskit"
+
+
+class CodeLabGenerateIn(BaseModel):
+    """A natural-language request for Code Lab source code."""
+
+    prompt: str = Field(min_length=1, max_length=2_000)
     framework: str = "qiskit"
