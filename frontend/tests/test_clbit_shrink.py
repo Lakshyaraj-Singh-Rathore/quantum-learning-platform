@@ -106,3 +106,73 @@ def test_python_composer_does_not_ratchet():
 def test_react_required_clbits_does_not_fold_in_current_width():
     src = (ROOT / "circuit_composer" / "frontend" / "src" / "ir.ts").read_text()
     assert "Math.max(n, ir.n_clbits ?? 0)" not in src
+
+
+# --- An already-too-wide circuit must heal itself -------------------------
+#
+# Narrowing on resize is not enough: a circuit that was saved to session_state
+# before that fix existed (or loaded from a saved circuit, or imported from
+# QASM) stays wide forever and keeps printing "00000000001" for two qubits.
+# get_circuit() runs on every render, so it corrects those too.
+
+def test_required_clbits_narrows_an_overwide_register():
+    from lib.composer import required_clbits
+
+    stuck = CircuitIR.from_dict({
+        "n_qubits": 2, "n_clbits": 11,
+        "ops": [
+            {"kind": "measure", "qubits": [0], "clbits": [0], "layer": 0},
+            {"kind": "measure", "qubits": [1], "clbits": [1], "layer": 0},
+        ],
+    })
+    assert required_clbits(stuck) == 2
+
+
+def test_required_clbits_respects_a_high_bit_in_use():
+    from lib.composer import required_clbits
+
+    wide = CircuitIR.from_dict({
+        "n_qubits": 2, "n_clbits": 11,
+        "ops": [{"kind": "measure", "qubits": [0], "clbits": [9], "layer": 0}],
+    })
+    assert required_clbits(wide) == 10
+
+
+def test_required_clbits_floors_at_qubit_count():
+    from lib.composer import required_clbits
+
+    empty = CircuitIR.from_dict({"n_qubits": 5, "n_clbits": 1, "ops": []})
+    assert required_clbits(empty) == 5
+
+
+def test_get_circuit_heals_session_state():
+    """The user's exact stuck circuit, corrected on the next render."""
+    from lib import composer
+
+    class FakeState(dict):
+        def __getattr__(self, k):
+            return self[k]
+
+        def __setattr__(self, k, v):
+            self[k] = v
+
+    state = FakeState()
+    state["circuit"] = {
+        "name": "stuck", "n_qubits": 2, "n_clbits": 11,
+        "ops": [{"kind": "measure", "qubits": [0], "clbits": [0], "layer": 0}],
+    }
+    original = composer.st.session_state
+    composer.st.session_state = state
+    try:
+        healed = composer.get_circuit()
+    finally:
+        composer.st.session_state = original
+    assert healed.n_clbits == 2
+
+
+def test_measure_all_sizes_from_the_new_measurements():
+    """React measureAllAppend used to size from the circuit before appending."""
+    src = (
+        ROOT / "circuit_composer" / "frontend" / "src" / "ir.ts"
+    ).read_text()
+    assert "requiredClbits({ ...ir, ops })" in src

@@ -143,10 +143,13 @@ export function measureAllAppend(ir: CircuitIR): CircuitIR {
   for (let q = 0; q < ir.n_qubits; q++) {
     added.push(makeOp("measure", { qubits: [q], clbits: [q], layer }))
   }
+  // Size the register from the circuit that INCLUDES the new measurements.
+  // Measuring from `ir` alone ignored the bits just added.
+  const ops = [...ir.ops, ...added]
   return {
     ...ir,
-    n_clbits: Math.max(requiredClbits(ir), ir.n_qubits),
-    ops: [...ir.ops, ...added],
+    n_clbits: Math.max(requiredClbits({ ...ir, ops }), ir.n_qubits),
+    ops,
   }
 }
 

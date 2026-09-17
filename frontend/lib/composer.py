@@ -61,6 +61,19 @@ BLOCKS = [
 # --------------------------------------------------------------------------- #
 # Session helpers
 # --------------------------------------------------------------------------- #
+def required_clbits(ir: CircuitIR) -> int:
+    """Narrowest classical register this circuit can legally use.
+
+    Floored at n_qubits so "Measure All" always has a bit per qubit, and never
+    below a bit some surviving operation still writes to or reads in a
+    condition (involved_clbits recurses into if/for/while bodies).
+    """
+    used: set[int] = set()
+    for op in ir.ops:
+        used |= op.involved_clbits()
+    return max(ir.n_qubits, (max(used) + 1) if used else 0)
+
+
 def get_circuit() -> CircuitIR:
     if "circuit" not in st.session_state:
         st.session_state.circuit = CircuitIR(name="untitled", n_qubits=2, n_clbits=2)
@@ -68,6 +81,21 @@ def get_circuit() -> CircuitIR:
     if isinstance(circuit, dict):
         circuit = CircuitIR.from_dict(circuit)
         st.session_state.circuit = circuit
+
+    # Self-heal an over-wide classical register.
+    #
+    # Shrinking the qubit count narrows n_clbits, but a circuit that was
+    # already too wide -- saved in session_state before that fix existed,
+    # loaded from a saved circuit, or imported from QASM -- would keep
+    # reporting over-long bitstrings ("00000000001" for a 2-qubit circuit)
+    # forever. Every render passes through here, so correcting it here fixes
+    # those circuits too, whatever route they arrived by.
+    needed = required_clbits(circuit)
+    if circuit.n_clbits > needed:
+        circuit.n_clbits = needed
+        st.session_state.circuit = CircuitIR.from_dict(circuit.to_dict())
+        return st.session_state.circuit
+
     return circuit
 
 
@@ -200,17 +228,9 @@ def _resize(ir: CircuitIR, n_qubits: int) -> None:
     ir.n_qubits = n_qubits
 
     # Classical bits used to only ever grow (max(n_qubits, ir.n_clbits)), so
-    # going 2 -> 4 -> 2 left n_clbits stuck at 4 and every histogram kept
-    # showing 4-character bitstrings like "0011" for a 2-qubit circuit.
-    # Shrink back down, but never below a bit that a surviving measurement
-    # still writes to, or the circuit would reference a clbit that is gone.
-    # involved_clbits() recurses into if/for/while bodies and also counts bits
-    # read by a condition, so a measurement nested inside a block still pins
-    # the width.
-    used = set()
-    for op in ir.ops:
-        used |= op.involved_clbits()
-    ir.n_clbits = max(n_qubits, (max(used) + 1) if used else 0)
+    # going 2 -> 4 -> 2 left n_clbits stuck at 4 and the histogram kept showing
+    # four-character bitstrings for a two-qubit circuit. Narrow it back down.
+    ir.n_clbits = required_clbits(ir)
 
     set_circuit(CircuitIR.from_dict(ir.to_dict()))
 
