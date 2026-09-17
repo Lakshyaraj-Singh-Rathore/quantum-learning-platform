@@ -15,26 +15,46 @@ from lib import api_client
 from lib.api_client import ApiError
 
 
+def _signature(ir_dict: dict[str, Any]) -> str:
+    """Identity of the circuit a cached timeline was built from."""
+    import json
+
+    return json.dumps(ir_dict, sort_keys=True)
+
+
 def render(ir_dict: dict[str, Any]) -> None:
-    """Draw the Inspect-style transport bar and the current step's state."""
+    """Draw the Inspect-style transport bar and the current step's state.
+
+    The timeline builds itself automatically and refreshes whenever the circuit
+    changes. It used to sit behind a "Build / refresh timeline" button, but
+    pressing that button adds four transport controls and a table to the page,
+    and Streamlit reacts to a change in the number of elements above a custom
+    component by destroying and recreating its iframe -- which left the
+    drag-and-drop composer as a blank white box. Rendering unconditionally
+    keeps the element count above the composer stable.
+    """
     header = st.columns([1.2, 3.2])
     with header[0]:
         st.markdown("#### 🎞 Timeline")
-    with header[1]:
-        if st.button(
-            "Build / refresh timeline", key="build_timeline", use_container_width=True
-        ):
-            try:
-                st.session_state["timeline"] = api_client.circuit_timeline(ir_dict)
-            except ApiError as exc:
-                st.error(str(exc))
 
+    signature = _signature(ir_dict)
+    cached_for = st.session_state.get("timeline_signature")
     timeline = st.session_state.get("timeline")
+
+    if timeline is None or cached_for != signature:
+        try:
+            timeline = api_client.circuit_timeline(ir_dict)
+            st.session_state["timeline"] = timeline
+            st.session_state["timeline_signature"] = signature
+            # A new circuit means the old step index may not exist any more.
+            st.session_state.pop("tl_step", None)
+        except ApiError as exc:
+            with header[1]:
+                st.caption(f"Timeline unavailable: {exc}")
+            return
+
     if not timeline:
-        st.caption(
-            "Step through the circuit gate by gate and watch the state evolve. "
-            "Press **Build / refresh timeline** after editing the circuit."
-        )
+        st.caption("Step through the circuit gate by gate and watch the state evolve.")
         return
     if not timeline.get("supported"):
         st.info(timeline.get("reason", "Timeline unavailable."))

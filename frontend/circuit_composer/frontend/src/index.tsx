@@ -31,18 +31,36 @@ Streamlit.setFrameHeight = (height?: number) => {
 // a permanently blank white iframe with no error in the console.
 ReactDOM.createRoot(document.getElementById("root")!).render(<Composer />)
 
-// Safety net. If Streamlit's RENDER event is somehow missed, the wrapper
-// renders null and the user is left staring at an empty white box with no clue
-// why. Re-announce readiness a few times; Streamlit replies with a fresh RENDER
-// event, which unblocks the component. Stops as soon as anything is drawn.
-const root = document.getElementById("root")!
-let attempts = 0
-const retry = window.setInterval(() => {
-  if (root.childElementCount > 0 || attempts >= 5) {
-    window.clearInterval(retry)
+// Safety net. If Streamlit's RENDER event is missed, the wrapper renders null
+// and the user is left staring at an empty white box with no clue why.
+// Re-announce readiness; Streamlit replies with a fresh RENDER event, which
+// unblocks the component.
+//
+// This watches forever rather than giving up after a few tries. Streamlit
+// destroys and recreates the iframe whenever the number of elements above the
+// component changes -- pressing "Build / refresh timeline" adds four transport
+// buttons and a table above it -- so a component that rendered fine a moment
+// ago can be torn down and come back blank at any point in the session. The
+// check is a single childElementCount read, so polling is essentially free.
+const rootEl = document.getElementById("root")!
+let blankTicks = 0
+window.setInterval(() => {
+  if (rootEl.childElementCount > 0) {
+    blankTicks = 0
     return
   }
-  attempts += 1
-  Streamlit.setComponentReady()
-  Streamlit.setFrameHeight()
-}, 400)
+  blankTicks += 1
+  if (blankTicks >= 2) {
+    // Rebuild the React root as well as re-announcing readiness. If the DOM
+    // was emptied underneath React, its virtual tree still believes the
+    // content is mounted and a fresh RENDER event alone repaints nothing.
+    // The component is alive but has no renderData, so it is painting null.
+    // Re-announcing readiness makes Streamlit send a fresh RENDER event, which
+    // is what actually unblocks it. Do not tear down the React root here:
+    // rebuilding it while Streamlit still owns the iframe throws and leaves
+    // the box blank for good.
+    Streamlit.setComponentReady()
+    Streamlit.setFrameHeight()
+    blankTicks = 0
+  }
+}, 500)

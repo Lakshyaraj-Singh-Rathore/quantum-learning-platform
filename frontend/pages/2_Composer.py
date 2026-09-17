@@ -51,31 +51,54 @@ if react_available and not _bundle_ok:
 
 ir = composer.get_circuit()
 
-# The timeline sits above the circuit, mirroring IBM Quantum Composer's
-# Inspect transport bar. It is never collapsed into an expander.
-timeline_strip.render(ir.to_dict())
+# Reserve the slots up front, then fill them in a different order than they
+# appear. Streamlit addresses a custom component by its position in the element
+# tree, so anything that changes the number of widgets ABOVE the iframe tears
+# it down and remounts it -- and a remounted component can miss Streamlit's
+# one-shot RENDER event and come back as a blank white box. Building the
+# timeline adds four transport buttons plus a dataframe above the composer,
+# which is exactly that situation. Writing into pre-allocated containers keeps
+# the composer's path constant no matter how the timeline grows or shrinks.
+timeline_slot = st.container()
+divider_slot = st.empty()
+composer_slot = st.container()
 
-st.divider()
+with composer_slot:
+    if react_available:
+        st.caption(
+            "Drag gates from the palette onto the grid. Drop on the target, then pick controls."
+        )
+        edited = circuit_composer(
+            value=ir.to_dict(), n_qubits=ir.n_qubits, key="react_composer"
+        )
+        if edited:
+            try:
+                from app.quantum.ir import CircuitIR
+
+                composer.set_circuit(CircuitIR.from_dict(edited))
+                ir = composer.get_circuit()
+            except Exception as exc:  # noqa: BLE001
+                st.error(f"Composer returned an invalid circuit: {exc}")
+
+# The timeline mirrors IBM Quantum Composer's Inspect transport bar and stays
+# above the circuit. It is rendered second so its widget count cannot displace
+# the component, but it still appears first on screen.
+with timeline_slot:
+    timeline_strip.render(ir.to_dict())
+
+divider_slot.divider()
 
 if react_available:
-    st.caption("Drag gates from the palette onto the grid. Drop on the target, then pick controls.")
-    edited = circuit_composer(value=ir.to_dict(), n_qubits=ir.n_qubits, key="react_composer")
-    if edited:
-        try:
-            from app.quantum.ir import CircuitIR
-
-            composer.set_circuit(CircuitIR.from_dict(edited))
-            ir = composer.get_circuit()
-        except Exception as exc:  # noqa: BLE001
-            st.error(f"Composer returned an invalid circuit: {exc}")
-    # Drag-and-drop is the primary editor, so the secondary Python controls
-    # (measurement, structure, control-flow blocks) collapse into dropdowns.
-    # The timeline and the operations list stay expanded.
-    composer.render("grid", secondary=True)
+    with composer_slot:
+        # Drag-and-drop is the primary editor, so the secondary Python controls
+        # (measurement, structure, control-flow blocks) collapse into dropdowns.
+        # The timeline and the operations list stay expanded.
+        composer.render("grid", secondary=True)
 else:
-    with st.expander("About the drag-and-drop component", expanded=False):
-        st.info(build_instructions())
-    ir = composer.render("grid")
+    with composer_slot:
+        with st.expander("About the drag-and-drop component", expanded=False):
+            st.info(build_instructions())
+        ir = composer.render("grid")
 
 st.divider()
 

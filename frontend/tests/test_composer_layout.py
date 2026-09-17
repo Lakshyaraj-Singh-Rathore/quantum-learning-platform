@@ -19,8 +19,20 @@ STRIP = ROOT / "lib" / "timeline_strip.py"
 
 
 def test_timeline_renders_before_the_editor():
+    """The timeline must appear ABOVE the composer on screen.
+
+    Source order no longer tracks visual order: the page allocates the
+    timeline's container first but fills it after the composer, so that the
+    timeline's widget count cannot shift the component's position in
+    Streamlit's element tree (which remounts the iframe and blanks it).
+    Assert the on-screen ordering via the containers instead.
+    """
     src = PAGE.read_text()
-    assert src.index("timeline_strip.render") < src.index("circuit_composer(")
+    assert src.index("timeline_slot = st.container()") < src.index(
+        "composer_slot = st.container()"
+    ), "the timeline container must be created above the composer container"
+    assert "with timeline_slot:" in src
+    assert "with composer_slot:" in src
 
 
 def test_timeline_is_not_inside_an_expander():
