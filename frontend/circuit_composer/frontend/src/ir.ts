@@ -126,7 +126,11 @@ export function requiredClbits(ir: CircuitIR): number {
     ;[...op.body, ...op.else_body].forEach(walk)
   }
   ir.ops.forEach(walk)
-  return Math.max(n, ir.n_clbits ?? 0)
+  // Deliberately does NOT fold in ir.n_clbits. Including the current width made
+  // this a ratchet: growing 2 -> 4 qubits and back to 2 left n_clbits at 4, so
+  // a two-qubit circuit kept reporting four-character bitstrings ("0011") in
+  // the histogram. Callers combine this with n_qubits themselves.
+  return n
 }
 
 /**

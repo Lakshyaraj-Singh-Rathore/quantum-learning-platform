@@ -120,7 +120,13 @@ function ComposerInner({ args, theme }: ComponentProps) {
 
   /** Push the circuit back to Python (only when it actually changed). */
   const commit = useCallback((next: CircuitIR) => {
-    const payload = { ...next, n_clbits: Math.max(requiredClbits(next), 1) }
+    // Floor at n_qubits so "Measure All" always has somewhere to write, but
+    // never carry a stale larger width forward: that is what made a shrunk
+    // circuit keep producing over-wide bitstrings.
+    const payload = {
+      ...next,
+      n_clbits: Math.max(requiredClbits(next), next.n_qubits, 1),
+    }
     const json = JSON.stringify(payload)
     if (json !== lastSent.current) {
       lastSent.current = json

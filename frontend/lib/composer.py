@@ -198,7 +198,20 @@ def _resize(ir: CircuitIR, n_qubits: int) -> None:
                 f"q{n_qubits} and above ({names})."
             )
     ir.n_qubits = n_qubits
-    ir.n_clbits = max(n_qubits, ir.n_clbits)
+
+    # Classical bits used to only ever grow (max(n_qubits, ir.n_clbits)), so
+    # going 2 -> 4 -> 2 left n_clbits stuck at 4 and every histogram kept
+    # showing 4-character bitstrings like "0011" for a 2-qubit circuit.
+    # Shrink back down, but never below a bit that a surviving measurement
+    # still writes to, or the circuit would reference a clbit that is gone.
+    # involved_clbits() recurses into if/for/while bodies and also counts bits
+    # read by a condition, so a measurement nested inside a block still pins
+    # the width.
+    used = set()
+    for op in ir.ops:
+        used |= op.involved_clbits()
+    ir.n_clbits = max(n_qubits, (max(used) + 1) if used else 0)
+
     set_circuit(CircuitIR.from_dict(ir.to_dict()))
 
 
