@@ -11,6 +11,7 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
+from lib import bootstrap  # noqa: E402,F401  (puts backend/ on sys.path)
 from lib import api_client, auth  # noqa: E402
 from lib.api_client import ApiError  # noqa: E402
 

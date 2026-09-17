@@ -1,0 +1,13 @@
+# Streamlit Community Cloud configuration.
+[server]
+headless = true
+# Leave enableCORS at its default (true): setting it false while XSRF
+# protection is on is contradictory, and Streamlit overrides it back anyway.
+enableXsrfProtection = true
+
+[browser]
+gatherUsageStats = false
+
+[theme]
+base = "dark"
+primaryColor = "#6C5CE7"

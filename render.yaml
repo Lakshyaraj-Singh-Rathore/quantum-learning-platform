@@ -1,0 +1,48 @@
+# Render blueprint for the QuantumLearn API.
+#
+# The Streamlit UI is NOT here: it goes on Streamlit Community Cloud, which
+# gives it ~1 GB against Render's 512 MB. Postgres is not here either --
+# Render's free database is deleted 30 days after creation, so use Neon or
+# Supabase (both free, both support pgvector, neither expires).
+#
+# See docs/DEPLOYMENT.md for the full walkthrough.
+services:
+  - type: web
+    name: quantumlearn-api
+    runtime: python
+    plan: free
+    region: singapore
+    rootDir: backend
+    buildCommand: pip install --no-cache-dir -r requirements.txt
+    # Migrations run before the server so a fresh database is usable
+    # immediately. Render's free tier has no worker type, so Celery runs
+    # eagerly inside the web process instead (see CELERY_TASK_ALWAYS_EAGER).
+    startCommand: alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.9"
+      # No Redis on the free tier, so run the simulation inline in the request.
+      - key: CELERY_TASK_ALWAYS_EAGER
+        value: "true"
+      # Default is 20 qubits, which peaks at ~655 MB and would be OOM-killed
+      # on a 512 MB instance. 14 qubits keeps the peak near 200 MB.
+      - key: MAX_STATIC_QUBITS
+        value: "14"
+      # A remote qBraid queue will not finish inside 8 s. Local backends do.
+      - key: CELERY_SOFT_TIME_LIMIT
+        value: "8"
+      - key: CELERY_HARD_TIME_LIMIT
+        value: "15"
+      # Set these in the Render dashboard, not here -- they are secrets.
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: QBRAID_API_KEY
+        sync: false
+      # Comma-separated Streamlit Cloud URL(s) allowed to call this API.
+      - key: API_CORS_ORIGINS
+        sync: false

@@ -1,0 +1,8 @@
+# Streamlit Community Cloud installs this file from the repository root.
+#
+# It deploys the UI ONLY: the FastAPI backend runs separately on Render and is
+# reached over HTTP via API_BASE_URL. The frontend needs pydantic because it
+# imports CircuitIR from backend/app/quantum/ir.py (see frontend/lib/bootstrap.py),
+# but it never imports qiskit, cirq or pennylane -- keeping it inside the
+# 1 GB Community Cloud limit.
+-r frontend/requirements.txt

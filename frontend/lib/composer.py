@@ -14,6 +14,8 @@ from typing import Any
 
 import streamlit as st
 
+from lib import bootstrap  # noqa: F401  (puts backend/ on sys.path)
+
 from app.quantum.ir import GATE_PARAMS, CircuitIR, Condition, Op
 from app.quantum.params import ParamError, eval_param_expr
 
