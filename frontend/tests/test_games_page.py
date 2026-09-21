@@ -66,3 +66,44 @@ def test_games_call_is_not_cached():
     from lib import api_client
 
     assert not hasattr(api_client.games, "clear")
+
+
+# --- Regression: the level view must not nest columns -----------------------
+#
+# composer.render() uses st.columns internally (the Operations list renders one
+# row of columns per op), and Streamlit allows only ONE level of column
+# nesting. The first version of this page put the editor inside
+# `brief, board = st.columns(...)`, which crashed every level with
+# "Columns can only be placed inside other columns up to one level of nesting".
+#
+# It slipped through because the crash needs a NON-EMPTY circuit: _grid()
+# returns early on an empty one, so the offending st.columns call never ran in
+# a test that started from a blank grid.
+
+def test_editor_is_not_rendered_inside_a_column():
+    src = PAGE.read_text()
+    assert "brief, board = st.columns" not in src, (
+        "composer.render() uses columns internally; wrapping it in a column "
+        "exceeds Streamlit's one-level nesting limit"
+    )
+    assert "composer_slot = st.container()" in src
+
+
+def test_level_view_uses_the_drag_and_drop_grid():
+    """Games should offer the same React composer as the Composer page."""
+    src = PAGE.read_text()
+    assert "circuit_composer(" in src
+    assert "react_available" in src
+    assert 'key="react_composer"' in src
+
+
+def test_secondary_palette_when_react_is_available():
+    """Drag-and-drop stays primary; the Python palette collapses behind it."""
+    src = PAGE.read_text()
+    assert 'secondary=True' in src
+
+
+def test_level_view_offers_a_reset_for_broken_circuits():
+    src = PAGE.read_text()
+    assert "Reset to broken" in src
+    assert "Clear circuit" in src
