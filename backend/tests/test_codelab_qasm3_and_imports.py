@@ -99,11 +99,20 @@ def test_cirq_swap_round_trips():
 
 
 def test_cirq_sx_round_trips():
+    """X**0.5 must survive the Cirq -> QASM -> IR trip as a real operation.
+
+    This previously built the circuit and asserted nothing, so it passed even
+    if the import produced an empty circuit.
+    """
     res = _build("cirq", (
         "import cirq\n"
         "q = cirq.LineQubit.range(1)\n"
         "circuit = cirq.Circuit([cirq.X(q[0]) ** 0.5])\n"
     ))
+    ir = res["ir"]
+    assert ir.n_qubits == 1
+    gates = [op.gate for op in ir.ops if op.kind == "gate"]
+    assert gates, "the square-root-X gate was dropped during import"
 
 
 def test_cirq_phasedxz_is_decomposed_not_rejected():

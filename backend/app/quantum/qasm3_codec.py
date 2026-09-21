@@ -19,7 +19,6 @@ from app.quantum.ir import (
     Op,
     Param,
 )
-from app.quantum.params import format_param
 
 QREG = "q"
 CREG = "c"

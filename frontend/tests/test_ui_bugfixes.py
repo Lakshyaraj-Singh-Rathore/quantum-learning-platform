@@ -4,7 +4,6 @@ import os
 import sys
 from pathlib import Path
 
-import pytest
 from streamlit.testing.v1 import AppTest
 
 ROOT = Path(__file__).resolve().parents[2]

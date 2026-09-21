@@ -32,7 +32,6 @@ import tempfile
 import textwrap
 from typing import Any
 
-from app.quantum.ir import CircuitIR
 from app.quantum.qasm3_codec import from_qasm3
 
 #: Wall-clock limit for the learner's program. Building a circuit is fast;

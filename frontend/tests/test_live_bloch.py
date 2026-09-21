@@ -9,7 +9,6 @@ allowed to drift. The parity test below compares the two numerically.
 from __future__ import annotations
 
 import json
-import math
 import shutil
 import subprocess
 import sys

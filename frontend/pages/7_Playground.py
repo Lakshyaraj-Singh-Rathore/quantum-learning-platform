@@ -14,7 +14,6 @@ from __future__ import annotations
 
 import math
 
-import numpy as np
 import streamlit as st
 
 # Streamlit only honours set_page_config in the script it runs, and pages can

@@ -1,0 +1,39 @@
+[tool.ruff]
+# Keep the linter useful rather than noisy. The default ruleset flags ~350
+# stylistic preferences in this codebase (dict() vs {}, import order, Optional
+# vs |) that are not defects, and a linter everyone ignores catches nothing.
+line-length = 100
+target-version = "py311"
+exclude = [
+    ".venv",
+    "node_modules",
+    "build",
+    "dist",
+    "backend/alembic/versions",
+]
+
+[tool.ruff.lint]
+# Correctness rules only: pyflakes, the bug-prone half of bugbear, and the
+# comparison/except mistakes that silently change behaviour.
+select = ["F", "E4", "E7", "E9", "B006", "B017", "B904"]
+ignore = [
+    # FastAPI's whole idiom is `def route(db = Depends(get_db))`, which B008
+    # flags as a function call in a default argument.
+    "B008",
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Streamlit pages must call st.set_page_config() before importing anything
+# that touches Streamlit, so module-level imports legitimately come later.
+"frontend/pages/*.py" = ["E402"]
+"frontend/Home.py" = ["E402"]
+# Tests re-import fixtures and shadow names freely.
+"**/tests/*.py" = ["F811"]
+
+[tool.pytest.ini_options]
+# Both suites need the backend package importable.
+testpaths = ["backend/tests", "frontend/tests"]
+filterwarnings = [
+    "ignore::DeprecationWarning:qiskit.*",
+    "ignore::DeprecationWarning:pennylane.*",
+]
