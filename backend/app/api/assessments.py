@@ -294,3 +294,72 @@ def get_attempt(
         feedback=attempt.feedback,
         details=graded.details or {},
     )
+
+
+@router.get("/games")
+def list_games(
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> dict[str, Any]:
+    """Game catalogue with each level and this user's best attempt.
+
+    A level is a CodingChallenge carrying game_meta, so this is a view over
+    data the challenge pipeline already owns.
+    """
+    from app.games import GAMES
+
+    levels = db.scalars(select(CodingChallenge)).all()
+    attempts = db.scalars(
+        select(ChallengeAttempt).where(ChallengeAttempt.user_id == user.id)
+    ).all()
+
+    best: dict[int, dict[str, Any]] = {}
+    for attempt in attempts:
+        current = best.get(attempt.challenge_id)
+        score = attempt.score or 0.0
+        if current is None or score > current["best_score"]:
+            best[attempt.challenge_id] = {
+                "best_score": score,
+                "passed": bool(attempt.passed),
+                "attempts": 0,
+            }
+    for attempt in attempts:
+        if attempt.challenge_id in best:
+            best[attempt.challenge_id]["attempts"] += 1
+
+    games: dict[str, Any] = {}
+    for level in levels:
+        meta = level.game_meta or {}
+        game_id = meta.get("game_id")
+        if not game_id:
+            continue
+        entry = games.setdefault(
+            game_id,
+            {**GAMES.get(game_id, {"title": game_id, "blurb": "", "icon": "🎮"}),
+             "game_id": game_id, "levels": []},
+        )
+        progress = best.get(level.id, {"best_score": 0.0, "passed": False, "attempts": 0})
+        entry["levels"].append(
+            {
+                "slug": level.slug,
+                "title": level.title,
+                "prompt": level.prompt,
+                "level": meta.get("level", 0),
+                "grader": meta.get("grader"),
+                "allowed_gates": level.allowed_gates,
+                "constraints": level.constraints,
+                "tags": level.tags,
+                "starter_ir": meta.get("starter_ir"),
+                "epsilon": meta.get("epsilon"),
+                "max_edits": meta.get("max_edits"),
+                "n_controls": meta.get("n_controls"),
+                **progress,
+            }
+        )
+
+    for entry in games.values():
+        entry["levels"].sort(key=lambda item: item["level"])
+        entry["completed"] = sum(1 for item in entry["levels"] if item["passed"])
+        entry["total"] = len(entry["levels"])
+
+    return {"games": sorted(games.values(), key=lambda g: g["game_id"])}

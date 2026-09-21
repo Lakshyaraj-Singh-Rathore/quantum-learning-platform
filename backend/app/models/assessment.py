@@ -54,6 +54,19 @@ class CodingChallenge(Base):
     tags: Mapped[list] = mapped_column(JSONType, default=list)
     is_dynamic: Mapped[bool] = mapped_column(Boolean, default=False)
 
+    #: Optional game metadata. A "game level" is just a CodingChallenge with
+    #: this populated, so games reuse the existing attempt and grading
+    #: pipeline instead of duplicating it. Recognised keys:
+    #:   game_id     - which game this level belongs to, e.g. "multi_control"
+    #:   level       - 1-based ordering within that game
+    #:   grader      - extra grading mode: truth_table | shot_detective | find_bug
+    #:   starter_ir  - circuit the learner starts from (Find the Bug)
+    #:   n_controls  - Multi-Control level size
+    #:   epsilon     - accuracy tolerance (Shot Detective)
+    #:   max_edits   - edit budget (Find the Bug)
+    #:   efficiency  - weight of the gate-count/depth term, 0..1
+    game_meta: Mapped[dict] = mapped_column(JSONType, default=dict)
+
 
 class ChallengeAttempt(Base):
     __tablename__ = "challenge_attempts"

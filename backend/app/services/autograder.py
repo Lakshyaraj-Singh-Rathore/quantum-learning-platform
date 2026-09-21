@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 from app.models.assessment import AutogradeResult, ChallengeAttempt, CodingChallenge
 from app.quantum.inspect import check_challenge_constraints, summarize_circuit
 from app.quantum.ir import CircuitIR
+from app.services import game_graders
 
 PASS_THRESHOLD = 0.8
 
@@ -94,11 +95,42 @@ def grade(
             "details": details,
         }
 
-    kind = target.get("type", "counts")
-    if kind == "state":
-        score, note = grade_state(result.get("statevector"), target)
+    # Game levels are ordinary challenges with game_meta set, so they reuse
+    # everything above and only swap the behavioural half of the grade.
+    meta = challenge.get("game_meta") or {}
+    grader = meta.get("grader")
+
+    if grader == "truth_table":
+        score, note, extra = game_graders.grade_truth_table(ir, meta)
+        details["game"] = extra
+    elif grader == "shot_detective":
+        shots = int((result or {}).get("metadata", {}).get("shots", 0))
+        score, note, extra = game_graders.grade_shot_detective(
+            result.get("counts") or {}, meta, shots
+        )
+        details["game"] = extra
+    elif grader == "find_bug":
+        kind = target.get("type", "counts")
+        if kind == "state":
+            base, base_note = grade_state(result.get("statevector"), target)
+        else:
+            base, base_note = grade_counts(result.get("counts") or {}, target)
+        base = base if base >= PASS_THRESHOLD else 0.0
+        score, note, extra = game_graders.grade_find_bug(ir, meta, base)
+        note = f"{base_note} {note}"
+        details["game"] = extra
     else:
-        score, note = grade_counts(result.get("counts") or {}, target)
+        kind = target.get("type", "counts")
+        if kind == "state":
+            score, note = grade_state(result.get("statevector"), target)
+        else:
+            score, note = grade_counts(result.get("counts") or {}, target)
+
+    if meta.get("efficiency"):
+        factor, eff_note = game_graders.efficiency_bonus(ir, meta)
+        if eff_note:
+            score *= factor
+            note = f"{note} {eff_note}"
 
     details["behaviour_note"] = note
     details["counts"] = result.get("counts")
@@ -132,6 +164,7 @@ def finalize_attempt(db: Session, attempt_id: int) -> dict[str, Any]:
         "allowed_gates": challenge.allowed_gates,
         "target": challenge.target,
         "constraints": challenge.constraints,
+        "game_meta": challenge.game_meta,
     }
     outcome = grade(ir, challenge_dict, job.result if job else None)
 

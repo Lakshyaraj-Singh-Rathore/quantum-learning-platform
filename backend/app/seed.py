@@ -402,7 +402,9 @@ def seed_quizzes(db: Session) -> None:
 
 
 def seed_challenges(db: Session) -> None:
-    for spec in CHALLENGES:
+    from app.games import GAME_LEVELS
+
+    for spec in list(CHALLENGES) + list(GAME_LEVELS):
         existing = db.scalar(select(CodingChallenge).where(CodingChallenge.slug == spec["slug"]))
         if existing is not None:
             continue
@@ -415,7 +417,13 @@ def seed_all(db: Session) -> dict[str, int]:
     seed_quizzes(db)
     seed_challenges(db)
     log.info("seed complete")
-    return {"quizzes": len(QUIZZES), "challenges": len(CHALLENGES)}
+    from app.games import GAME_LEVELS
+
+    return {
+        "quizzes": len(QUIZZES),
+        "challenges": len(CHALLENGES),
+        "game_levels": len(GAME_LEVELS),
+    }
 
 
 __all__ = ["seed_all", "seed_users", "seed_quizzes", "seed_challenges", "ensure_user"]

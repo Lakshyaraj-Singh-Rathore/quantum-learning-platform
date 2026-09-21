@@ -112,7 +112,11 @@ def circuit_dict() -> dict[str, Any]:
 # --------------------------------------------------------------------------- #
 # Rendering
 # --------------------------------------------------------------------------- #
-def render(key_prefix: str = "main", secondary: bool = False) -> CircuitIR:
+def render(
+    key_prefix: str = "main",
+    secondary: bool = False,
+    allowed_gates: list[str] | None = None,
+) -> CircuitIR:
     """Draw the Python composer.
 
     When ``secondary`` is True the drag-and-drop React grid is the primary
@@ -124,14 +128,14 @@ def render(key_prefix: str = "main", secondary: bool = False) -> CircuitIR:
     _toolbar(ir, key_prefix)
     st.divider()
     if secondary:
-        _palette(ir, key_prefix, collapsed=True)
+        _palette(ir, key_prefix, collapsed=True, allowed_gates=allowed_gates)
         st.divider()
         _grid(ir, key_prefix, show_diagram=False)
         return ir
 
     left, right = st.columns([1, 2.4], gap="medium")
     with left:
-        _palette(ir, key_prefix)
+        _palette(ir, key_prefix, allowed_gates=allowed_gates)
     with right:
         _grid(ir, key_prefix)
     return ir
@@ -237,7 +241,12 @@ def _resize(ir: CircuitIR, n_qubits: int) -> None:
     set_circuit(CircuitIR.from_dict(ir.to_dict()))
 
 
-def _palette(ir: CircuitIR, key_prefix: str, collapsed: bool = False) -> None:
+def _palette(
+    ir: CircuitIR,
+    key_prefix: str,
+    collapsed: bool = False,
+    allowed_gates: list[str] | None = None,
+) -> None:
     """Gate palette plus the measurement/structure and control-flow sections.
 
     ``collapsed`` puts each of the three sections behind its own dropdown, for
@@ -245,14 +254,14 @@ def _palette(ir: CircuitIR, key_prefix: str, collapsed: bool = False) -> None:
     """
     if collapsed:
         with st.expander("🎛 Palette — add a gate by hand", expanded=False):
-            _palette_gates(ir, key_prefix)
+            _palette_gates(ir, key_prefix, allowed_gates)
         with st.expander("📏 Measurement & structure", expanded=False):
             _palette_structural(ir, key_prefix, nested=True)
         with st.expander("🔀 Control flow blocks", expanded=False):
             _block_builder(ir, key_prefix)
         return
 
-    _palette_gates(ir, key_prefix)
+    _palette_gates(ir, key_prefix, allowed_gates)
     st.divider()
     st.markdown("#### Measurement & structure")
     _palette_structural(ir, key_prefix, nested=False)
@@ -261,18 +270,29 @@ def _palette(ir: CircuitIR, key_prefix: str, collapsed: bool = False) -> None:
     _block_builder(ir, key_prefix)
 
 
-def _palette_gates(ir: CircuitIR, key_prefix: str) -> None:
+def _palette_gates(
+    ir: CircuitIR, key_prefix: str, allowed_gates: list[str] | None = None
+) -> None:
     st.markdown("#### Palette")
     st.caption("Pick a gate, choose the target, then optionally add controls.")
 
-    labels = [label for _, label, _ in PALETTE]
+    # Game levels restrict the palette so a puzzle cannot be solved by
+    # reaching for a gate the lesson has not introduced yet.
+    entries = PALETTE
+    if allowed_gates:
+        allowed = {g.lower() for g in allowed_gates}
+        entries = [e for e in PALETTE if e[0].lower() in allowed] or PALETTE
+        if len(entries) < len(PALETTE):
+            st.caption(f"This level allows: {', '.join(e[1] for e in entries)}")
+
+    labels = [label for _, label, _ in entries]
     choice = st.selectbox(
         "Gate",
-        options=range(len(PALETTE)),
+        options=range(len(entries)),
         format_func=lambda i: labels[i],
         key=f"{key_prefix}_gate_choice",
     )
-    gate, _label, description = PALETTE[choice]
+    gate, _label, description = entries[choice]
     st.caption(description)
 
     param_expr = None

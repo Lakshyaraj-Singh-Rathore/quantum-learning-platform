@@ -246,6 +246,11 @@ def submit_challenge(slug: str, ir: dict, shots: int = 1024) -> dict:
     )
 
 
+def games() -> dict:
+    """Game catalogue plus this user's progress. Not cached: progress changes."""
+    return _request("GET", "/games")
+
+
 def attempt(attempt_id: int) -> dict:
     return _request("GET", f"/attempts/{attempt_id}")
 
