@@ -1,0 +1,112 @@
+"""The Playground page must render, including at slider extremes.
+
+Written the way the Games page should have been tested first time: with a real
+login, because a fake token stops the page at ``auth.require_login()`` before
+any of the interesting code runs, and by driving widgets to their boundaries,
+because that is where divide-by-zero and empty-state bugs live.
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import sys
+import urllib.request
+from pathlib import Path
+
+import pytest
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+
+pytest.importorskip("streamlit.testing.v1")
+from streamlit.testing.v1 import AppTest  # noqa: E402
+
+PAGE = str(ROOT / "pages" / "7_Playground.py")
+
+
+def _login() -> tuple[str, dict]:
+    base = os.getenv("API_BASE_URL", "http://localhost:8000")
+    request = urllib.request.Request(
+        base + "/auth/login",
+        data=json.dumps(
+            {"email": "instructor@local.dev", "password": "instructor123"}
+        ).encode(),
+        headers={"Content-Type": "application/json"},
+    )
+    payload = json.load(urllib.request.urlopen(request, timeout=10))
+    return payload["access_token"], {
+        "id": payload["user_id"],
+        "email": payload["email"],
+        "role": payload["role"],
+    }
+
+
+try:
+    _TOKEN, _USER = _login()
+except Exception:  # pragma: no cover - API not running
+    _TOKEN, _USER = "", {}
+
+pytestmark = pytest.mark.skipif(
+    not _TOKEN, reason="needs the API running (integration test)"
+)
+
+
+def _run(**state) -> AppTest:
+    at = AppTest.from_file(PAGE, default_timeout=120)
+    at.session_state["token"] = _TOKEN
+    at.session_state["user"] = _USER
+    for key, value in state.items():
+        at.session_state[key] = value
+    at.run()
+    return at
+
+
+def test_page_renders():
+    at = _run()
+    assert not at.exception, [str(e) for e in at.exception]
+
+
+def test_page_has_all_seven_lessons():
+    assert len(_run().tabs) == 7
+
+
+def test_page_is_interactive():
+    """The point of the page: it must actually have controls."""
+    at = _run()
+    assert len(at.slider) + len(at.select_slider) >= 8
+    assert at.radio
+    assert at.toggle
+
+
+@pytest.mark.parametrize(
+    "state",
+    [
+        {"pg_intro_theta": 0.0},
+        {"pg_intro_theta": 180.0},
+        {"pg_build_mode": "Amplitudes", "pg_a": 0.0, "pg_b": 0.0},
+        {"pg_build_mode": "Amplitudes", "pg_a": -1.0, "pg_b": 1.0},
+        {"pg_build_mode": "Bloch angles", "pg_theta": 0.0, "pg_phi": 0.0},
+        {"pg_build_mode": "Bloch angles", "pg_theta": 180.0, "pg_phi": 360.0},
+        {"pg_gates": ["H", "T", "Z", "S", "X", "Y"]},
+        {"pg_m_theta": 0.0, "pg_shots": 1},
+        {"pg_m_theta": 180.0, "pg_shots": 4096},
+        {"pg_ia": 0.0, "pg_ib": 0.0},
+        {"pg_ia": 1.0, "pg_ib": 1.0},
+        {"pg_pm_h": True},
+        {"pg_n": 1},
+        {"pg_n": 30},
+        {"pg_bits_n": 5, "pg_bits_v": 31},
+        {"pg_bits_n": 2, "pg_bits_v": 0},
+    ],
+)
+def test_extremes_do_not_crash(state):
+    at = _run(**state)
+    assert not at.exception, f"{state} -> {[str(e) for e in at.exception]}"
+
+
+def test_no_column_nesting_violations():
+    """The bug that broke every Games level; cheap to guard against again."""
+    at = _run(pg_gates=["H"])
+    nesting = [e for e in at.exception if "one level of nesting" in str(e)]
+    assert not nesting
