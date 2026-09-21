@@ -10,7 +10,7 @@ import streamlit as st
 st.set_page_config(page_title="QuantumLearn", page_icon="⚛", layout="wide",
                    initial_sidebar_state="expanded")
 
-from lib import api_client, auth
+from lib import api_client, auth, lesson_demos
 from lib.api_client import ApiError
 
 st.title("📘 Learn")
@@ -76,6 +76,11 @@ if detail.get("tags"):
     )
 
 st.markdown(detail["content"])
+
+# Interactive demonstrations for this lesson's concepts, between the reading
+# and the tutor so the learner can try the idea while it is fresh. Lessons
+# with no demos registered simply skip this.
+lesson_demos.render_for_lesson(chosen["slug"])
 
 st.divider()
 st.subheader("Ask the AI tutor")

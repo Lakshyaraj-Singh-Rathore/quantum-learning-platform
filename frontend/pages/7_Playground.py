@@ -35,6 +35,11 @@ st.caption(
     "the Bloch sphere, amplitudes, probabilities and histogram are all computed "
     "from the state you build."
 )
+st.info(
+    "These same demonstrations appear inside the lessons that teach them, under "
+    "**Try it yourself**. This page collects them in one place for when you "
+    "want to experiment without reading."
+)
 
 tabs = st.tabs(
     [
