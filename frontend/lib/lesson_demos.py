@@ -21,6 +21,25 @@ import streamlit as st
 
 from lib import playground as pg, viz
 
+# Optional React components. Both degrade to the Streamlit versions if their
+# bundle is missing, so a lesson never breaks because a build step was skipped.
+try:
+    from live_bloch import is_available as _bloch_available, live_bloch
+except Exception:  # noqa: BLE001
+    live_bloch = None
+
+    def _bloch_available() -> bool:
+        return False
+
+try:
+    from circuit_composer import circuit_composer
+    from circuit_composer import is_available as _composer_available
+except Exception:  # noqa: BLE001
+    circuit_composer = None
+
+    def _composer_available() -> bool:
+        return False
+
 
 # --------------------------------------------------------------------------- #
 # 01 qubits / 13 classical bit vs qubit
@@ -90,11 +109,24 @@ def build_a_qubit(key: str) -> None:
 
 
 def bloch_explorer(key: str) -> None:
-    """Move theta and phi; the sphere, state and probabilities all follow."""
+    """Move theta and phi; the sphere, state and probabilities all follow.
+
+    Uses the React component when its bundle is present, which redraws
+    continuously as you drag instead of once per Streamlit rerun. Falls back to
+    sliders plus the verified Plotly sphere otherwise.
+    """
+    if _bloch_available() and live_bloch is not None:
+        st.caption(
+            "Drag the sphere to rotate it, click it to set the state, or use "
+            "the sliders. Everything updates as you move — no page reload."
+        )
+        live_bloch(theta=90.0, phi=0.0, key=f"{key}_live")
+        return
+
     st.caption(
-        "Every pure single-qubit state is a point on this sphere. "
-        "|0⟩ is the north pole, |1⟩ the south, and the equator is where "
-        "measurement is a coin flip."
+        "Every pure single-qubit state is a point on this sphere. |0⟩ is the "
+        "north pole, |1⟩ the south, and the equator is where measurement is a "
+        "coin flip."
     )
     cols = st.columns([1, 1, 2])
     theta = cols[0].slider("θ (degrees)", 0.0, 180.0, 90.0, 1.0, key=f"{key}_theta")
@@ -115,7 +147,6 @@ def bloch_explorer(key: str) -> None:
     metrics[0].metric("P(0)", f"{p0:.1%}")
     metrics[1].metric("P(1)", f"{p1:.1%}")
 
-    # Reuse the verified renderer rather than drawing a second sphere.
     viz.bloch_sphere(pg.as_result(state))
 
 
@@ -340,6 +371,65 @@ def bit_ordering(key: str) -> None:
 
 
 # --------------------------------------------------------------------------- #
+# Circuit lab: the real composer, inside the lesson
+# --------------------------------------------------------------------------- #
+def circuit_lab(key: str) -> None:
+    """Embed the actual drag-and-drop composer so the reader can build here.
+
+    This is the same React component the Composer page uses, sharing the same
+    session circuit, so a circuit built in a lesson is still there when the
+    learner opens the Composer for the full run/export tooling.
+
+    It deliberately does NOT call ``composer.render()``: that helper lays the
+    Operations list out as one row of ``st.columns`` per operation, and these
+    demos already sit inside a tab, so nesting would risk the column limit.
+    """
+    from lib import composer as composer_lib
+
+    if not (_composer_available() and circuit_composer is not None):
+        st.info(
+            "The drag-and-drop grid is not built in this deployment. Open the "
+            "**Composer** page to build circuits there."
+        )
+        return
+
+    st.caption(
+        "The real composer, right here. Drag a gate onto the grid, or click a "
+        "gate then a cell. This shares the same circuit as the Composer page, "
+        "so you can carry your work over to run and export it."
+    )
+
+    ir = composer_lib.get_circuit()
+    edited = circuit_composer(
+        value=ir.to_dict(), n_qubits=ir.n_qubits, key=f"{key}_grid"
+    )
+    if edited:
+        try:
+            from app.quantum.ir import CircuitIR
+
+            composer_lib.set_circuit(CircuitIR.from_dict(edited))
+            ir = composer_lib.get_circuit()
+        except Exception as exc:  # noqa: BLE001
+            st.error(f"Composer returned an invalid circuit: {exc}")
+
+    summary = st.columns(3)
+    summary[0].metric("Qubits", ir.n_qubits)
+    summary[1].metric("Operations", len(ir.ops))
+    summary[2].metric("Depth", ir.depth())
+
+    if st.button("↺ Clear this circuit", key=f"{key}_clear"):
+        from app.quantum.ir import CircuitIR
+
+        composer_lib.set_circuit(CircuitIR(name="untitled", n_qubits=2, n_clbits=2))
+        st.rerun()
+
+    st.caption(
+        "Open the **Composer** page to run this on a simulator, inspect the "
+        "state, or export it as Qiskit, Cirq, PennyLane or OpenQASM."
+    )
+
+
+# --------------------------------------------------------------------------- #
 # Registry: which demos belong with which lesson
 # --------------------------------------------------------------------------- #
 #: (title, help text, render function). Titles are what the learner sees.
@@ -353,20 +443,21 @@ DEMO_REGISTRY: dict[str, tuple[str, str, object]] = {
     "interference": ("Interference lab", "Amplitudes add before they are squared", interference_lab),
     "state_space": ("Exponential state space", "Why 2ⁿ gets out of hand", state_space_growth),
     "bit_order": ("Bit ordering", "Which character is qubit 0?", bit_ordering),
+    "circuit_lab": ("Build a circuit here", "The real drag-and-drop composer, in the lesson", circuit_lab),
 }
 
 #: Lesson slug -> demo keys, in the order they should appear.
 DEMOS_FOR_LESSON: dict[str, list[str]] = {
-    "01_qubits": ["bit_vs_qubit", "build_a_qubit", "bloch"],
-    "02_gates": ["gates", "plus_minus"],
+    "01_qubits": ["bit_vs_qubit", "build_a_qubit", "bloch", "circuit_lab"],
+    "02_gates": ["gates", "plus_minus", "circuit_lab"],
     "03_entanglement": ["state_space"],
     "04_measurement": ["measure", "bit_order"],
     "05_deutsch_jozsa": ["interference"],
     "06_grover": ["interference"],
-    "10_gates_bootcamp": ["gates", "bloch"],
-    "11_bell_states": ["plus_minus", "state_space"],
-    "12_control_flow": ["bit_order"],
-    "13_classical_bit_vs_qubit": ["bit_vs_qubit", "build_a_qubit", "measure"],
+    "10_gates_bootcamp": ["gates", "bloch", "circuit_lab"],
+    "11_bell_states": ["plus_minus", "state_space", "circuit_lab"],
+    "12_control_flow": ["bit_order", "circuit_lab"],
+    "13_classical_bit_vs_qubit": ["bit_vs_qubit", "build_a_qubit", "measure", "circuit_lab"],
 }
 
 

@@ -8,6 +8,16 @@ RUN npm ci
 COPY circuit_composer/frontend/ ./
 RUN npm run build
 
+# ---------------------------------------------------------------- stage 1b
+# Build the continuous Bloch sphere bundle.
+FROM node:20-slim AS bloch
+
+WORKDIR /bloch
+COPY live_bloch/frontend/package*.json ./
+RUN npm install
+COPY live_bloch/frontend/ ./
+RUN npm run build
+
 # ---------------------------------------------------------------- stage 2
 FROM python:3.11-slim
 
@@ -28,6 +38,9 @@ COPY . .
 # Ship the compiled component; without it the app falls back to the
 # pure-Python grid composer, which offers the same functionality.
 COPY --from=composer /composer/build ./circuit_composer/frontend/build
+# Same for the live Bloch sphere; without it the lessons fall back to the
+# Plotly sphere, which is correct but reruns the page on every slider move.
+COPY --from=bloch /bloch/build ./live_bloch/frontend/build
 
 EXPOSE 8501
 CMD ["streamlit", "run", "Home.py", "--server.address", "0.0.0.0", "--server.port", "8501"]
