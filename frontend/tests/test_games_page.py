@@ -107,3 +107,31 @@ def test_level_view_offers_a_reset_for_broken_circuits():
     src = PAGE.read_text()
     assert "Reset to broken" in src
     assert "Clear circuit" in src
+
+
+# --- Winning must not hide the evidence -------------------------------------
+
+def test_results_panel_renders_the_full_table_not_just_failures():
+    """The table used to be drawn only when `failures` was non-empty."""
+    src = PAGE.read_text()
+    assert 'extra.get("table")' in src
+    assert 'if extra.get("failures"):' not in src, (
+        "gating the table on failures hides it the moment the learner wins"
+    )
+
+
+def test_results_panel_warns_about_superposition():
+    src = PAGE.read_text()
+    assert "superposed" in src
+    assert "superposition" in src.lower()
+
+
+def test_results_panel_shows_the_observed_output_column():
+    src = PAGE.read_text()
+    assert '"Output"' in src
+
+
+def test_results_panel_surfaces_state_fidelity():
+    """A histogram cannot distinguish |Phi+> from |Phi->; the fidelity can."""
+    src = PAGE.read_text()
+    assert "fidelity" in src.lower()

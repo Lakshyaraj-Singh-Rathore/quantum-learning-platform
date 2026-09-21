@@ -236,8 +236,8 @@ def test_bell_levels_are_graded_on_state_not_counts():
 
 
 def test_phi_plus_and_phi_minus_differ_only_by_a_sign():
-    plus = BELL_LEVELS[0]["target"]["state"]
-    minus = BELL_LEVELS[1]["target"]["state"]
+    plus = BELL_LEVELS[0]["target"]["statevector"]
+    minus = BELL_LEVELS[1]["target"]["statevector"]
     assert plus[0] == minus[0]
     assert plus[3][0] == pytest.approx(-minus[3][0])
 
@@ -268,3 +268,130 @@ def test_playing_a_truth_table_level_end_to_end(client, student_headers):
     outcome = client.get(f"/attempts/{attempt_id}", headers=student_headers).json()
     assert outcome["passed"] is True
     assert outcome["score"] == 1.0
+
+
+# --- Evidence must survive success -----------------------------------------
+#
+# Reported: the Open the Vault truth table vanished the moment you won. The
+# grader only recorded FAILING rows, so a perfect score produced an empty list
+# and the page had nothing to draw -- exactly when the learner most wants to
+# read the logic they just built.
+
+def test_winning_still_returns_the_full_truth_table():
+    meta = MULTI_CONTROL_LEVELS[1]["game_meta"]
+    ir = _c(3, [{"kind": "gate", "gate": "x", "qubits": [2],
+                 "controls": [0, 1], "layer": 0}])
+    score, _, details = g.grade_truth_table(ir, meta)
+    assert score == 1.0
+    assert len(details["table"]) == 8, "a win must still show every input"
+    assert all(row["passed"] for row in details["table"])
+
+
+def test_failing_also_returns_the_full_table():
+    meta = MULTI_CONTROL_LEVELS[1]["game_meta"]
+    ir = _c(3, [{"kind": "gate", "gate": "x", "qubits": [2],
+                 "controls": [0], "layer": 0}])
+    _, _, details = g.grade_truth_table(ir, meta)
+    assert len(details["table"]) == 8
+    assert any(not row["passed"] for row in details["table"])
+
+
+def test_table_rows_carry_the_observed_output():
+    """Showing only 'expected vs got target' hid what the circuit really did."""
+    meta = MULTI_CONTROL_LEVELS[1]["game_meta"]
+    ir = _c(3, [{"kind": "gate", "gate": "x", "qubits": [2],
+                 "controls": [0, 1], "layer": 0}])
+    _, _, details = g.grade_truth_table(ir, meta)
+    row = next(r for r in details["table"] if r["input"] == "011")
+    assert row["output"] == "111", "|011> should flip the target to give |111>"
+
+
+# --- Superposition must be reported honestly --------------------------------
+#
+# A Hadamard leaves no single output bitstring. The old grader took argmax and
+# presented an arbitrary basis state as fact, producing a table that looked
+# authoritative but was meaningless -- including "controls preserved: no" on
+# rows whose target was correct.
+
+def test_superposition_is_detected_not_guessed():
+    meta = MULTI_CONTROL_LEVELS[1]["game_meta"]
+    ir = _c(3, [{"kind": "gate", "gate": "h", "qubits": [0], "layer": 0}])
+    score, note, details = g.grade_truth_table(ir, meta)
+    assert details["superposed"] > 0
+    assert "superposition" in note
+    assert score < 0.8
+
+
+def test_superposed_rows_are_never_counted_as_correct():
+    meta = MULTI_CONTROL_LEVELS[1]["game_meta"]
+    ir = _c(3, [{"kind": "gate", "gate": "h", "qubits": [0], "layer": 0},
+                {"kind": "gate", "gate": "h", "qubits": [1], "layer": 0}])
+    _, _, details = g.grade_truth_table(ir, meta)
+    for row in details["table"]:
+        if not row["definite"]:
+            assert not row["passed"]
+
+
+def test_definite_circuits_report_full_certainty():
+    meta = MULTI_CONTROL_LEVELS[1]["game_meta"]
+    ir = _c(3, [{"kind": "gate", "gate": "x", "qubits": [2],
+                 "controls": [0, 1], "layer": 0}])
+    _, _, details = g.grade_truth_table(ir, meta)
+    assert details["superposed"] == 0
+    assert all(row["certainty"] > 0.99 for row in details["table"])
+
+
+# --- Bell levels were not actually being graded -----------------------------
+#
+# The levels wrote target["state"] but grade_state reads target["statevector"],
+# so every Bell level silently skipped its fidelity check and passed any
+# circuit. |Phi-> would have been accepted for the |Phi+> level.
+
+def test_bell_levels_use_the_key_the_grader_reads():
+    for level in BELL_LEVELS:
+        assert "statevector" in level["target"], level["slug"]
+
+
+def test_bell_levels_reject_the_wrong_phase():
+    from app.quantum.backends import qiskit_aer
+    from app.services.autograder import grade
+
+    phi_plus = _c(2, [
+        {"kind": "gate", "gate": "h", "qubits": [0], "layer": 0},
+        {"kind": "gate", "gate": "x", "qubits": [1], "controls": [0], "layer": 1}])
+    phi_minus = _c(2, [
+        {"kind": "gate", "gate": "h", "qubits": [0], "layer": 0},
+        {"kind": "gate", "gate": "z", "qubits": [0], "layer": 1},
+        {"kind": "gate", "gate": "x", "qubits": [1], "controls": [0], "layer": 2}])
+
+    def _grade(level, ir):
+        challenge = {
+            "allowed_gates": level["allowed_gates"], "target": level["target"],
+            "constraints": level["constraints"], "game_meta": level["game_meta"],
+        }
+        return grade(ir, challenge, qiskit_aer.run(ir, shots=512, seed=1))
+
+    assert _grade(BELL_LEVELS[0], phi_plus)["passed"] is True
+    assert _grade(BELL_LEVELS[0], phi_minus)["passed"] is False
+    assert _grade(BELL_LEVELS[1], phi_minus)["passed"] is True
+    assert _grade(BELL_LEVELS[1], phi_plus)["passed"] is False
+
+
+def test_bell_grading_actually_computes_fidelity():
+    """'fidelity check skipped' meant the level was not being graded at all."""
+    from app.quantum.backends import qiskit_aer
+    from app.services.autograder import grade
+
+    ir = _c(2, [
+        {"kind": "gate", "gate": "h", "qubits": [0], "layer": 0},
+        {"kind": "gate", "gate": "x", "qubits": [1], "controls": [0], "layer": 1}])
+    level = BELL_LEVELS[0]
+    outcome = grade(
+        ir,
+        {"allowed_gates": level["allowed_gates"], "target": level["target"],
+         "constraints": level["constraints"], "game_meta": level["game_meta"]},
+        qiskit_aer.run(ir, shots=512, seed=1),
+    )
+    note = outcome["details"]["behaviour_note"]
+    assert "skipped" not in note
+    assert "fidelity" in note.lower()

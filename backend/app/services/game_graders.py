@@ -38,11 +38,16 @@ MAX_TRUTH_TABLE_QUBITS = 5
 # --------------------------------------------------------------------------- #
 # Multi-Control Challenge
 # --------------------------------------------------------------------------- #
-def truth_table(ir: CircuitIR) -> list[tuple[list[int], list[int]]]:
+def truth_table(ir: CircuitIR) -> list[dict[str, Any]]:
     """Evolve every basis input through the circuit.
 
-    Returns ``[(input_bits, output_bits), ...]`` where index ``k`` is qubit
-    ``k`` (Qiskit ordering: qubit 0 is the least significant bit).
+    Each row records the input bits, the most likely output bits, and the
+    probability of that output. The probability matters: a circuit containing
+    a Hadamard leaves the register in a superposition with no single answer,
+    and silently reporting the ``argmax`` basis state as "the output" produces
+    a truth table that looks authoritative but means nothing.
+
+    Index ``k`` is qubit ``k`` (Qiskit ordering, qubit 0 least significant).
     """
     from qiskit.quantum_info import Statevector
 
@@ -56,12 +61,17 @@ def truth_table(ir: CircuitIR) -> list[tuple[list[int], list[int]]]:
 
     circuit = to_qiskit(ir, include_measurements=False)
     n = ir.n_qubits
-    rows: list[tuple[list[int], list[int]]] = []
+    rows: list[dict[str, Any]] = []
     for value in range(2**n):
         evolved = Statevector.from_int(value, dims=2**n).evolve(circuit)
-        out = int(np.argmax(np.abs(evolved.data) ** 2))
+        weights = np.abs(evolved.data) ** 2
+        out = int(np.argmax(weights))
         rows.append(
-            ([(value >> k) & 1 for k in range(n)], [(out >> k) & 1 for k in range(n)])
+            {
+                "in_bits": [(value >> k) & 1 for k in range(n)],
+                "out_bits": [(out >> k) & 1 for k in range(n)],
+                "certainty": float(weights[out]),
+            }
         )
     return rows
 
@@ -73,6 +83,10 @@ def grade_truth_table(
 
     Controls must also come back unchanged -- a circuit that scrambles its
     controls is not a multi-controlled NOT, even if the target looks right.
+
+    Returns the COMPLETE table, pass or fail. A learner who just solved the
+    level wants to see the logic they built, and hiding it on success is the
+    one moment the table is most worth reading.
     """
     n_controls = int(meta.get("n_controls", max(1, ir.n_qubits - 1)))
     controls = list(range(n_controls))
@@ -90,36 +104,63 @@ def grade_truth_table(
         return 0.0, str(exc), {}
 
     passed = 0
-    failures: list[dict[str, Any]] = []
-    for in_bits, out_bits in rows:
+    table: list[dict[str, Any]] = []
+    superposed = 0
+
+    for row in rows:
+        in_bits, out_bits = row["in_bits"], row["out_bits"]
+        certainty = row["certainty"]
         all_controls_set = all(in_bits[c] == 1 for c in controls)
         want_target = in_bits[target] ^ (1 if all_controls_set else 0)
         controls_intact = all(out_bits[c] == in_bits[c] for c in controls)
-        if out_bits[target] == want_target and controls_intact:
+        # A superposed output has no definite bitstring, so it cannot be a
+        # correct classical truth-table row however the argmax happens to fall.
+        definite = certainty > 0.99
+        ok = definite and out_bits[target] == want_target and controls_intact
+        if ok:
             passed += 1
-        elif len(failures) < 4:  # keep the feedback readable
-            failures.append(
-                {
-                    "input": "".join(str(b) for b in reversed(in_bits)),
-                    "expected_target": want_target,
-                    "got_target": out_bits[target],
-                    "controls_intact": controls_intact,
-                }
-            )
+        if not definite:
+            superposed += 1
+
+        table.append(
+            {
+                "input": "".join(str(b) for b in reversed(in_bits)),
+                "output": "".join(str(b) for b in reversed(out_bits)),
+                "expected_target": want_target,
+                "got_target": out_bits[target],
+                "controls_intact": controls_intact,
+                "certainty": round(certainty, 4),
+                "definite": definite,
+                "passed": ok,
+            }
+        )
 
     total = len(rows)
     score = passed / total if total else 0.0
     note = f"Truth table: {passed}/{total} inputs behave correctly."
-    if failures:
-        first = failures[0]
+
+    if superposed:
         note += (
-            f" First failure on input |{first['input']}>: "
-            f"target should be {first['expected_target']}, got {first['got_target']}."
+            f" {superposed} input(s) left the register in a superposition, so "
+            "there is no definite output. This level is about classical logic: "
+            "use only X and controlled-X gates."
         )
+    else:
+        first_failure = next((r for r in table if not r["passed"]), None)
+        if first_failure is not None:
+            note += (
+                f" First failure on input |{first_failure['input']}⟩: target "
+                f"should be {first_failure['expected_target']}, got "
+                f"{first_failure['got_target']}."
+            )
+
     return score, note, {
         "testcases_total": total,
         "testcases_passed": passed,
-        "failures": failures,
+        "superposed": superposed,
+        "table": table,
+        # Kept for older attempts stored before the full table existed.
+        "failures": [r for r in table if not r["passed"]][:4],
     }
 
 

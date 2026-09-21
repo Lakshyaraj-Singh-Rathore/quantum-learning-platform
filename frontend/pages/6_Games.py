@@ -234,23 +234,57 @@ if outcome:
     details = outcome.get("details") or {}
     extra = details.get("game") or {}
 
-    # Truth table: show which inputs failed.
+    # Truth table. Always shown, pass or fail: on a win it is the proof that
+    # the logic is right, which is exactly when a learner wants to read it.
     if "testcases_total" in extra:
-        st.metric("Test cases passed", f"{extra['testcases_passed']}/{extra['testcases_total']}")
-        if extra.get("failures"):
-            st.markdown("**First failing inputs**")
+        summary = st.columns(3)
+        summary[0].metric(
+            "Test cases passed",
+            f"{extra['testcases_passed']}/{extra['testcases_total']}",
+        )
+        if extra.get("superposed"):
+            summary[1].metric("Superposed outputs", extra["superposed"])
+
+        if extra.get("superposed"):
+            st.warning(
+                "Some inputs left the register in a **superposition**, so there "
+                "is no single output bitstring to check. This level is about "
+                "classical logic — build it from X and controlled-X gates only."
+            )
+
+        rows = extra.get("table")
+        if not rows:
+            # Attempts graded before the full table existed only stored failures.
+            rows = extra.get("failures") or []
+            if rows:
+                st.caption("Showing the failing inputs from this older attempt.")
+
+        if rows:
+            st.markdown("**Truth table** — every input the grader checked")
             st.dataframe(
                 [
                     {
-                        "Input |c…t⟩": f["input"],
-                        "Target should be": f["expected_target"],
-                        "Target was": f["got_target"],
-                        "Controls preserved": "yes" if f["controls_intact"] else "no",
+                        "": "✅" if row.get("passed") else "❌",
+                        "Input |c…t⟩": row["input"],
+                        "Output": row.get("output", "—"),
+                        "Target should be": row["expected_target"],
+                        "Target was": row["got_target"],
+                        "Controls preserved": (
+                            "yes" if row["controls_intact"] else "no"
+                        ),
+                        "Certainty": (
+                            f"{row['certainty']:.0%}" if "certainty" in row else "—"
+                        ),
                     }
-                    for f in extra["failures"]
+                    for row in rows
                 ],
                 hide_index=True,
                 use_container_width=True,
+            )
+            st.caption(
+                "Controls are the left characters, the target is the rightmost. "
+                "A correct vault flips the target only when every control is 1, "
+                "and leaves the controls untouched."
             )
 
     # Shot Detective: the convergence curve is the whole lesson.
@@ -280,5 +314,18 @@ if outcome:
         cols[2].metric("Added", edits["added"])
         cols[3].metric("Removed", edits["removed"])
 
+    # Bell Builder and other state-graded levels: the histogram alone cannot
+    # distinguish |Phi+> from |Phi->, so surface the fidelity that actually
+    # decided the result.
+    note = details.get("behaviour_note") or ""
+    if "fidelity" in note.lower():
+        st.caption(f"Graded on state fidelity — {note}")
+
     if details.get("counts"):
+        st.markdown("**Measurement outcomes**")
         viz.histogram({"counts": details["counts"]})
+        if "fidelity" in note.lower():
+            st.caption(
+                "Two different states can produce this same histogram. That is "
+                "why these levels are graded on the state, not the counts."
+            )

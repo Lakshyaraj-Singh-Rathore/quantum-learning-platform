@@ -35,7 +35,7 @@ BELL_LEVELS: list[dict[str, Any]] = [
             "Measuring should give only 00 and 11, each about half the time."
         ),
         "allowed_gates": ["h", "x", "cx"],
-        "target": {"type": "state", "state": _state({0: S2 + 0j, 3: S2 + 0j}, 2), "tolerance": 0.05},
+        "target": {"type": "state", "statevector": _state({0: S2 + 0j, 3: S2 + 0j}, 2), "tolerance": 0.05},
         "constraints": {"max_qubits": 2, "max_depth": 4, "required_gates": ["h"]},
         "tags": ["entanglement", "bell-states", "superposition"],
         "game_meta": {"game_id": "bell_builder", "level": 1, "efficiency": 0.15, "par_gates": 2},
@@ -50,7 +50,7 @@ BELL_LEVELS: list[dict[str, Any]] = [
             "fidelity. A Z somewhere will do it."
         ),
         "allowed_gates": ["h", "x", "z", "cx"],
-        "target": {"type": "state", "state": _state({0: S2 + 0j, 3: -S2 + 0j}, 2), "tolerance": 0.05},
+        "target": {"type": "state", "statevector": _state({0: S2 + 0j, 3: -S2 + 0j}, 2), "tolerance": 0.05},
         "constraints": {"max_qubits": 2, "max_depth": 5, "required_gates": ["h"]},
         "tags": ["entanglement", "bell-states", "phase"],
         "game_meta": {"game_id": "bell_builder", "level": 2, "efficiency": 0.15, "par_gates": 3},
@@ -64,7 +64,7 @@ BELL_LEVELS: list[dict[str, Any]] = [
             "one of them."
         ),
         "allowed_gates": ["h", "x", "cx"],
-        "target": {"type": "state", "state": _state({1: S2 + 0j, 2: S2 + 0j}, 2), "tolerance": 0.05},
+        "target": {"type": "state", "statevector": _state({1: S2 + 0j, 2: S2 + 0j}, 2), "tolerance": 0.05},
         "constraints": {"max_qubits": 2, "max_depth": 5, "required_gates": ["h", "x"]},
         "tags": ["entanglement", "bell-states"],
         "game_meta": {"game_id": "bell_builder", "level": 3, "efficiency": 0.15, "par_gates": 3},
@@ -78,7 +78,7 @@ BELL_LEVELS: list[dict[str, Any]] = [
             "Graded on fidelity."
         ),
         "allowed_gates": ["h", "x", "z", "cx"],
-        "target": {"type": "state", "state": _state({1: S2 + 0j, 2: -S2 + 0j}, 2), "tolerance": 0.05},
+        "target": {"type": "state", "statevector": _state({1: S2 + 0j, 2: -S2 + 0j}, 2), "tolerance": 0.05},
         "constraints": {"max_qubits": 2, "max_depth": 6, "required_gates": ["h", "x"]},
         "tags": ["entanglement", "bell-states", "phase"],
         "game_meta": {"game_id": "bell_builder", "level": 4, "efficiency": 0.15, "par_gates": 4},
@@ -184,7 +184,7 @@ FIND_BUG_LEVELS: list[dict[str, Any]] = [
             "Budget: 1 edit."
         ),
         "allowed_gates": ["h", "x", "z", "cx"],
-        "target": {"type": "state", "state": _state({0: S2 + 0j, 3: S2 + 0j}, 2), "tolerance": 0.05},
+        "target": {"type": "state", "statevector": _state({0: S2 + 0j, 3: S2 + 0j}, 2), "tolerance": 0.05},
         "constraints": {"max_qubits": 2, "max_depth": 4},
         "tags": ["debugging", "entanglement", "bell-states"],
         "game_meta": {
