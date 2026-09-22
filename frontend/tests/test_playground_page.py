@@ -123,7 +123,16 @@ def test_measurement_tab_shows_observed_for_both_outcomes():
 
 
 # --- The build tab uses the real composer ------------------------------------
+#
+# These need the compiled composer bundle. Without it the tab deliberately
+# falls back to a gate dropdown, which is correct behaviour, not a failure.
+_BUNDLE = (ROOT / "circuit_composer" / "frontend" / "build" / "index.html").is_file()
+needs_bundle = pytest.mark.skipif(
+    not _BUNDLE, reason="composer bundle not built (npm run build)"
+)
 
+
+@needs_bundle
 def test_build_tab_has_no_gate_dropdown():
     at = _run()
     assert not any(
@@ -131,6 +140,7 @@ def test_build_tab_has_no_gate_dropdown():
     ), "the gate dropdown should be the drag-and-drop grid"
 
 
+@needs_bundle
 def test_build_tab_reports_gates_it_cannot_apply():
     """This demo is single-qubit; a CNOT must be explained, not ignored."""
     at = _run(circuit={
@@ -141,6 +151,7 @@ def test_build_tab_reports_gates_it_cannot_apply():
     assert any("single qubit" in (i.value or "") for i in at.info)
 
 
+@needs_bundle
 def test_build_tab_applies_gates_from_the_grid():
     """A circuit on the grid must actually change the reported state."""
     from lib import playground as pg

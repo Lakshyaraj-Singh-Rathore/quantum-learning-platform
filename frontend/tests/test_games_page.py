@@ -159,7 +159,10 @@ def test_results_are_hidden_when_the_circuit_changes():
 def test_stamp_ignores_op_ids():
     """Op ids are regenerated on every rebuild; comparing them always differs."""
     src = PAGE.read_text()
-    assert "_strip_ids" in src
+    assert "_without_ids" in src
+    # Inlined rather than imported: app.quantum.inspect needs pydantic-settings,
+    # which the Streamlit image does not install.
+    assert "from app.quantum.inspect import" not in src
 
 
 def test_every_clear_path_forgets_the_stamp_too():

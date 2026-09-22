@@ -40,16 +40,31 @@ def _forget_attempt() -> None:
         st.session_state.pop(key, None)
 
 
+def _without_ids(value):
+    """Strip op ids from a nested IR structure.
+
+    Deliberately a local copy of the backend's helper rather than an import.
+    ``app.quantum.inspect`` pulls in ``app.config``, which needs
+    ``pydantic-settings`` -- a backend-only dependency that is not installed in
+    the Streamlit image. Importing it here crashed the page with
+    ModuleNotFoundError. The frontend may only import backend modules that are
+    pure (``app.quantum.ir`` and ``app.quantum.params``).
+    """
+    if isinstance(value, dict):
+        return {k: _without_ids(v) for k, v in value.items() if k != "id"}
+    if isinstance(value, list):
+        return [_without_ids(v) for v in value]
+    return value
+
+
 def _circuit_stamp(circuit) -> str:
     """Identity of a circuit, ignoring op ids.
 
     Op ids are regenerated every time the IR is rebuilt, so comparing raw
-    dictionaries would always report a change. The backend strips them for its
-    run-hash cache for the same reason; reuse that helper.
+    dictionaries would report a change on every rerun and hide results that are
+    still valid.
     """
-    from app.quantum.inspect import _strip_ids
-
-    return json.dumps(_strip_ids(circuit.to_dict()), sort_keys=True)
+    return json.dumps(_without_ids(circuit.to_dict()), sort_keys=True)
 
 # A stale bundle renders as a blank white iframe with no console error, so say
 # what is wrong rather than leaving the player staring at it.
