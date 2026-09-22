@@ -135,3 +135,38 @@ def test_results_panel_surfaces_state_fidelity():
     """A histogram cannot distinguish |Phi+> from |Phi->; the fidelity can."""
     src = PAGE.read_text()
     assert "fidelity" in src.lower()
+
+
+# --- A result must not outlive the circuit that produced it ------------------
+#
+# Reported as "the game shows success on a wrong answer". The grader was
+# right; the PAGE was wrong. `game_attempt` persisted across reruns, so after a
+# win the "Level complete" banner stayed on screen while the learner edited the
+# circuit into something incorrect.
+
+def test_attempt_is_stamped_with_the_circuit_that_was_graded():
+    src = PAGE.read_text()
+    assert "game_attempt_circuit" in src
+    assert "game_attempt_level" in src
+
+
+def test_results_are_hidden_when_the_circuit_changes():
+    src = PAGE.read_text()
+    assert "same_circuit" in src
+    assert "changed the circuit since the last run" in src
+
+
+def test_stamp_ignores_op_ids():
+    """Op ids are regenerated on every rebuild; comparing them always differs."""
+    src = PAGE.read_text()
+    assert "_strip_ids" in src
+
+
+def test_every_clear_path_forgets_the_stamp_too():
+    """A stale stamp with no attempt, or vice versa, would misreport."""
+    src = PAGE.read_text()
+    assert "_forget_attempt()" in src
+    # The old bare pop is gone; all three sites go through the helper.
+    assert 'st.session_state.pop("game_attempt", None)' not in src.split(
+        "def _forget_attempt"
+    )[1].split("def ")[1]

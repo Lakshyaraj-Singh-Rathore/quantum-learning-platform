@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import time
 
 import streamlit as st
@@ -31,6 +32,24 @@ auth.sidebar_account()
 
 if not auth.require_login():
     st.stop()
+
+
+def _forget_attempt() -> None:
+    """Drop a stored result and the circuit stamp that goes with it."""
+    for key in ("game_attempt", "game_attempt_circuit", "game_attempt_level"):
+        st.session_state.pop(key, None)
+
+
+def _circuit_stamp(circuit) -> str:
+    """Identity of a circuit, ignoring op ids.
+
+    Op ids are regenerated every time the IR is rebuilt, so comparing raw
+    dictionaries would always report a change. The backend strips them for its
+    run-hash cache for the same reason; reuse that helper.
+    """
+    from app.quantum.inspect import _strip_ids
+
+    return json.dumps(_strip_ids(circuit.to_dict()), sort_keys=True)
 
 # A stale bundle renders as a blank white iframe with no console error, so say
 # what is wrong rather than leaving the player staring at it.
@@ -79,7 +98,7 @@ if active_slug is None:
                         st.caption(f"best {level['best_score']:.2f} · {level['attempts']} tries")
                     if st.button("Play", key=f"play_{level['slug']}", use_container_width=True):
                         st.session_state["game_level"] = level["slug"]
-                        st.session_state.pop("game_attempt", None)
+                        _forget_attempt()
                         # Find the Bug hands the learner a broken circuit.
                         if level.get("starter_ir"):
                             from app.quantum.ir import CircuitIR
@@ -201,6 +220,11 @@ if action[0].button("▶ Run & score", type="primary", use_container_width=True)
             time.sleep(0.5)
         placeholder.empty()
         st.session_state["game_attempt"] = outcome_now
+        # Remember exactly what was graded. Results persist across reruns, so
+        # without this a win banner stays on screen while the learner edits the
+        # circuit into something wrong.
+        st.session_state["game_attempt_circuit"] = _circuit_stamp(ir)
+        st.session_state["game_attempt_level"] = level["slug"]
         st.rerun()
     except ApiError as exc:
         st.error(str(exc))
@@ -209,7 +233,7 @@ if action[1].button("↺ Clear circuit", use_container_width=True):
     from app.quantum.ir import CircuitIR
 
     composer.set_circuit(CircuitIR(name="untitled", n_qubits=2, n_clbits=2))
-    st.session_state.pop("game_attempt", None)
+    _forget_attempt()
     st.rerun()
 
 if level.get("starter_ir") and action[2].button(
@@ -218,10 +242,24 @@ if level.get("starter_ir") and action[2].button(
     from app.quantum.ir import CircuitIR
 
     composer.set_circuit(CircuitIR.from_dict(level["starter_ir"]))
-    st.session_state.pop("game_attempt", None)
+    _forget_attempt()
     st.rerun()
 
 outcome = st.session_state.get("game_attempt")
+
+# A result describes the circuit that was graded, not whatever is on the grid
+# now. Showing a stale "Level complete" beside an edited circuit reads as the
+# game accepting a wrong answer.
+if outcome is not None:
+    same_level = st.session_state.get("game_attempt_level") == level["slug"]
+    same_circuit = st.session_state.get("game_attempt_circuit") == _circuit_stamp(ir)
+    if not (same_level and same_circuit):
+        st.info(
+            "You have changed the circuit since the last run. Press "
+            "**Run & score** to grade what is on the grid now."
+        )
+        outcome = None
+
 if outcome:
     st.divider()
     if outcome.get("passed"):
