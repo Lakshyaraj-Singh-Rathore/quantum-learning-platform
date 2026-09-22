@@ -21,7 +21,17 @@ import streamlit as st
 st.set_page_config(page_title="QuantumLearn", page_icon="⚛", layout="wide",
                    initial_sidebar_state="expanded")
 
-from lib import auth, playground as pg, viz  # noqa: E402
+from lib import auth, composer as composer_lib, playground as pg, viz  # noqa: E402
+
+# The real drag-and-drop grid, when its bundle is built.
+try:
+    from circuit_composer import circuit_composer
+    from circuit_composer import is_available as _composer_available
+except Exception:  # noqa: BLE001
+    circuit_composer = None
+
+    def _composer_available() -> bool:
+        return False
 
 st.title("🧪 Quantum Playground")
 auth.sidebar_account()
@@ -118,12 +128,60 @@ with tabs[1]:
         phi = cols[1].slider("φ (degrees)", 0.0, 360.0, 0.0, 1.0, key="pg_phi")
         state = pg.state_from_angles(theta, phi)
 
-    gates = st.multiselect(
-        "Then apply gates, left to right",
-        list(pg.GATES),
-        key="pg_gates",
-        help="; ".join(f"{g}: {h}" for g, h in pg.GATE_HELP.items()),
+    st.markdown("#### Then build a circuit")
+    st.caption(
+        "Drag gates onto the wire. This is the same composer as the Composer "
+        "page, so anything you build here carries over."
     )
+
+    # The real drag-and-drop grid rather than a dropdown. It lives in a
+    # pre-allocated container because Streamlit addresses a custom component by
+    # its position in the element tree: if the widget count above it changes,
+    # the iframe is torn down and can come back blank.
+    grid_slot = st.container()
+    gates: list[str] = []
+    skipped: list[str] = []
+
+    if _composer_available() and circuit_composer is not None:
+        with grid_slot:
+            circuit = composer_lib.get_circuit()
+            edited = circuit_composer(
+                value=circuit.to_dict(), n_qubits=circuit.n_qubits,
+                key="pg_build_grid",
+            )
+            if edited:
+                try:
+                    from app.quantum.ir import CircuitIR
+
+                    composer_lib.set_circuit(CircuitIR.from_dict(edited))
+                    circuit = composer_lib.get_circuit()
+                except Exception as exc:  # noqa: BLE001
+                    st.error(f"Composer returned an invalid circuit: {exc}")
+            gates, skipped = pg.gates_from_ir(circuit.to_dict(), qubit=0)
+
+        controls = st.columns([1, 3])
+        if controls[0].button("↺ Clear the wire", key="pg_build_clear"):
+            from app.quantum.ir import CircuitIR
+
+            composer_lib.set_circuit(CircuitIR(name="untitled", n_qubits=1, n_clbits=1))
+            st.rerun()
+        if gates:
+            controls[1].caption("Applied to q0: " + " ── ".join(gates))
+    else:
+        # No bundle: fall back to the dropdown so the demo still works.
+        gates = st.multiselect(
+            "Apply gates, left to right",
+            list(pg.GATES), key="pg_gates",
+            help="; ".join(f"{g}: {h}" for g, h in pg.GATE_HELP.items()),
+        )
+
+    if skipped:
+        st.info(
+            "This demo models a **single qubit**, so these were not applied: "
+            + ", ".join(sorted(set(skipped)))
+            + ". Try them in the Composer, where the full simulator runs."
+        )
+
     if gates:
         state = pg.apply_gates(state, gates)
 
@@ -177,13 +235,19 @@ with tabs[2]:
 
     counts = pg.sample(state, shots, seed=seed)
     observed0 = counts["0"] / max(shots, 1)
+    observed1 = counts["1"] / max(shots, 1)
 
-    compare = st.columns(4)
+    # Both outcomes get an expected AND an observed figure. Showing the
+    # observed value for 0 only made the row asymmetric and left the reader
+    # comparing a theory number against nothing.
+    compare = st.columns(5)
     compare[0].metric("Expected P(0)", f"{p0:.1%}")
-    compare[1].metric("Observed", f"{observed0:.1%}",
+    compare[1].metric("Observed P(0)", f"{observed0:.1%}",
                       f"{(observed0 - p0) * 100:+.1f} pts")
     compare[2].metric("Expected P(1)", f"{p1:.1%}")
-    compare[3].metric("Shots", shots)
+    compare[3].metric("Observed P(1)", f"{observed1:.1%}",
+                      f"{(observed1 - p1) * 100:+.1f} pts")
+    compare[4].metric("Shots", shots)
 
     viz.histogram({"counts": counts})
     st.caption(

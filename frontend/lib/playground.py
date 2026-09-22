@@ -152,6 +152,35 @@ def sample(state: np.ndarray, shots: int, seed: int | None = None) -> dict[str, 
     return {"0": int(shots) - ones, "1": ones}
 
 
+def gates_from_ir(ir_dict: dict[str, Any], qubit: int = 0) -> tuple[list[str], list[str]]:
+    """Read a single-qubit gate sequence off a composer circuit.
+
+    Returns ``(applied, skipped)``. The playground models one qubit, so
+    anything the composer allows that does not act on ``qubit`` alone --
+    two-qubit gates, measurements, control-flow blocks -- is reported as
+    skipped rather than silently ignored, because a learner who drops a CNOT
+    and sees nothing happen would reasonably conclude the demo is broken.
+    """
+    applied: list[str] = []
+    skipped: list[str] = []
+    for op in ir_dict.get("ops") or []:
+        kind = op.get("kind")
+        if kind != "gate":
+            skipped.append(kind or "?")
+            continue
+        name = (op.get("gate") or "").upper()
+        qubits = op.get("qubits") or []
+        controls = op.get("controls") or []
+        if controls or len(qubits) != 1 or qubits[0] != qubit:
+            skipped.append(name.lower() if name else "?")
+            continue
+        if name not in GATES:
+            skipped.append(name.lower())
+            continue
+        applied.append(name)
+    return applied, skipped
+
+
 def collapse(state: np.ndarray, rng: np.random.Generator | None = None) -> tuple[int, np.ndarray]:
     """Measure once. Returns the outcome and the state left behind.
 
@@ -235,6 +264,7 @@ __all__ = [
     "as_result",
     "sample",
     "collapse",
+    "gates_from_ir",
     "interference",
     "state_space_rows",
     "bitstring_table",

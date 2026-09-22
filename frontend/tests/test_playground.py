@@ -273,3 +273,61 @@ def test_collapse_is_reproducible_with_a_seed():
     b = [pg.collapse(pg.state_from_angles(70, 0), np.random.default_rng(9))[0]
          for _ in range(5)]
     assert a == b
+
+
+# --- Reading a gate sequence off the composer --------------------------------
+#
+# The "Build a Qubit" tab drives its state from the real drag-and-drop grid
+# rather than a dropdown, so it has to translate a circuit IR into the
+# single-qubit gate list this module understands.
+
+def test_single_qubit_gates_are_read_in_order():
+    ir = {"n_qubits": 1, "n_clbits": 1, "ops": [
+        {"kind": "gate", "gate": "h", "qubits": [0], "layer": 0},
+        {"kind": "gate", "gate": "t", "qubits": [0], "layer": 1},
+        {"kind": "gate", "gate": "z", "qubits": [0], "layer": 2}]}
+    applied, skipped = pg.gates_from_ir(ir)
+    assert applied == ["H", "T", "Z"]
+    assert skipped == []
+
+
+def test_two_qubit_gates_are_reported_not_silently_dropped():
+    """A learner who drops a CNOT and sees nothing must be told why."""
+    ir = {"n_qubits": 2, "n_clbits": 2, "ops": [
+        {"kind": "gate", "gate": "h", "qubits": [0], "layer": 0},
+        {"kind": "gate", "gate": "x", "qubits": [1], "controls": [0], "layer": 1}]}
+    applied, skipped = pg.gates_from_ir(ir)
+    assert applied == ["H"]
+    assert skipped, "the CNOT must be reported as skipped"
+
+
+def test_measurements_and_other_qubits_are_skipped():
+    ir = {"n_qubits": 2, "n_clbits": 2, "ops": [
+        {"kind": "measure", "qubits": [0], "clbits": [0], "layer": 0},
+        {"kind": "gate", "gate": "x", "qubits": [1], "layer": 1}]}
+    applied, skipped = pg.gates_from_ir(ir)
+    assert applied == []
+    assert set(skipped) == {"measure", "x"}
+
+
+def test_unsupported_gate_is_skipped_not_crashed():
+    ir = {"n_qubits": 1, "n_clbits": 1, "ops": [
+        {"kind": "gate", "gate": "rx", "qubits": [0], "params": ["pi/2"], "layer": 0}]}
+    applied, skipped = pg.gates_from_ir(ir)
+    assert applied == []
+    assert skipped == ["rx"]
+
+
+def test_empty_circuit_gives_no_gates():
+    assert pg.gates_from_ir({"n_qubits": 1, "n_clbits": 1, "ops": []}) == ([], [])
+
+
+def test_composer_path_matches_applying_gates_directly():
+    """Routing through the grid must not change the physics."""
+    ir = {"n_qubits": 1, "n_clbits": 1, "ops": [
+        {"kind": "gate", "gate": "h", "qubits": [0], "layer": 0},
+        {"kind": "gate", "gate": "t", "qubits": [0], "layer": 1}]}
+    gates, _ = pg.gates_from_ir(ir)
+    start = pg.state_from_angles(0, 0)
+    assert np.allclose(pg.apply_gates(start, gates),
+                       pg.apply_gates(start, ["H", "T"]))

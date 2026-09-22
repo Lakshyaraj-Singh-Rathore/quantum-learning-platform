@@ -330,10 +330,17 @@ def measurement_lab(key: str) -> None:
     counts = pg.sample(state, shots, seed=seed)
     observed = counts["0"] / max(shots, 1)
 
-    compare = st.columns(3)
+    # Both outcomes get a theory and an observed figure, so neither is left
+    # being compared against nothing.
+    observed1 = counts["1"] / max(shots, 1)
+    compare = st.columns(5)
     compare[0].metric("Theory P(0)", f"{p0:.1%}")
-    compare[1].metric("Observed", f"{observed:.1%}", f"{(observed - p0) * 100:+.1f} pts")
-    compare[2].metric("Shots", shots)
+    compare[1].metric("Observed P(0)", f"{observed:.1%}",
+                      f"{(observed - p0) * 100:+.1f} pts")
+    compare[2].metric("Theory P(1)", f"{1 - p0:.1%}")
+    compare[3].metric("Observed P(1)", f"{observed1:.1%}",
+                      f"{(observed1 - (1 - p0)) * 100:+.1f} pts")
+    compare[4].metric("Shots", shots)
 
     viz.histogram({"counts": counts})
     st.caption(

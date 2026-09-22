@@ -110,3 +110,48 @@ def test_no_column_nesting_violations():
     at = _run(pg_gates=["H"])
     nesting = [e for e in at.exception if "one level of nesting" in str(e)]
     assert not nesting
+
+
+# --- Both outcomes get an observed figure ------------------------------------
+
+def test_measurement_tab_shows_observed_for_both_outcomes():
+    """Expected P(1) with no Observed P(1) left a number compared to nothing."""
+    at = _run()
+    labels = [m.label for m in at.metric]
+    for wanted in ("Expected P(0)", "Observed P(0)", "Expected P(1)", "Observed P(1)"):
+        assert wanted in labels, f"{wanted} missing from the measurement tab"
+
+
+# --- The build tab uses the real composer ------------------------------------
+
+def test_build_tab_has_no_gate_dropdown():
+    at = _run()
+    assert not any(
+        "apply gates" in (m.label or "").lower() for m in at.multiselect
+    ), "the gate dropdown should be the drag-and-drop grid"
+
+
+def test_build_tab_reports_gates_it_cannot_apply():
+    """This demo is single-qubit; a CNOT must be explained, not ignored."""
+    at = _run(circuit={
+        "name": "c", "n_qubits": 2, "n_clbits": 2, "ops": [
+            {"kind": "gate", "gate": "h", "qubits": [0], "layer": 0},
+            {"kind": "gate", "gate": "x", "qubits": [1], "controls": [0], "layer": 1}]})
+    assert not at.exception
+    assert any("single qubit" in (i.value or "") for i in at.info)
+
+
+def test_build_tab_applies_gates_from_the_grid():
+    """A circuit on the grid must actually change the reported state."""
+    from lib import playground as pg
+
+    plain = _run(circuit={"name": "c", "n_qubits": 1, "n_clbits": 1, "ops": []})
+    with_h = _run(circuit={"name": "c", "n_qubits": 1, "n_clbits": 1, "ops": [
+        {"kind": "gate", "gate": "h", "qubits": [0], "layer": 0}]})
+    before = {m.label: m.value for m in plain.metric}.get("P(0)")
+    after = {m.label: m.value for m in with_h.metric}.get("P(0)")
+    assert before != after, "placing H on the grid did not change the state"
+    # And the value is the real physics, not an arbitrary change.
+    expected = pg.probabilities(
+        pg.apply_gates(pg.state_from_amplitudes(0.8, 0.6), ["H"]))[0]
+    assert after == f"{expected:.1%}"
