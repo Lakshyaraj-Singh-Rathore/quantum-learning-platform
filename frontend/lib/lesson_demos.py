@@ -45,10 +45,22 @@ except Exception:  # noqa: BLE001
 # 01 qubits / 13 classical bit vs qubit
 # --------------------------------------------------------------------------- #
 def bit_vs_qubit(key: str) -> None:
-    """A bit picks a side; a qubit lives on a continuum."""
+    """A bit picks a side; a qubit lives on a continuum until you measure it.
+
+    The measure/reset cycle is the part a probability bar cannot teach:
+    measurement is destructive. Once the qubit collapses it STAYS collapsed,
+    and measuring again returns the same answer, which is why the button
+    disables itself and only a reset brings the superposition back.
+    """
+    import numpy as np
+
+    collapsed_key = f"{key}_collapsed"      # the observed bit, or None
+    history_key = f"{key}_history"          # outcomes across reset cycles
+    st.session_state.setdefault(history_key, [])
+
     st.caption(
-        "A classical bit has two options. Drag the slider to see that a qubit "
-        "has infinitely many states between them."
+        "A classical bit has two options. A qubit has infinitely many — but "
+        "only until you look at it."
     )
     left, right = st.columns(2)
 
@@ -56,21 +68,91 @@ def bit_vs_qubit(key: str) -> None:
         st.markdown("**Classical bit**")
         bit = st.radio("Value", [0, 1], horizontal=True, key=f"{key}_bit")
         st.metric("Reads as", bit)
-        st.caption("Nothing in between. Reading it changes nothing.")
+        st.caption(
+            "Reading it changes nothing. Read it a million times and it is "
+            "still the value you set."
+        )
 
     with right:
         st.markdown("**Qubit**")
         theta = st.slider(
-            "θ — how far from |0⟩ toward |1⟩", 0.0, 180.0, 60.0, 1.0,
+            "θ — how far from |0⟩ toward |1⟩", 0.0, 180.0, 90.0, 1.0,
             key=f"{key}_theta",
+            disabled=st.session_state.get(collapsed_key) is not None,
+            help="Locked while the qubit is collapsed — reset it to move again.",
         )
-        state = pg.state_from_angles(theta, 0.0)
+        prepared = pg.state_from_angles(theta, 0.0)
+        observed = st.session_state.get(collapsed_key)
+        state = (
+            prepared if observed is None
+            else np.array([1.0, 0.0] if observed == 0 else [0.0, 1.0], dtype=complex)
+        )
         p0, p1 = pg.probabilities(state)
+
         st.code(f"|ψ⟩ = {pg.ket_string(state)}", language="text")
         bar = st.columns(2)
         bar[0].metric("P(0)", f"{p0:.1%}")
         bar[1].metric("P(1)", f"{p1:.1%}")
-        st.caption("Genuinely in between — until a measurement forces a choice.")
+
+    # Controls sit below the two columns: st.columns cannot nest more than one
+    # level deep, and these need a row of their own.
+    st.markdown("---")
+    controls = st.columns([1, 1, 2])
+
+    if controls[0].button(
+        "🔬 Measure the qubit",
+        key=f"{key}_measure",
+        use_container_width=True,
+        disabled=observed is not None,
+        help="Collapses the superposition to a single definite value.",
+    ):
+        outcome, _ = pg.collapse(prepared)
+        st.session_state[collapsed_key] = outcome
+        st.session_state[history_key] = st.session_state[history_key] + [outcome]
+        st.rerun()
+
+    if controls[1].button(
+        "♻ Reset qubit",
+        key=f"{key}_reset",
+        use_container_width=True,
+        disabled=observed is None,
+        help="Prepares a fresh qubit so you can measure again.",
+    ):
+        st.session_state[collapsed_key] = None
+        st.rerun()
+
+    history = st.session_state[history_key]
+    if history:
+        zeros = history.count(0)
+        recent = " ".join(str(h) for h in history[-24:])
+        controls[2].caption(
+            f"**{len(history)}** measurement(s): "
+            f"**{zeros}** zeros, **{len(history) - zeros}** ones\n\n"
+            f"`{recent}`"
+        )
+        if controls[2].button("Clear the record", key=f"{key}_clearhist"):
+            st.session_state[history_key] = []
+            st.rerun()
+
+    if observed is None:
+        st.info(
+            "The qubit is in **superposition**. It has no value yet — not a "
+            "hidden one you cannot see, genuinely none. Press **Measure** and "
+            "it is forced to choose."
+        )
+    else:
+        st.success(
+            f"**Collapsed to |{observed}⟩.** The superposition is gone. Measure "
+            f"again and you will get {observed} every time — the state really "
+            "did change when you looked. Press **Reset** for a fresh qubit."
+        )
+        if len(history) >= 4:
+            zeros = history.count(0)
+            st.caption(
+                f"Across {len(history)} prepare-and-measure cycles you have seen "
+                f"{zeros} zeros and {len(history) - zeros} ones. Individual "
+                "results are unpredictable; the proportion is not."
+            )
 
 
 def build_a_qubit(key: str) -> None:

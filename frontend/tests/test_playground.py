@@ -228,3 +228,48 @@ def test_bit_ordering_reads_the_string_correctly():
 def test_ket_string_formats_real_and_complex_amplitudes():
     assert "0.707|0⟩" in pg.ket_string(pg.state_from_angles(90, 0))
     assert "i" in pg.ket_string(pg.state_from_angles(90, 90))
+
+
+# --- Measurement collapse ---------------------------------------------------
+#
+# The measure/reset cycle teaches the one thing a probability bar cannot:
+# measurement is destructive. These pin that behaviour.
+
+def test_collapse_returns_a_basis_state():
+    outcome, after = pg.collapse(pg.state_from_angles(90, 0),
+                                 np.random.default_rng(1))
+    assert outcome in (0, 1)
+    assert np.count_nonzero(np.abs(after)) == 1, "post-measurement state must be definite"
+    assert pg.probabilities(after)[outcome] == pytest.approx(1.0)
+
+
+def test_collapse_is_idempotent():
+    """Once collapsed, measuring again must give the same answer forever."""
+    rng = np.random.default_rng(2)
+    first, after = pg.collapse(pg.state_from_angles(90, 0), rng)
+    for _ in range(100):
+        again, after = pg.collapse(after, rng)
+        assert again == first
+
+
+@pytest.mark.parametrize("theta", [0.0, 45.0, 90.0, 135.0, 180.0])
+def test_collapse_follows_the_born_rule(theta):
+    state = pg.state_from_angles(theta, 0.0)
+    expected = pg.probabilities(state)[0]
+    rng = np.random.default_rng(5)
+    zeros = sum(1 for _ in range(4000) if pg.collapse(state, rng)[0] == 0)
+    assert zeros / 4000 == pytest.approx(expected, abs=0.03)
+
+
+def test_deterministic_states_never_surprise():
+    rng = np.random.default_rng(3)
+    assert all(pg.collapse(pg.state_from_angles(0, 0), rng)[0] == 0 for _ in range(200))
+    assert all(pg.collapse(pg.state_from_angles(180, 0), rng)[0] == 1 for _ in range(200))
+
+
+def test_collapse_is_reproducible_with_a_seed():
+    a = [pg.collapse(pg.state_from_angles(70, 0), np.random.default_rng(9))[0]
+         for _ in range(5)]
+    b = [pg.collapse(pg.state_from_angles(70, 0), np.random.default_rng(9))[0]
+         for _ in range(5)]
+    assert a == b

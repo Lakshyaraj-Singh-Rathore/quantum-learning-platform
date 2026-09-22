@@ -152,6 +152,23 @@ def sample(state: np.ndarray, shots: int, seed: int | None = None) -> dict[str, 
     return {"0": int(shots) - ones, "1": ones}
 
 
+def collapse(state: np.ndarray, rng: np.random.Generator | None = None) -> tuple[int, np.ndarray]:
+    """Measure once. Returns the outcome and the state left behind.
+
+    This is the part a histogram cannot teach: measurement is destructive. The
+    superposition does not survive, and the post-measurement state is the basis
+    state that was observed, so measuring again gives the same answer forever.
+    Only a reset restores the qubit.
+    """
+    p0, _ = probabilities(state)
+    generator = rng if rng is not None else np.random.default_rng()
+    outcome = 0 if generator.random() < p0 else 1
+    collapsed = np.array([1.0, 0.0], dtype=complex) if outcome == 0 else np.array(
+        [0.0, 1.0], dtype=complex
+    )
+    return outcome, collapsed
+
+
 def interference(amp_a: float, amp_b: float) -> dict[str, float]:
     """Two paths meeting at one outcome.
 
@@ -217,6 +234,7 @@ __all__ = [
     "ket_string",
     "as_result",
     "sample",
+    "collapse",
     "interference",
     "state_space_rows",
     "bitstring_table",

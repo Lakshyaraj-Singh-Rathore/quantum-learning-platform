@@ -107,3 +107,94 @@ def test_lessons_without_demos_are_unchanged():
     headings = [s.value for s in at.subheader]
     assert not any("Try it yourself" in (h or "") for h in headings)
     assert not at.exception
+
+
+# --- The measure / reset cycle ----------------------------------------------
+#
+# Driven through the real page, because the interesting behaviour is the
+# interaction: the buttons must swap enabled state, the slider must lock while
+# the qubit is collapsed, and a reset must restore the superposition.
+
+def _qubits_lesson() -> int:
+    for index, lesson in enumerate(_LESSONS):
+        if lesson["slug"] == "01_qubits":
+            return index
+    pytest.skip("01_qubits lesson not present")
+
+
+def _button(at, fragment):
+    matches = [b for b in at.button if fragment.lower() in (b.label or "").lower()]
+    assert matches, f"no button matching {fragment!r}"
+    return matches[0]
+
+
+def _state_key(at, suffix):
+    keys = [k for k in at.session_state.filtered_state if k.endswith(suffix)]
+    assert keys, f"no session key ending {suffix!r}"
+    return keys[0]
+
+
+def test_measure_and_reset_buttons_exist():
+    at = _open_lesson(_qubits_lesson())
+    assert not at.exception
+    assert _button(at, "Measure the qubit")
+    assert _button(at, "Reset qubit")
+
+
+def test_reset_starts_disabled_and_measure_starts_enabled():
+    """Nothing to reset until the qubit has actually been measured."""
+    at = _open_lesson(_qubits_lesson())
+    assert _button(at, "Measure the qubit").disabled is False
+    assert _button(at, "Reset qubit").disabled is True
+
+
+def test_measuring_collapses_the_qubit():
+    at = _open_lesson(_qubits_lesson())
+    _button(at, "Measure the qubit").click().run()
+    assert not at.exception, [str(e) for e in at.exception]
+    collapsed = at.session_state[_state_key(at, "_collapsed")]
+    assert collapsed in (0, 1)
+    # The buttons swap over: you cannot measure a collapsed qubit again.
+    assert _button(at, "Measure the qubit").disabled is True
+    assert _button(at, "Reset qubit").disabled is False
+
+
+def test_collapse_locks_the_theta_slider():
+    """A collapsed qubit has a definite value; sliding theta would be a lie."""
+    at = _open_lesson(_qubits_lesson())
+    before = [s for s in at.slider if "θ" in (s.label or "")]
+    assert before and before[0].disabled is False
+    _button(at, "Measure the qubit").click().run()
+    after = [s for s in at.slider if "θ" in (s.label or "")]
+    assert after and after[0].disabled is True
+
+
+def test_reset_restores_the_superposition():
+    at = _open_lesson(_qubits_lesson())
+    _button(at, "Measure the qubit").click().run()
+    _button(at, "Reset qubit").click().run()
+    assert not at.exception
+    assert at.session_state[_state_key(at, "_collapsed")] is None
+    assert _button(at, "Measure the qubit").disabled is False
+
+
+def test_history_survives_a_reset():
+    """The record of outcomes is what shows the distribution emerging."""
+    at = _open_lesson(_qubits_lesson())
+    _button(at, "Measure the qubit").click().run()
+    _button(at, "Reset qubit").click().run()
+    assert len(at.session_state[_state_key(at, "_history")]) == 1
+
+
+def test_repeated_cycles_produce_both_outcomes():
+    """At theta = 90 the qubit is a genuine coin flip, not a fixed answer."""
+    at = _open_lesson(_qubits_lesson())
+    seen = set()
+    for _ in range(20):
+        _button(at, "Measure the qubit").click().run()
+        # The key only exists once something has been measured.
+        seen.add(at.session_state[_state_key(at, "_collapsed")])
+        _button(at, "Reset qubit").click().run()
+        if seen == {0, 1}:
+            break
+    assert seen == {0, 1}, f"only ever saw {seen} in 20 cycles"
