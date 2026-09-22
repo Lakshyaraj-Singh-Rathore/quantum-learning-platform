@@ -18,7 +18,7 @@ import streamlit as st
 st.set_page_config(page_title="QuantumLearn", page_icon="⚛", layout="wide",
                    initial_sidebar_state="expanded")
 
-from lib import api_client, auth, viz
+from lib import api_client, auth, code_checks, viz
 from lib.api_client import ApiError
 
 st.title("Code Lab")
@@ -105,12 +105,32 @@ code = st.text_area(
     key="codelab_code",
 )
 
-with st.expander("🎨 Syntax-highlighted view", expanded=False):
-    st.caption(
-        "Streamlit's editor is plain text. This is the same code with "
-        "highlighting, so you can spot typos before building."
+# Live checks, shown by default. Streamlit's editor is a plain textarea with
+# no diagnostics, so without this a typo is only discovered after pressing
+# Build and waiting for the sandbox. These run on every rerun and never
+# execute the program.
+problems = code_checks.check(code, framework)
+
+if problems:
+    st.error(
+        f"**{len(problems)} problem{'s' if len(problems) != 1 else ''} found"
+        "** — fix these before building:"
     )
-    st.code(code, language=_SYNTAX.get(framework, "python"), line_numbers=True)
+    for line_no, column, message in problems:
+        st.markdown(f"- **Line {line_no}**, col {column} — {message}")
+elif code.strip():
+    st.success("No problems found. Ready to build.")
+
+with st.expander("🎨 Highlighted view with error markers", expanded=bool(problems)):
+    st.caption(
+        "The same code with highlighting. Any problems above are marked "
+        "underneath the line they came from."
+    )
+    st.code(
+        code_checks.annotate(code, problems) if problems else code,
+        language=_SYNTAX.get(framework, "python"),
+        line_numbers=True,
+    )
 
 action = st.columns([1, 1, 3])
 build_clicked = action[0].button("Build circuit", use_container_width=True)

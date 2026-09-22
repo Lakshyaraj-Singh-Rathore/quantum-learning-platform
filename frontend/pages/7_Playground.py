@@ -147,13 +147,13 @@ with tabs[1]:
             circuit = composer_lib.get_circuit()
             edited = circuit_composer(
                 value=circuit.to_dict(), n_qubits=circuit.n_qubits,
-                key="pg_build_grid",
+                key=f"pg_build_grid_{composer_lib.grid_epoch()}",
             )
             if edited:
                 try:
                     from app.quantum.ir import CircuitIR
 
-                    composer_lib.set_circuit(CircuitIR.from_dict(edited))
+                    composer_lib.set_circuit(CircuitIR.from_dict(edited), from_grid=True)
                     circuit = composer_lib.get_circuit()
                 except Exception as exc:  # noqa: BLE001
                     st.error(f"Composer returned an invalid circuit: {exc}")

@@ -395,3 +395,74 @@ def test_bell_grading_actually_computes_fidelity():
     note = outcome["details"]["behaviour_note"]
     assert "skipped" not in note
     assert "fidelity" in note.lower()
+
+
+# --- A game level is only solved at 100% -------------------------------------
+#
+# PASS_THRESHOLD is 0.8, which suits a coding challenge with partial credit but
+# not a puzzle: congratulating a 0.85 teaches that an almost-right circuit is
+# right. Game levels now require a perfect score.
+
+def test_game_pass_threshold_is_exactly_one():
+    from app.services.autograder import GAME_PASS_THRESHOLD
+
+    assert GAME_PASS_THRESHOLD == 1.0
+
+
+def test_a_partial_truth_table_does_not_pass():
+    """6 of 8 rows scores 0.75, which clears PASS_THRESHOLD but is still wrong."""
+    from app.quantum.backends import qiskit_aer
+    from app.services.autograder import grade
+
+    level = MULTI_CONTROL_LEVELS[1]
+    challenge = {
+        "allowed_gates": level["allowed_gates"], "target": level["target"],
+        "constraints": level["constraints"], "game_meta": level["game_meta"],
+    }
+    ir = _c(3, [{"kind": "gate", "gate": "x", "qubits": [2],
+                 "controls": [0], "layer": 0}])  # one control, needs two
+    outcome = grade(ir, challenge, qiskit_aer.run(ir, shots=256, seed=1))
+    assert 0.5 < outcome["score"] < 1.0, "this should be partially correct"
+    assert outcome["passed"] is False
+    assert "perfect" in outcome["feedback"]
+
+
+def test_a_perfect_truth_table_passes():
+    from app.quantum.backends import qiskit_aer
+    from app.services.autograder import grade
+
+    level = MULTI_CONTROL_LEVELS[1]
+    challenge = {
+        "allowed_gates": level["allowed_gates"], "target": level["target"],
+        "constraints": level["constraints"], "game_meta": level["game_meta"],
+    }
+    ir = _c(3, [{"kind": "gate", "gate": "x", "qubits": [2],
+                 "controls": [0, 1], "layer": 0}])
+    outcome = grade(ir, challenge, qiskit_aer.run(ir, shots=256, seed=1))
+    assert outcome["score"] == 1.0
+    assert outcome["passed"] is True
+
+
+def test_ordinary_challenges_keep_partial_credit():
+    """Only game levels are strict; a normal challenge still passes at 0.8."""
+    from app.services.autograder import PASS_THRESHOLD
+
+    assert PASS_THRESHOLD == 0.8
+
+
+def test_measurement_buttons_cannot_solve_a_broken_level():
+    """Pressing Measure All / Normalize must not turn a wrong circuit into a win."""
+    from app.quantum.backends import qiskit_aer
+    from app.quantum.ir import CircuitIR
+    from app.services.autograder import grade
+
+    level = FIND_BUG_LEVELS[0]
+    challenge = {
+        "allowed_gates": level["allowed_gates"], "target": level["target"],
+        "constraints": level["constraints"], "game_meta": level["game_meta"],
+    }
+    ir = CircuitIR.from_dict(level["game_meta"]["starter_ir"])
+    ir.append_measure_all()
+    ir.normalize_terminal_measurement()
+    outcome = grade(ir, challenge, qiskit_aer.run(ir, shots=512, seed=1))
+    assert outcome["passed"] is False

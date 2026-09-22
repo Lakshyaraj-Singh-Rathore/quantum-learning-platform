@@ -94,7 +94,10 @@ def test_level_view_uses_the_drag_and_drop_grid():
     src = PAGE.read_text()
     assert "circuit_composer(" in src
     assert "react_available" in src
-    assert 'key="react_composer"' in src
+    # Keyed on the grid epoch, not a constant: a constant key lets Streamlit
+    # replay the component's stale value and undo Python-side edits.
+    assert "react_composer_" in src
+    assert "grid_epoch()" in src
 
 
 def test_secondary_palette_when_react_is_available():

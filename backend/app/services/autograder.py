@@ -20,6 +20,11 @@ from app.services import game_graders
 
 PASS_THRESHOLD = 0.8
 
+#: Games are puzzles with exactly one right answer, so a level is only
+#: "solved" at full marks. Partial credit is still reported, and still feeds
+#: mastery tracking, but it does not unlock the level.
+GAME_PASS_THRESHOLD = 1.0
+
 
 def grade_counts(
     counts: dict[str, int], target: dict[str, Any]
@@ -134,13 +139,29 @@ def grade(
 
     details["behaviour_note"] = note
     details["counts"] = result.get("counts")
-    passed = score >= PASS_THRESHOLD
 
-    feedback = (
-        f"Passed. {note} Nice work."
-        if passed
-        else f"Not quite. {note} Compare your histogram with the expected distribution."
-    )
+    # Game levels are puzzles with one right answer, so "solved" means solved.
+    # A coding challenge can still award partial credit at PASS_THRESHOLD,
+    # but a game that congratulates you for a 0.85 is teaching that an
+    # almost-right circuit is right.
+    if meta:
+        passed = score >= GAME_PASS_THRESHOLD
+    else:
+        passed = score >= PASS_THRESHOLD
+    details["pass_threshold"] = GAME_PASS_THRESHOLD if meta else PASS_THRESHOLD
+
+    if passed:
+        feedback = f"Passed. {note} Nice work."
+    elif meta and score > 0:
+        feedback = (
+            f"Not solved yet — scored {score:.2f}, and this level needs a "
+            f"perfect {GAME_PASS_THRESHOLD:.2f}. {note}"
+        )
+    else:
+        feedback = (
+            f"Not quite. {note} Compare your histogram with the expected "
+            "distribution."
+        )
     return {"score": round(score, 4), "passed": passed, "feedback": feedback, "details": details}
 
 
@@ -193,4 +214,11 @@ def finalize_attempt(db: Session, attempt_id: int) -> dict[str, Any]:
     }
 
 
-__all__ = ["grade", "grade_counts", "grade_state", "finalize_attempt", "PASS_THRESHOLD"]
+__all__ = [
+    "grade",
+    "grade_counts",
+    "grade_state",
+    "finalize_attempt",
+    "PASS_THRESHOLD",
+    "GAME_PASS_THRESHOLD",
+]

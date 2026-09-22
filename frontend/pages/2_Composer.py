@@ -69,13 +69,17 @@ with composer_slot:
             "Drag gates from the palette onto the grid. Drop on the target, then pick controls."
         )
         edited = circuit_composer(
-            value=ir.to_dict(), n_qubits=ir.n_qubits, key="react_composer"
+            value=ir.to_dict(), n_qubits=ir.n_qubits,
+            # Keyed on the epoch so a Python-side edit (Clear, Reset, Delete)
+            # remounts the grid with the new circuit instead of letting the
+            # component replay its stale value and undo the change.
+            key=f"react_composer_{composer.grid_epoch()}",
         )
         if edited:
             try:
                 from app.quantum.ir import CircuitIR
 
-                composer.set_circuit(CircuitIR.from_dict(edited))
+                composer.set_circuit(CircuitIR.from_dict(edited), from_grid=True)
                 ir = composer.get_circuit()
             except Exception as exc:  # noqa: BLE001
                 st.error(f"Composer returned an invalid circuit: {exc}")

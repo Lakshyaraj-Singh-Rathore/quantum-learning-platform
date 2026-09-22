@@ -101,8 +101,28 @@ def get_circuit() -> CircuitIR:
     return circuit
 
 
-def set_circuit(ir: CircuitIR) -> None:
+#: Bumped whenever Python changes the circuit behind the React component's
+#: back. The component is keyed on this, so Streamlit treats it as a new
+#: widget and seeds it from the updated circuit instead of replaying the stale
+#: value it last sent -- which is what silently undid Clear, Reset, Measure
+#: All and Delete.
+GRID_EPOCH_KEY = "composer_grid_epoch"
+
+
+def grid_epoch() -> int:
+    return int(st.session_state.get(GRID_EPOCH_KEY, 0))
+
+
+def set_circuit(ir: CircuitIR, *, from_grid: bool = False) -> None:
+    """Replace the session circuit.
+
+    ``from_grid`` marks an update that came from the React component itself,
+    which must NOT bump the epoch: the component is already showing that
+    circuit, and remounting it mid-drag would lose the interaction.
+    """
     st.session_state.circuit = ir
+    if not from_grid:
+        st.session_state[GRID_EPOCH_KEY] = grid_epoch() + 1
 
 
 def circuit_dict() -> dict[str, Any]:
@@ -125,8 +145,15 @@ def render(
     visible either way.
     """
     ir = get_circuit()
-    _toolbar(ir, key_prefix)
-    st.divider()
+    if not secondary:
+        # When the React grid is present it already provides Qubits, Measure
+        # All, Normalize, Compact and Clear along the top of the canvas.
+        # Drawing them again here gave two sets of identical controls, and the
+        # Python copies mutated the session circuit while the component
+        # immediately re-sent its own value on the next rerun, silently undoing
+        # them. One control, one owner.
+        _toolbar(ir, key_prefix)
+        st.divider()
     if secondary:
         _palette(ir, key_prefix, collapsed=True, allowed_gates=allowed_gates)
         st.divider()
