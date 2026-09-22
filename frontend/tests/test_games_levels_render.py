@@ -200,3 +200,66 @@ def test_editing_the_circuit_retracts_the_win():
     at = _with_attempt(WRONG_BELL, win, _stamp(CORRECT_BELL))
     assert not any("Level complete" in (s.value or "") for s in at.success)
     assert any("changed the circuit" in (i.value or "") for i in at.info)
+
+
+# --- Quantum Password Search (Grover module) --------------------------------
+
+def _grover(**state) -> AppTest:
+    at = AppTest.from_file(PAGE, default_timeout=120)
+    at.session_state["token"] = _TOKEN
+    at.session_state["user"] = _USER
+    at.session_state["game_level"] = "grover-lab"
+    for key, value in state.items():
+        at.session_state[key] = value
+    at.run()
+    return at
+
+
+def test_grover_module_is_reachable_from_the_catalogue():
+    at = AppTest.from_file(PAGE, default_timeout=120)
+    at.session_state["token"] = _TOKEN
+    at.session_state["user"] = _USER
+    at.run()
+    assert any(b.key == "play_grover" for b in at.button)
+
+
+def test_grover_module_renders():
+    at = _grover()
+    assert not at.exception, [str(e) for e in at.exception]
+
+
+@pytest.mark.parametrize("n,password", [
+    (1, "1"), (2, "10"), (3, "101"), (4, "1011"), (5, "10110"), (6, "101101"),
+    (6, "000000"), (6, "111111"),
+])
+def test_every_size_and_target_works(n, password):
+    at = _grover(grover_n=n, grover_pw=password)
+    assert not at.exception, [str(e) for e in at.exception]
+
+
+def test_invalid_password_warns_instead_of_crashing():
+    at = _grover(grover_n=6, grover_pw="10")
+    assert not at.exception
+    assert at.warning, "a wrong-length password should explain itself"
+
+
+def test_non_binary_password_warns():
+    at = _grover(grover_n=3, grover_pw="1x1")
+    assert not at.exception
+    assert any("0 and 1" in (w.value or "") for w in at.warning)
+
+
+def test_module_reports_the_real_probability():
+    """99.66% for six qubits is the analytic answer, not a made-up number."""
+    from lib import grover_lab as gl
+
+    at = _grover(grover_n=6, grover_pw="101101")
+    metrics = {m.label: m.value for m in at.metric}
+    expected = gl.analytic_probability(6, gl.optimal_iterations(6))
+    assert metrics["P(target)"] == f"{expected:.2%}"
+
+
+def test_over_rotation_toggle_renders():
+    at = _grover(grover_n=6, grover_pw="101101", grover_over=True)
+    assert not at.exception
+    assert any("falls again" in (w.value or "") for w in at.warning)

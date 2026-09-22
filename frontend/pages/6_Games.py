@@ -13,7 +13,7 @@ import streamlit as st
 st.set_page_config(page_title="QuantumLearn", page_icon="⚛", layout="wide",
                    initial_sidebar_state="expanded")
 
-from lib import api_client, auth, composer, viz  # noqa: E402
+from lib import api_client, auth, composer, grover_ui, viz  # noqa: E402
 from lib.api_client import ApiError  # noqa: E402
 
 # Drag-and-drop is the whole point of a game level, so prefer the React grid
@@ -88,11 +88,34 @@ if not catalogue:
 # --------------------------------------------------------------------------- #
 active_slug = st.session_state.get("game_level")
 
+if active_slug == "grover-lab":
+    top = st.columns([6, 2])
+    top[0].markdown("### 🔐 Quantum Password Search")
+    if top[1].button("← All games", use_container_width=True, key="grover_back"):
+        st.session_state.pop("game_level", None)
+        st.rerun()
+    grover_ui.render()
+    st.stop()
+
 if active_slug is None:
     st.caption(
         "Each level is a real circuit puzzle, graded by the same engine as the "
         "coding challenges. Pick one to start."
     )
+
+    # Featured module. Not a graded level: it is a simulation you explore, so
+    # it sits outside the challenge pipeline and has no score.
+    with st.container(border=True):
+        head = st.columns([6, 2])
+        head[0].markdown("### 🔐 Quantum Password Search")
+        head[0].caption(
+            "Watch Grover's algorithm amplify a target state instead of "
+            "checking candidates one by one."
+        )
+        if head[1].button("Open", key="play_grover", use_container_width=True):
+            st.session_state["game_level"] = "grover-lab"
+            st.rerun()
+
     for game in catalogue:
         done, total = game["completed"], game["total"]
         with st.container(border=True):
