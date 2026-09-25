@@ -15,7 +15,7 @@ could not confirm by opening the app. Numbers are measured, not estimated.
 
 > **QuantumLearn turns quantum computing education from reading about circuits
 > into building them — a learner composes a circuit visually, executes it on
-> four real simulation frameworks, sees the same physics agree across all of
+> five real simulation frameworks, sees the same physics agree across all of
 > them, asks an AI tutor grounded in their own stored results why it behaved
 > that way, and is graded automatically against a target distribution.**
 
@@ -41,7 +41,8 @@ BUILD            Drag-and-drop composer, 15 base gates + 11 controlled aliases,
   ↓
 VALIDATE         Circuit inspector rejects invalid circuits BEFORE execution
   ↓
-RUN              Qiskit Aer · Cirq · PennyLane · Qiskit dynamic engine · qBraid
+RUN              Qiskit Aer · Cirq · PennyLane · CUDA-Q (GPU) · qBraid
+                 · Qiskit dynamic engine
   ↓
 VISUALIZE        Histogram · probability table · Bloch sphere · phase disk ·
                  amplitude table · circuit diagram
@@ -78,11 +79,13 @@ and *seeing* the amplitudes that make it true.
 
 ### 3.2 No hardware required, no credentials required
 
-The four local backends run entirely on classical simulation inside Docker.
+The local backends run entirely on classical simulation inside Docker.
 A student needs no quantum hardware, no cloud account, and no API key to
-complete the full curriculum. qBraid is available for real cloud execution
-when credentials are supplied, and is cleanly disabled with an explanatory
-message when they are not.
+complete the full curriculum. Two engines are strictly optional and both
+self-disable with an explanatory message when unconfigured: qBraid for real
+cloud execution when credentials are supplied, and CUDA-Q, which moves the
+same simulation onto an NVIDIA GPU when a driver-visible card is present —
+and reports itself unavailable, not broken, when one is not.
 
 **Institutional consequence:** a college can deploy the entire platform with
 `docker compose up` and teach a quantum course with zero quantum
@@ -304,7 +307,7 @@ claimed as delivered.
 > "Quantum computing has a talent bottleneck: the tools that teach can't run
 > real circuits, and the tools that run real circuits assume you already know
 > quantum mechanics. QuantumLearn is one platform where a student builds a
-> circuit visually, runs it on four simulation frameworks that all agree,
+> circuit visually, runs it on five simulation frameworks that all agree,
 > sees six different views of what the state is doing, and asks an AI tutor
 > why — an AI that is architecturally incapable of inventing a result,
 > because it can only read runs that actually executed. Meanwhile the
@@ -320,7 +323,7 @@ claimed as delivered.
 | REST endpoints | 29 |
 | Database tables | 14 (Alembic-managed) |
 | Base gates / controlled aliases | 15 / 11 |
-| Execution backends | 5 |
+| Execution backends | 6 (5 static incl. CUDA-Q GPU + dynamic engine) |
 | Lessons / RAG chunks | 8 / 23 |
 | Quizzes / coding challenges | 3 / 6 |
 | Visualization modes | 6 |

@@ -22,7 +22,13 @@ from app.quantum import (
     codegen_qbraid,
     codegen_qiskit,
 )
-from app.quantum.backends import cirq_sim, pennylane_sim, qbraid_sim, qiskit_aer
+from app.quantum.backends import (
+    cirq_sim,
+    cudaq_sim,
+    pennylane_sim,
+    qbraid_sim,
+    qiskit_aer,
+)
 from app.quantum.ir import CircuitIR
 from app.quantum.qasm3_codec import from_qasm3, to_qasm3
 from app.services.codelab import FRAMEWORKS, STARTERS, build_circuit
@@ -60,10 +66,20 @@ def _bell() -> CircuitIR:
 
 
 # ---------------------------------------------------------------- execution
-@pytest.mark.parametrize(
-    "backend", [qiskit_aer, cirq_sim, pennylane_sim], ids=["qiskit_aer", "cirq", "pennylane"]
-)
-def test_engine_executes_bell_state(backend):
+_EXEC_ENGINES = [qiskit_aer, cirq_sim, pennylane_sim]
+_EXEC_IDS = ["qiskit_aer", "cirq", "pennylane"]
+if cudaq_sim.is_available()[0]:  # only on a machine with a real CUDA GPU
+    _EXEC_ENGINES.append(cudaq_sim)
+    _EXEC_IDS.append("cudaq")
+
+
+@pytest.mark.parametrize("backend", _EXEC_ENGINES, ids=_EXEC_IDS)
+def test_engine_executes_bell_state(backend, monkeypatch):
+    # Tests submit back-to-back; the thermal guard's cooldown is for learners
+    # hammering Run, and must not fail an otherwise-fine GPU run here.
+    from app.config import get_settings
+
+    monkeypatch.setattr(get_settings(), "gpu_cooldown_seconds", 0.0)
     probs = backend.run(_bell(), shots=2000, seed=11)["probabilities"]
     outcomes = {k for k, v in probs.items() if v > 0.02}
     assert outcomes == {"00", "11"}, probs

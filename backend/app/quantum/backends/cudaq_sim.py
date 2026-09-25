@@ -8,7 +8,15 @@ lets the cross-backend agreement tests treat this as just another engine.
 Requires an NVIDIA GPU and ``pip install cudaq``. CUDA-Q has no native Windows
 build -- on Windows it runs under WSL2 -- so this backend advertises itself as
 unavailable rather than failing opaquely at submit time when either piece is
-missing. See ``docs/CUDAQ_SETUP.md``.
+missing. "Missing" here means no usable device, not just a missing package:
+``cudaq.get_targets()`` lists the targets compiled into the wheel, so a
+CPU-only server with ``pip install cudaq`` still reports an ``nvidia`` target,
+and the gate is the actual device count (see ``_gpu_device_count``).
+See ``docs/CUDAQ_SETUP.md``.
+
+Validated against CUDA-Q 0.16. Its wheel emits a FutureWarning that the
+``sample``/``observe`` primitives will change in a future release; pin the
+version until this adapter is ported to the new API.
 """
 
 from __future__ import annotations
@@ -39,8 +47,27 @@ DEFAULT_PRECISION = "fp32"
 SUPPORTED_GATES = {"rx", "ry", "rz", "cx", "measure", "barrier"}
 
 
+def _gpu_device_count() -> Optional[int]:
+    """How many CUDA devices this process can see, or None if unknown.
+
+    ``cudaq.get_targets()`` is not a hardware check: it lists targets built
+    into the wheel. A GPU-less Linux box that merely ran ``pip install
+    cudaq`` advertises the ``nvidia`` target, marks this backend available,
+    and then fails every job with a raw "CUDA driver version is
+    insufficient" RuntimeError. The device count is the honest probe; it is
+    sub-millisecond, so no caching is warranted. Builds without the helper
+    return None and we fall back to trusting the target list.
+    """
+    try:
+        import cudaq
+
+        return int(cudaq.num_available_gpus())
+    except Exception:  # noqa: BLE001 - missing API or a broken driver
+        return None
+
+
 def is_available() -> tuple[bool, str]:
-    """Is CUDA-Q installed with a usable GPU target?
+    """Is CUDA-Q installed with a usable GPU target and a real device?
 
     Mirrors the qBraid gating pattern: return a reason the UI can display,
     rather than letting a job fail later with something opaque.
@@ -63,6 +90,16 @@ def is_available() -> tuple[bool, str]:
             "CUDA-Q is installed but exposes no GPU target. This backend needs "
             "an NVIDIA GPU with the CUDA runtime libraries present."
         )
+
+    devices = _gpu_device_count()
+    if devices is not None and devices < 1:
+        return False, (
+            "CUDA-Q is installed but sees no CUDA-capable GPU (0 devices). "
+            "The API process needs a driver-visible NVIDIA GPU — on Windows "
+            "that means the driver installed on the Windows side with WSL2 "
+            "GPU passthrough. The CPU backends give identical results in the "
+            "meantime."
+        )
     return True, ""
 
 
@@ -70,7 +107,16 @@ def build_kernel(circ: Any, n_qubits: int):
     """Replay a transpiled Qiskit circuit through CUDA-Q's kernel builder.
 
     The same approach the Cirq adapter uses. Measurements are omitted: CUDA-Q
-    samples the whole register, and the caller maps qubits to clbits.
+    samples the whole register, and the caller maps qubits to clbits. (With
+    explicit ``mz`` calls CUDA-Q instead returns bits in *measurement order*,
+    which would be a second mapping to keep straight; skipping the measure
+    ops avoids it. Verified on 0.16: ``x(q0)`` with only ``mz(q1)`` yields the
+    single-bit string ``"1"``, not a two-bit register.)
+
+    ``cudaq.get_state`` indexes amplitudes with qubit 0 as the LEAST
+    significant bit -- already Qiskit order, unlike Cirq -- so the statevector
+    needs no reordering on this backend. Verified on 0.16: ``x(q0)`` of two
+    qubits leaves index 1 nonzero.
     """
     import cudaq
 
@@ -110,7 +156,8 @@ def _counts_from_sample(sample: Any, ir: CircuitIR, mapping: dict) -> dict[str, 
     n_clbits = max(ir.n_clbits, 1)
 
     for bitstring, hits in sample.items():
-        # CUDA-Q reports qubit 0 leftmost over the full register.
+        # CUDA-Q reports qubit 0 leftmost over the full register. Verified on
+        # 0.16: x(q0) of two qubits samples "10", the opposite of Qiskit.
         bits = str(bitstring)
         out = ["0"] * n_clbits
         for qubit, clbit in mapping.items():

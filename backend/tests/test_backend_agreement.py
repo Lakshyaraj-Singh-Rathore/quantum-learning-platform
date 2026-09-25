@@ -13,12 +13,37 @@ from __future__ import annotations
 
 import pytest
 
-from app.quantum.backends import cirq_sim, pennylane_sim, qiskit_aer
+from app.quantum.backends import cirq_sim, cudaq_sim, pennylane_sim, qiskit_aer
 from app.quantum.ir import GATE_PARAMS, GATE_SET, CircuitIR
 
 SHOTS = 8000
 #: Sampling noise at 8000 shots is well under this.
 TOLERANCE = 0.05
+
+
+def _engines():
+    """CPU engines always; CUDA-Q joins automatically when a GPU is present.
+
+    The GPU path translates the same normalized circuit, so on hardware this
+    battery is the check that the endianness and gate-replay assumptions in
+    cudaq_sim are actually true. On CI (no GPU) it changes nothing.
+    """
+    engines = [qiskit_aer, cirq_sim, pennylane_sim]
+    if cudaq_sim.is_available()[0]:
+        engines.append(cudaq_sim)
+    return engines
+
+
+@pytest.fixture(autouse=True)
+def _no_gpu_cooldown(monkeypatch):
+    """Serial submissions would otherwise trip the back-to-back cooldown.
+
+    The thermal guard protects learners hammering Run; tests run one at a
+    time, so the gap is pure friction on GPU machines. No-op without a GPU.
+    """
+    from app.config import get_settings
+
+    monkeypatch.setattr(get_settings(), "gpu_cooldown_seconds", 0.0)
 
 
 def _distribution(module, ir: CircuitIR) -> dict[str, float]:
@@ -48,13 +73,15 @@ def _sandwiched(gate: str) -> CircuitIR:
 @pytest.mark.parametrize("gate", sorted(GATE_SET))
 def test_all_engines_agree_on_every_gate(gate):
     ir = _sandwiched(gate)
-    aer = _distribution(qiskit_aer, ir)
-    cirq = _distribution(cirq_sim, ir)
-    pennylane = _distribution(pennylane_sim, ir)
-    worst = max(_tvd(aer, cirq), _tvd(aer, pennylane), _tvd(cirq, pennylane))
+    dists = {mod.NAME: _distribution(mod, ir) for mod in _engines()}
+    aer = dists["qiskit_aer"]
+    worst = max(
+        (_tvd(aer, other) for name, other in dists.items() if name != "qiskit_aer"),
+        default=0.0,
+    )
     assert worst < TOLERANCE, (
         f"{gate}: engines disagree by {worst:.4f}\\n"
-        f"  aer={aer}\\n  cirq={cirq}\\n  pennylane={pennylane}"
+        + "\n".join(f"  {name}={dist}" for name, dist in dists.items())
     )
 
 
@@ -77,7 +104,7 @@ def test_engines_agree_on_an_entangled_circuit():
         {"kind": "gate", "gate": "x", "qubits": [1], "controls": [0], "layer": 1},
         {"kind": "measure", "qubits": [0], "clbits": [0], "layer": 2},
         {"kind": "measure", "qubits": [1], "clbits": [1], "layer": 2}]})
-    for module in (qiskit_aer, cirq_sim, pennylane_sim):
+    for module in _engines():
         probs = _distribution(module, ir)
         outcomes = {k for k, v in probs.items() if v > 0.02}
         assert outcomes == {"00", "11"}, f"{module.NAME} gave {outcomes}"
@@ -89,7 +116,7 @@ def test_engines_agree_on_an_asymmetric_circuit():
         {"kind": "gate", "gate": "x", "qubits": [0], "layer": 0},
         {"kind": "measure", "qubits": [0], "clbits": [0], "layer": 1},
         {"kind": "measure", "qubits": [1], "clbits": [1], "layer": 1}]})
-    for module in (qiskit_aer, cirq_sim, pennylane_sim):
+    for module in _engines():
         probs = _distribution(module, ir)
         top = max(probs, key=probs.get)
         assert top == "01", f"{module.NAME} put qubit 0 in the wrong position: {top}"

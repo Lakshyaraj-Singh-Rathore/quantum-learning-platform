@@ -10,6 +10,8 @@ be worse than the risk it guards.
 
 from __future__ import annotations
 
+import importlib.util
+
 import pytest
 
 from app.quantum.backends import cudaq_sim, gpu_guard
@@ -61,6 +63,102 @@ def test_backend_reports_why_it_is_unavailable():
     if not available:
         assert reason
         assert "CUDA-Q" in reason
+
+
+def _fake_cudaq(monkeypatch, *target_names):
+    """Stand in for an installed-but-headless CUDA-Q wheel.
+
+    sys.modules injection means these tests behave identically whether or not
+    the real cudaq package is installed in the environment running them.
+    """
+    import sys
+    import types
+
+    fake = types.SimpleNamespace(
+        get_targets=lambda: [
+            types.SimpleNamespace(name=n) for n in target_names
+        ],
+    )
+    monkeypatch.setitem(sys.modules, "cudaq", fake)
+
+
+def test_installed_wheel_without_a_device_is_not_available(monkeypatch):
+    """get_targets() lists targets compiled into the wheel, not hardware.
+
+    Regression: on a CPU-only Linux box, `pip install cudaq` advertises an
+    nvidia target, so the backend used to claim availability and then fail
+    every job with a raw "CUDA driver version is insufficient" error. The
+    gate is the device count, which reports 0 with no GPU present.
+    """
+    _fake_cudaq(monkeypatch, "nvidia", "qpp-cpu")
+    monkeypatch.setattr(cudaq_sim, "_gpu_device_count", lambda: 0)
+    available, reason = cudaq_sim.is_available()
+    assert not available
+    assert "0 devices" in reason
+
+
+def test_unknown_device_count_defers_to_the_target_list(monkeypatch):
+    """Fail-open on missing telemetry, the same rule the thermal guard follows:
+    older CUDA-Q builds without num_available_gpus() must not be locked out."""
+    _fake_cudaq(monkeypatch, "nvidia")
+    monkeypatch.setattr(cudaq_sim, "_gpu_device_count", lambda: None)
+    assert cudaq_sim.is_available() == (True, "")
+
+
+def test_no_nvidia_target_is_still_refused_even_with_devices(monkeypatch):
+    _fake_cudaq(monkeypatch, "qpp-cpu")
+    monkeypatch.setattr(cudaq_sim, "_gpu_device_count", lambda: 1)
+    available, reason = cudaq_sim.is_available()
+    assert not available
+    assert "no GPU target" in reason
+
+
+@pytest.mark.skipif(
+    importlib.util.find_spec("cudaq") is None,
+    reason="needs the real cudaq wheel installed",
+)
+def test_real_wheel_without_a_gpu_does_not_advertise_availability():
+    """The exact failure mode seen on a GPU-less machine running the wheel."""
+    import cudaq
+
+    if cudaq.num_available_gpus() > 0:  # pragma: no cover - GPU machine
+        pytest.skip("this machine actually has a CUDA GPU")
+    available, reason = cudaq_sim.is_available()
+    assert not available
+    assert "GPU" in reason
+
+
+# --------------------------------------------------------- bit-order conventions
+def test_counts_map_cuda_qubit_order_onto_qiskit_order():
+    """Pin the endianness convention without needing a GPU.
+
+    Verified against CUDA-Q 0.16: `x` on qubit 0 of a 2-qubit register samples
+    the bitstring "10" -- qubit 0 LEFTMOST, the opposite of Qiskit. The
+    backend must hand back "01" so histograms align across engines.
+    """
+    ir = CircuitIR.from_dict({
+        "n_qubits": 2, "n_clbits": 2,
+        "ops": [{"kind": "gate", "gate": "x", "qubits": [0], "layer": 0}],
+    })
+    counts = cudaq_sim._counts_from_sample({"10": 100}, ir, {0: 0, 1: 1})
+    assert counts == {"01": 100}
+
+
+def test_measured_bit_lands_on_its_clbit_not_its_qubit():
+    """q0 measured into clbit 1 must fill the clbit position.
+
+    CUDA-Q reports the whole register, qubit 0 leftmost: "10" here means q0
+    is set. The IR pads n_clbits up to n_qubits, so unmeasured clbits stay 0.
+    A backend that confused qubit positions with clbit positions would give
+    "01".
+    """
+    ir = CircuitIR.from_dict({
+        "n_qubits": 2, "n_clbits": 2,
+        "ops": [{"kind": "measure", "qubits": [0], "clbits": [1], "layer": 0}],
+    })
+    assert cudaq_sim._counts_from_sample({"10": 7}, ir, {0: 1}) == {"10": 7}
+    # And the reverse mapping must flip where the bit lands.
+    assert cudaq_sim._counts_from_sample({"10": 7}, ir, {0: 0}) == {"01": 7}
 
 
 def test_run_refuses_cleanly_without_cuda(monkeypatch):

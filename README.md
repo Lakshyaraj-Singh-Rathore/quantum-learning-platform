@@ -1,8 +1,9 @@
 # QuantumLearn — AI-Based Interactive Quantum Algorithm Learning Platform
 
 Learn quantum computing by building circuits, not by reading about them. A
-drag-and-drop composer, four real simulation backends, an AI tutor grounded in
-the course material, auto-graded challenges and puzzle games, and an instructor
+drag-and-drop composer, five real simulation backends (one GPU-accelerated),
+an AI tutor grounded in the course material, auto-graded challenges and
+puzzle games, and an instructor
 dashboard.
 
 **Stack** — Streamlit (7 pages + two custom React/TypeScript components) ·
@@ -43,10 +44,11 @@ A drag-and-drop composer with the full gate set — H, X, Y, Z, I, S, S†, T, T
 √X, P(λ), RX, RY, RZ, SWAP, CNOT, Toffoli, general MCX — plus measure, reset,
 barrier and `if` / `for` / `while` / `box` control-flow blocks.
 
-Static circuits run on **Qiskit Aer, Cirq, PennyLane and qBraid**; dynamic
-circuits (mid-circuit measurement driving later gates) run on the Qiskit
-dynamic engine. Every gate is pinned to its textbook unitary and every backend
-is checked to agree with the others — see *Correctness* below.
+Static circuits run on **Qiskit Aer, Cirq, PennyLane, qBraid — and, on an
+NVIDIA GPU, CUDA-Q**; dynamic circuits (mid-circuit measurement driving
+later gates) run on the Qiskit dynamic engine. Every gate is pinned to its
+textbook unitary and every backend is checked to agree with the others —
+see *Correctness* below.
 
 Export to OpenQASM 3, Qiskit, Cirq, PennyLane or a qBraid submission script;
 import OpenQASM 3 back.
@@ -108,7 +110,9 @@ The physics is tested rather than assumed.
   three controls, including that the controls survive.
 - **All three static backends agree** on every gate to within sampling noise
   (worst observed divergence 0.025 at 8000 shots), with each gate sandwiched
-  between Hadamards so a phase-only gate still moves the distribution.
+  between Hadamards so a phase-only gate still moves the distribution. The
+  CUDA-Q GPU engine joins the same agreement battery automatically on any
+  machine that has a GPU; it is skipped, not stubbed out, when there is none.
 - **QASM 3 round-trips** preserve behaviour for every gate.
 - **Known-answer runs**: Bell, GHZ, Deutsch-Jozsa (both branches) and Grover
   finding the marked state with certainty.
@@ -126,7 +130,7 @@ backend/
   app/
     api/            41 REST endpoints
     quantum/        IR, QASM3 codec, gate normalisation, noise, timeline
-      backends/     qiskit_aer · cirq · pennylane · qbraid · dynamic_qiskit
+      backends/     qiskit_aer · cirq · pennylane · qbraid · cudaq · dynamic_qiskit
     ai/             Gemini client, RAG over the lesson corpus, tool policy
     services/       autograder, game graders, code sandbox, recommendations
     models/         SQLAlchemy models
@@ -209,6 +213,7 @@ Everything is read from the environment; `.env.example` lists the full set.
 | `QBRAID_DEVICE_ID` | `ionq:ionq:sim:simulator` | free 0-credit simulator |
 | `MAX_STATIC_QUBITS` | 20 | a statevector is 16 bytes × 2ⁿ |
 | `MAX_DYNAMIC_QUBITS` | 15 | dynamic engine limit |
+| `MAX_GPU_QUBITS` | 28 | CUDA-Q's VRAM ceiling; also `GPU_TEMP_LIMIT_C=80`, `GPU_COOLDOWN_SECONDS=3` (docs/CUDAQ_SETUP.md) |
 | `WHILE_CAP` | 32 | hard cap on runtime loop iterations |
 | `CELERY_TASK_ALWAYS_EAGER` | false | run jobs inline, no worker |
 

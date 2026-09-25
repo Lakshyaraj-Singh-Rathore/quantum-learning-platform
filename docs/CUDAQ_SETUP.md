@@ -16,7 +16,26 @@ WSL2 backend, so you are extending what you have rather than replacing it.
 | --- | --- |
 | Windows 11, or Windows 10 build 19044+ | GPU passthrough to WSL2 |
 | Latest NVIDIA driver, installed on **Windows** | never install a driver inside WSL |
+| **Python 3.12 (or 3.11)** inside WSL | see the warning below — Ubuntu 24.10+ ships 3.13/3.14 only |
 | ~20 GB free disk | WSL distro, CUDA toolkit, Python packages |
+
+**The Python version is a hard requirement, and newer Ubuntu is the trap.**
+The backend pins `numpy==1.26.4` (cirq-core 1.4.x needs numpy<2), and numpy
+1.26 publishes no wheels for Python 3.13+: `pip install -r
+backend/requirements.txt` then tries to *compile* numpy from source, fails on
+"cc not found", and would still fail with gcc because numpy 1.26 cannot build
+against 3.13+ headers. Do not "fix" it with `apt install build-essential` —
+get a 3.12 interpreter instead. Ubuntu's own apt has none on 24.10+, so use
+`uv`, which fetches a standalone one:
+
+```
+curl -LsSf https://astral.sh/uv/install.sh | sh
+source ~/.local/bin/env
+uv python install 3.12
+```
+
+Everything in steps 5 and 8 then happens inside a 3.12 venv created with
+`uv venv --seed --python 3.12 .venv` (see step 5).
 
 **The one rule that breaks everything if ignored:** install the NVIDIA driver
 on Windows only. NVIDIA's documentation is blunt about this — the Windows
@@ -113,23 +132,45 @@ cd quantum-learning-platform && git checkout arena/01a0754d-quantum-learning-pla
 
 ---
 
-## Step 5 — Install CUDA-Q
+## Step 5 — Create the venv and install CUDA-Q
+
+From inside the clone (the project dir, not `/mnt/c`), with `uv` from the
+warning above:
 
 ```
-python3 -m venv .venv && source .venv/bin/activate
-```
-```
-pip install cudaq
-```
-
-**Verify** — this should print a list including `nvidia`:
-
-```
-python3 -c "import cudaq; print([t.name for t in cudaq.get_targets()])"
+uv venv --seed --python 3.12 .venv
+source .venv/bin/activate
+python --version
 ```
 
-If `nvidia` is missing but the import worked, CUDA-Q cannot see the GPU. Go
-back to step 2.
+**Verify:** `python --version` must print **3.12.x** (3.11 works too). If it
+says 3.13/3.14, the venv was built from the system interpreter and
+`pip install -r backend/requirements.txt` will fail on numpy later. The
+`--seed` flag is what gives the venv a `pip`.
+
+```
+pip install "cudaq==0.16.*"
+```
+
+The backend is written against CUDA-Q **0.16**, whose wheel warns that the
+`sample`/`observe` primitives will change in a future release. Pin
+`cudaq==0.16` until the adapter (`backend/app/quantum/backends/cudaq_sim.py`)
+is ported to the new API, or expect a silent breakage on the next upgrade.
+
+**Verify** — this should print a list including `nvidia` **and** a device
+count of at least 1:
+
+```
+python3 -c "import cudaq; print([t.name for t in cudaq.get_targets()]); print(cudaq.num_available_gpus())"
+```
+
+Note the two checks are not redundant: `get_targets()` lists what was
+*compiled into the wheel* — even a machine with no GPU prints `nvidia` there.
+`num_available_gpus()` is what reports the hardware, and the backend gates
+availability on it, not on the target list.
+
+If `nvidia` is missing, or the count is `0` while `nvidia-smi` works in the
+same shell, CUDA-Q cannot see the GPU. Go back to step 2.
 
 ---
 
@@ -200,7 +241,7 @@ Open <http://localhost:8501> from **Windows** — WSL2 forwards the port
 automatically.
 
 **Verify:** in the Composer, the backend dropdown should now offer
-**CUDA-Q GPU (up to 26 qubits)** without a "unavailable" note.
+**CUDA-Q GPU (up to 28 qubits)** without a "unavailable" note.
 
 ---
 
@@ -236,8 +277,9 @@ performance profile, and never run it on a bed or cushion.
 | `nvidia-smi` not found in WSL | Windows driver too old; update and reboot |
 | GPU access blocked by the operating system | a Linux NVIDIA driver got installed inside WSL — remove it |
 | `import cudaq` works, no `nvidia` target | CUDA runtime not visible; recheck step 2 |
+| **CUDA-Q GPU** marked unavailable after `pip install cudaq` | the API process sees 0 CUDA devices — the target list is compiled into the wheel and lies about hardware; check `cudaq.num_available_gpus()` in the *same* shell that runs uvicorn |
 | Everything is very slow | the project is on `/mnt/c` — move it to `~` |
-| Out of memory during a run | lower `MAX_GPU_QUBITS`, or switch to fp32 |
+| Out of memory during a run | lower `MAX_GPU_QUBITS` (precision is already fp32 by default) |
 
 The backend degrades gracefully throughout: if CUDA-Q is missing or the GPU is
 unavailable, the selector shows **CUDA-Q GPU** greyed out with the reason, and
