@@ -1,0 +1,39 @@
+# Opt-in GPU override: the WHOLE platform in Docker, CUDA-Q included.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.gpu.yml up --build
+#
+# Rebuilds api+worker with cudaq baked in and hands the container the GPU.
+# Requires Docker Desktop on a WSL2 backend with a recent NVIDIA driver
+# (>= 515 series on Windows). Check passthrough once with:
+#
+#   docker run --rm --gpus all ubuntu nvidia-smi
+#
+# The first build downloads ~1.5 GB of CUDA wheels (cuBLAS alone is 439 MB),
+# so expect minutes; afterwards normal `up` reuses the cached layer until
+# backend/requirements.txt or the Dockerfile change.
+
+services:
+  api:
+    build:
+      context: ./backend
+      args:
+        INSTALL_CUDAQ: "true"
+    gpus: all
+  worker:
+    build:
+      context: ./backend
+      args:
+        INSTALL_CUDAQ: "true"
+    gpus: all
+    # Compose's gpu_slot guard is per-process; concurrency 2 inside this one
+    # worker shares the lock, so back-to-back GPU jobs queue behind each other
+    # instead of double-booking VRAM.
+
+  # If an older Compose rejects `gpus: all`, the long form is equivalent:
+  #   deploy:
+  #     resources:
+  #       reservations:
+  #         devices:
+  #           - driver: nvidia
+  #             count: all
+  #             capabilities: [gpu]

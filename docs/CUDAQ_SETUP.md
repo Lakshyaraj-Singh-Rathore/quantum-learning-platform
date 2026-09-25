@@ -270,6 +270,39 @@ performance profile, and never run it on a bed or cushion.
 
 ---
 
+## Optional — run EVERYTHING in Docker, GPU included
+
+If one `docker compose up` is the workflow you actually want, the Compose GPU
+override makes containers the native case too: it bakes `cudaq` into the
+api/worker images and hands the container your card. Docker Desktop on WSL2
+passes GPUs through (Windows driver >= 515 series; nothing to enable on
+recent versions).
+
+```
+# one-time passthrough proof (prints the RTX 4050 table):
+docker run --rm --gpus all ubuntu nvidia-smi
+
+docker compose -f docker-compose.yml -f docker-compose.gpu.yml up --build
+```
+
+The first build pulls ~1.5 GB of CUDA wheels (cuBLAS alone is 439 MB) on top
+of the usual image; cached afterwards, until `backend/requirements.txt` or
+the Dockerfile changes. The image base is Python 3.11, so the pinned numpy<2
+stack installs exactly as in this guide's venv steps -- no 3.13/3.14 trap,
+nothing to pin by hand.
+
+**Verify:** <http://localhost:8501> → Composer dropdown offers **CUDA-Q GPU
+(up to 28 qubits)**. The `/backends` availability check runs *inside the api
+container*, so "0 devices" there means Docker's GPU passthrough -- not WSL --
+is the thing to recheck.
+
+One difference from the native setup: temperature reading. Containers get an
+`nvidia-smi` from the runtime toolkit, which usually does report
+`temperature.gpu` on WSL2, but if it doesn't, the thermal guard fails open
+(job runs, gate inert) -- the concurrency lock and cooldown still apply.
+
+---
+
 ## If something breaks
 
 | Symptom | Cause |
