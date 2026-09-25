@@ -1002,8 +1002,8 @@ def ideal_vs_noisy(result: dict[str, Any]) -> None:
     ideal_counts = metadata.get("ideal_counts")
     if not ideal_counts:
         st.info(
-            "Enable the noise model on the Qiskit Aer backend to compare an "
-            "ideal run against a noisy one."
+            "Enable the noise model on the Qiskit Aer or CUDA-Q backend to "
+            "compare an ideal run against a noisy one."
         )
         return
 

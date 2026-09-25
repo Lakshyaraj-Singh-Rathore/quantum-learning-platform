@@ -121,8 +121,12 @@ def test_qasm3_round_trip_preserves_semantics():
 
 # ---------------------------------------------------------------- authoring
 def test_codelab_advertises_its_frameworks():
-    """qBraid joined as an authoring target via its local transpiler."""
-    assert set(FRAMEWORKS) == {"qiskit", "cirq", "pennylane", "qasm3", "qbraid"}
+    """qBraid joined as an authoring target via its local transpiler; CUDA-Q
+    joined as the GPU-native language (listed only where the wheel exists,
+    but FRAMEWORKS itself is the full universe)."""
+    assert set(FRAMEWORKS) == {
+        "qiskit", "cirq", "pennylane", "qasm3", "qbraid", "cudaq",
+    }
 
 
 @pytest.mark.parametrize(
@@ -133,6 +137,17 @@ def test_codelab_starter_compiles_and_runs(framework):
     result = build_circuit(STARTERS[framework], framework)
     ir = result["ir"]
     assert ir.n_qubits >= 1
+    qiskit_aer.run(ir, shots=64, seed=2)
+
+
+def test_codelab_cudaq_starter_compiles_when_the_wheel_is_present():
+    import importlib.util
+
+    if importlib.util.find_spec("cudaq") is None:
+        pytest.skip("CUDA-Q ships only with the GPU image")
+    result = build_circuit(STARTERS["cudaq"], "cudaq")
+    ir = result["ir"]
+    assert ir.n_qubits == 2
     qiskit_aer.run(ir, shots=64, seed=2)
 
 

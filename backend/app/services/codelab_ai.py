@@ -48,6 +48,15 @@ _FRAMEWORK_RULES = {
         "qiskit. Do NOT import qbraid.runtime: it submits jobs and spends "
         "credits, and the sandbox blocks it."
     ),
+    "cudaq": (
+        "Use cudaq's builder API: `circuit = cudaq.make_kernel()`, "
+        "`q = circuit.qalloc(n)`, then gates like circuit.h(q[0]), "
+        "circuit.rx(angle, q[0]), circuit.cx(q[0], q[1]) and measurement "
+        "circuit.mz(q). Assign the kernel object itself to `circuit`. Do NOT "
+        "use the @cudaq.kernel decorator (the lab evaluates kernel objects, "
+        "not source text), no for_loop or conditional measurement, and keep "
+        "every gate angle a literal float."
+    ),
 }
 
 _FENCE = re.compile(r"^\s*```[a-zA-Z0-9]*\s*\n(.*?)\n?\s*```\s*$", re.S)

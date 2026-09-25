@@ -125,13 +125,14 @@ def create_job(
         if payload.noise is not None and payload.noise.enabled
         else None
     )
-    if noise_dict is not None and engine != "qiskit_aer":
+    if noise_dict is not None and engine not in {"qiskit_aer", "cudaq"}:
         raise HTTPException(
             status_code=422,
             detail={
                 "errors": [
-                    "The noise model is only implemented for the Qiskit Aer backend. "
-                    f"Select Qiskit Aer, or turn noise off to run on '{engine}'."
+                    "The noise model is implemented for the Qiskit Aer and "
+                    "CUDA-Q backends. Select one of those, or turn noise off "
+                    f"to run on '{engine}'."
                 ]
             },
         )
@@ -312,7 +313,14 @@ def codelab_build(
 
 @router.get("/codelab/starters")
 def codelab_starters(user: User = Depends(get_current_user)) -> dict[str, Any]:
-    return {"frameworks": list(codelab.FRAMEWORKS), "starters": codelab.STARTERS}
+    # CUDA-Q shows up only in installs that actually ship the wheel (the GPU
+    # image); listing a framework whose package is absent would surface an
+    # ImportError instead of a working starter.
+    frameworks = list(codelab.available_frameworks())
+    return {
+        "frameworks": frameworks,
+        "starters": {k: v for k, v in codelab.STARTERS.items() if k in frameworks},
+    }
 
 
 @router.post("/codelab/generate")

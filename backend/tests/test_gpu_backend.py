@@ -293,7 +293,8 @@ def _install_fake_cudaq_engine(monkeypatch):
     import sys
     import types
 
-    calls = {"get_state": 0, "sample": 0}
+    calls = {"get_state": 0, "sample": 0, "noise_samples": 0, "noise_channels": 0,
+             "targets": []}
 
     class _Qubits:
         def __getitem__(self, i):
@@ -311,23 +312,46 @@ def _install_fake_cudaq_engine(monkeypatch):
         def cx(self, control, target):
             pass
 
+        def mz(self, q):
+            # Real CUDA-Q records the measurement into a handle; the
+            # bookkeeping under test only cares that it exists to attach a
+            # readout channel to.
+            pass
+
+    class _Channel:
+        def __init__(self, p):
+            self.p = p
+
+    class _NoiseModel:
+        def add_all_qubit_channel(self, gate, channel):
+            calls["noise_channels"] += 1
+
     def get_state(kernel):
         calls["get_state"] += 1
         s = 2 ** -0.5
         return [complex(s), 0j, 0j, complex(s)]
 
-    def sample(kernel, shots_count=1024):
+    def sample(kernel, shots_count=1024, noise_model=None):
         calls["sample"] += 1
+        if noise_model is not None:
+            calls["noise_samples"] += 1
         return {"00": shots_count // 2, "11": shots_count - shots_count // 2}
+
+    def set_target(*a, **k):
+        calls["targets"].append(a[0] if a else k.get("target"))
 
     fake = types.SimpleNamespace(
         make_kernel=_Kernel,
         get_state=get_state,
         sample=sample,
-        set_target=lambda *a, **k: None,
+        set_target=set_target,
         set_random_seed=lambda s: None,
         get_targets=lambda: [types.SimpleNamespace(name="nvidia")],
         num_available_gpus=lambda: 1,
+        NoiseModel=_NoiseModel,
+        AmplitudeDampingChannel=_Channel,
+        PhaseFlipChannel=_Channel,
+        BitFlipChannel=_Channel,
     )
     monkeypatch.setitem(sys.modules, "cudaq", fake)
     # Bypass the thermal guard: this tests translation policy, not the slot.
@@ -388,3 +412,104 @@ def test_stateviews_capped_at_the_platforms_payload_budget(monkeypatch):
     assert not result["statevector"]
     assert result["counts"]
     assert any("omitted" in w for w in result["metadata"]["warnings"])
+
+
+# --------------------------------------------------------------------------- #
+# Noise on CUDA-Q: NoiseModel channels for the pulses, readout as a channel on
+# mz, and an ideal twin run so the Ideal-vs-noisy tab has both histories from
+# THIS engine. Bookkeeping against the fake; the channel physics itself is
+# CUDA-Q's, exercised on real hardware and cross-checked against its own
+# density-matrix reference below.
+# --------------------------------------------------------------------------- #
+def _noise_params(**kw):
+    from app.quantum.noise import NoiseParams
+
+    base = dict(enabled=True, t1_us=50.0, t2_us=30.0, readout_error=0.02)
+    base.update(kw)
+    return NoiseParams(**base)
+
+
+def test_noisy_run_attaches_real_channels_and_both_histories(monkeypatch):
+    calls = _install_fake_cudaq_engine(monkeypatch)
+    result = cudaq_sim.run(_bell_measured(), shots=100, noise=_noise_params())
+
+    assert calls["noise_samples"] == 1  # exactly one sampling carries the model
+    assert calls["sample"] == 2         # ...and the ideal twin runs without it
+    assert calls["noise_channels"] >= 10
+    assert calls["targets"].count("density-matrix-cpu") >= 1
+
+    meta = result["metadata"]
+    assert meta["noise"] == {
+        "enabled": True, "t1_us": 50.0, "t2_us": 30.0, "readout_error": 0.02,
+    }
+    # The fake ignores the channels, so noisy and ideal agree -- proving the
+    # two histograms come from the same kernel, not from a re-parameterization.
+    assert result["counts"] == meta["ideal_counts"] == {"00": 50, "11": 50}
+    assert meta["metrics"]["total_variation"] == pytest.approx(0.0)
+    assert meta["metrics"]["shot_leakage"] == pytest.approx(0.0)
+    assert meta["mode"] == "static"
+    assert "density-matrix" in meta["target"]
+
+    warnings = meta["warnings"]
+    assert any("teaching approximation" in w for w in warnings)
+    assert any("IDEAL state" in w for w in warnings)       # statevector caveat
+    assert any("density-matrix" in w for w in warnings)     # where noise ran
+    assert any("Fidelity/purity" in w for w in warnings)    # omitted, explained
+
+
+def test_noiseless_run_reports_perfect_metrics_and_skips_dm_target(monkeypatch):
+    calls = _install_fake_cudaq_engine(monkeypatch)
+    result = cudaq_sim.run(_bell_measured(), shots=100, noise=_noise_params(enabled=False))
+    meta = result["metadata"]
+    assert meta["noise"]["enabled"] is False
+    assert meta["ideal_counts"] is None
+    assert meta["metrics"]["fidelity"] == 1.0
+    assert meta["metrics"]["purity"] == 1.0
+    assert calls["sample"] == 1
+    assert "density-matrix-cpu" not in calls["targets"]
+    assert calls["noise_channels"] == 0
+
+
+def test_noisy_run_above_density_matrix_cap_is_refused_early(monkeypatch):
+    """The refusal must explain the physics and the alternative, not just say
+    'too big' -- and it must happen before any simulation starts."""
+    _install_fake_cudaq_engine(monkeypatch)
+    big = CircuitIR.from_dict({
+        "n_qubits": cudaq_sim.NOISE_MAX_QUBITS + 1,
+        "n_clbits": cudaq_sim.NOISE_MAX_QUBITS + 1,
+        "ops": [
+            {"kind": "gate", "gate": "h", "qubits": [0], "layer": 0},
+            {"kind": "measure", "qubits": [0], "clbits": [0], "layer": 1},
+        ],
+    })
+    with pytest.raises(BackendError, match="density-matrix"):
+        cudaq_sim.run(big, shots=10, noise=_noise_params())
+
+
+@pytest.mark.skipif(importlib.util.find_spec("cudaq") is None,
+                    reason="needs the real CUDA-Q wheel (any Linux; no GPU)")
+def test_cudaq_noise_channels_match_independent_reference():
+    """Physics gate against the REAL package on CUDA-Q's own density-matrix
+    engine: full amplitude damping after X must empty |1>, and two chained
+    50% channels must leave P(1) = 0.25 -- sequential composition, exactly
+    what the thermal model above assumes. Both numbers are hand-derivable
+    from the channel definitions, not tuned to the implementation."""
+    import cudaq
+
+    cudaq.set_target("density-matrix-cpu")
+    k = cudaq.make_kernel()
+    q = k.qalloc(1)
+    k.x(q[0])
+    k.mz(q[0])
+
+    nm = cudaq.NoiseModel()
+    nm.add_all_qubit_channel("x", cudaq.AmplitudeDampingChannel(1.0))
+    counts = dict(cudaq.sample(k, noise_model=nm, shots_count=300).items())
+    assert counts.get("0", 0) == 300  # every shot decayed to ground
+
+    nm2 = cudaq.NoiseModel()
+    nm2.add_all_qubit_channel("x", cudaq.AmplitudeDampingChannel(0.5))
+    nm2.add_all_qubit_channel("x", cudaq.AmplitudeDampingChannel(0.5))
+    c2 = dict(cudaq.sample(k, noise_model=nm2, shots_count=4000).items())
+    p1 = c2.get("1", 0) / 4000
+    assert abs(p1 - 0.25) < 0.05  # two half-dampings compose sequentially

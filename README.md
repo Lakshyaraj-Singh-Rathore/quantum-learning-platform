@@ -64,7 +64,7 @@ import OpenQASM 3 back.
 
 Bloch spheres, Q-sphere, phase disks, density matrices, amplitude and phase
 tables, a step-through timeline, and ideal-versus-noisy comparison under a
-T1/T2/readout noise model.
+T1/T2/readout noise model (Qiskit Aer and CUDA-Q).
 
 ### Learn
 
@@ -94,9 +94,10 @@ database, never invent them.
   state-vector maths, not an animation: watch the target amplitude grow from
   1/64 to 99.66% over six iterations, and watch it *fall again* if you
   over-rotate.
-- **Code Lab** — write Qiskit, Cirq, PennyLane, OpenQASM 3 or qBraid
-  transpiler code, with live diagnostics as you type and execution in a
-  hardened sandbox.
+- **Code Lab** — write Qiskit, Cirq, PennyLane, OpenQASM 3, qBraid or
+  CUDA-Q (`cudaq.make_kernel()`) code, with live diagnostics as you type and
+  execution in a hardened sandbox. The CUDA-Q tab appears in installs that
+  ship the wheel — under `make up` on a machine with a GPU.
 
 ### Teach
 
@@ -125,6 +126,11 @@ The physics is tested rather than assumed.
   finding the marked state with certainty.
 - **The noise model** reproduces `exp(-t/T1)` and `exp(-t/T2)` to 1e-9, and
   clamps T2 to the physical limit of 2·T1 — not T1, which is a common error.
+  On CUDA-Q the same `NoiseParams` become CUDA-Q's own Kraus channels
+  (`AmplitudeDampingChannel`, `PhaseFlipChannel`, readout as a bit-flip on
+  `mz`), executed by CUDA-Q's density-matrix engine; its noisy marginals are
+  gated against an independent hand-derived reference when the wheel is
+  installed.
 - **Bloch vectors** are verified against Pauli traces; all six cardinal states
   round-trip exactly.
 

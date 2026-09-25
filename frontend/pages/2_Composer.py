@@ -181,12 +181,19 @@ if backend == "qbraid":
 
 noise_payload = None
 with st.expander("Noise model (T1 / T2 / readout)", expanded=False):
-    if backend != "qiskit_aer":
+    if backend not in {"qiskit_aer", "cudaq"}:
         st.info(
-            "The noise model runs on **Qiskit Aer** only. Select Qiskit Aer above "
-            "to enable it."
+            "The noise model runs on **Qiskit Aer** and **CUDA-Q**. Select one "
+            "of them above to enable it."
         )
     else:
+        if backend == "cudaq":
+            st.caption(
+                "On CUDA-Q the noisy half of the run uses CUDA-Q's own "
+                "density-matrix engine (circuits up to 11 qubits); the GPU "
+                "statevector still supplies the ideal state views and the "
+                "ideal histogram."
+            )
         st.caption(
             "These are **teaching parameters you choose**, not calibration data "
             "from any real quantum computer. They reproduce the *kind* of errors "

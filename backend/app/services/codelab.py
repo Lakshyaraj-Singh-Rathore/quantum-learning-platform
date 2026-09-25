@@ -62,7 +62,7 @@ _CHILD_ENV = {
 
 MAX_CODE_CHARS = 20_000
 
-FRAMEWORKS = ("qiskit", "cirq", "pennylane", "qasm3", "qbraid")
+FRAMEWORKS = ("qiskit", "cirq", "pennylane", "qasm3", "qbraid", "cudaq")
 
 #: Modules the learner's program may import. Everything needed to build a
 #: circuit, nothing that reaches the filesystem, network or other processes.
@@ -75,6 +75,10 @@ ALLOWED_MODULES = {
     # runtime submission client is a separate module and stays blocked, so
     # learner code cannot submit a job (or spend credits) from the Code Lab.
     "qbraid",
+    # CUDA-Q's builder is exactly what it is in the Composer: the real
+    # framework, imported from the same wheel, converted through its own
+    # MLIR printer below. Local computation only -- no network, no devices.
+    "cudaq",
     "numpy",
     "math",
     "cmath",
@@ -418,6 +422,163 @@ def _qasm2_to_qasm3(text):
         return q3.dumps(transpile(qc, basis_gates=basis, optimization_level=0))
 
 
+def _quake_to_qasm3(text):
+    """Convert the Quake MLIR that CUDA-Q prints for its own kernels.
+
+    NOT a guess from source text: str(kernel) dumps the IR CUDA-Q's builder
+    actually emits, so every line is an instruction the simulator will run.
+    The shapes that appear, verified on 0.16:
+
+        %cst = arith.constant 5.000000e-01 : f64
+        %0 = quake.alloca !quake.veq<2>
+        %1 = quake.extract_ref %0[0] : (!quake.veq<2>) -> !quake.ref
+        quake.ry (%cst) %1 : (f64, !quake.ref) -> ()
+        quake.x [%1] %2 : (!quake.ref, !quake.ref) -> ()
+        %m = quake.mz %0 : (!quake.veq<2>) -> ...
+
+    A controlled gate prints as the BASE gate with the controls bracketed,
+    so "quake.x [%1] %2" is a CNOT. Anything the parser cannot vouch for
+    raises -- converting a kernel wrongly is worse than refusing it.
+    """
+    import re
+
+    consts = dict()
+    reg_base = dict()
+    qubit_of = dict()
+    total = 0
+    ops = []
+    measures = []
+
+    const_re = re.compile(r"^%(\w+) = arith.constant ([-+0-9.eE]+) :")
+    veq_re = re.compile(r"^%(\w+) = quake\.alloca !quake\.veq<(\d+)>")
+    ref_re = re.compile(r"^%(\w+) = quake\.alloca !quake\.ref\b")
+    extract_re = re.compile(r"^%(\w+) = quake\.extract_ref %(\w+)\[(\d+)\]")
+    gate_re = re.compile(
+        r"^(?:%[\w-]+ = )?quake\.(\w+)(?: \(([^)]*)\))? ?(\[[^\]]*\])? ?([^:]*):"
+    )
+    flow_re = re.compile(
+        r"quake\.apply_kernel|cc\.loop|for_loop|func\.call|cf\.cond|arith\.cmpi"
+    )
+
+    unary = dict(x="x", y="y", z="z", h="h", s="s", sdg="sdg", sdag="sdg",
+                 t="t", tdg="tdg", tdag="tdg", sx="sx", sxdg="sxdg",
+                 swap="swap", id="id")
+    angle = dict(rx="rx", ry="ry", rz="rz", p="p")
+    controlled_one = dict(x="cx", y="cy", z="cz", h="ch", s="cs", sdg="csdg",
+                          t="ct", sx="csx", rx="crx", ry="cry", rz="crz", p="cp")
+
+    for raw in text.splitlines():
+        line = raw.strip()
+        m = const_re.match(line)
+        if m:
+            consts[m.group(1)] = float(m.group(2))
+            continue
+        m = veq_re.match(line)
+        if m:
+            reg_base[m.group(1)] = (total, int(m.group(2)))
+            total += int(m.group(2))
+            continue
+        m = ref_re.match(line)
+        if m:
+            reg_base[m.group(1)] = (total, 1)
+            qubit_of[m.group(1)] = total
+            total += 1
+            continue
+        m = extract_re.match(line)
+        if m:
+            base, size = reg_base[m.group(2)]
+            idx = int(m.group(3))
+            if idx >= size:
+                raise ValueError("qubit index %d is outside a %d-qubit register"
+                                 % (idx, size))
+            qubit_of[m.group(1)] = base + idx
+            continue
+        if flow_re.search(line):
+            raise ValueError(
+                "CUDA-Q control flow (for_loop, conditional measurement, "
+                "kernel calls) is not convertible to a fixed circuit yet -- "
+                "write the gates out for the Code Lab"
+            )
+        m = gate_re.match(line)
+        if not m:
+            continue
+        name, params, controls, rest = m.groups()
+        targets = [tok.strip() for tok in rest.split(",") if tok.strip().startswith("%")]
+        if name == "mz":
+            # A register operand measures every qubit it holds, in order.
+            for tok in targets:
+                key = tok.lstrip("%")
+                if key in qubit_of:
+                    measures.append(qubit_of[key])
+                elif key in reg_base:
+                    base, size = reg_base[key]
+                    measures.extend(range(base, base + size))
+                else:
+                    raise ValueError("measured value %s is not a qubit" % tok)
+            continue
+        qubits = []
+        for tok in controls.split(",") if controls else []:
+            key = tok.strip().strip("[]").strip().lstrip("%")
+            if key not in qubit_of:
+                raise ValueError("control %s does not resolve to a qubit" % tok)
+            qubits.append(qubit_of[key])
+        for tok in targets:
+            key = tok.lstrip("%")
+            if key not in qubit_of:
+                raise ValueError("%s does not resolve to a qubit" % tok)
+            qubits.append(qubit_of[key])
+        args = []
+        if params:
+            for tok in params.split(","):
+                key = tok.strip().lstrip("%")
+                if key not in consts:
+                    raise ValueError(
+                        "gate parameters must be literal floats in the Code "
+                        "Lab (kernel arguments are not evaluated yet)"
+                    )
+                args.append(repr(consts[key]))
+        if name == "reset":
+            ops.append("reset q[%d];" % qubits[-1])
+            continue
+        if args:
+            base = angle.get(name)
+            if base is None or len(args) != 1:
+                raise ValueError(
+                    "CUDA-Q gate '%s' is not convertible; compose it from "
+                    "rx, ry, rz, cx -- the platform transpiles those anyway" % name
+                )
+        elif name in unary:
+            base = unary[name]
+        else:
+            raise ValueError(
+                "CUDA-Q gate '%s' is not convertible; compose it from "
+                "rx, ry, rz, cx -- the platform transpiles those anyway" % name
+            )
+        targets = ", ".join("q[%d]" % q for q in qubits)
+        if controls:
+            if len(qubits) != 2 or name not in controlled_one:
+                raise ValueError(
+                    "only single-controlled standard gates are convertible "
+                    "from a CUDA-Q kernel yet (got %d control(s) on '%s')"
+                    % (len(qubits) - 1, name)
+                )
+            base = controlled_one[name]
+        ops.append("%s%s %s;" % (base, "(%s)" % args[0] if args else "", targets))
+
+    if total == 0:
+        raise ValueError("the kernel allocated no qubits (qalloc is missing)")
+
+    out = ["OPENQASM 3.0;", 'include "stdgates.inc";', "",
+           "qubit[%d] q;" % total]
+    if measures:
+        out.append("bit[%d] c;" % len(measures))
+    out.append("")
+    out.extend(ops)
+    for i, qb in enumerate(measures):
+        out.append("c[%d] = measure q[%d];" % (i, qb))
+    return "\n".join(out) + "\n"
+
+
 def to_qasm3(obj, framework):
     """Convert a framework circuit object into OpenQASM 3."""
     if framework == "qiskit":
@@ -474,6 +635,15 @@ def to_qasm3(obj, framework):
         from qbraid.transpiler import transpile as _qbraid_transpile
         return _qbraid_transpile(obj, "qasm3")
 
+    if framework == "cudaq":
+        if not hasattr(obj, "qalloc"):
+            raise TypeError(
+                "expected a kernel built with cudaq.make_kernel() -- assign "
+                "that object to `circuit` (the @cudaq.kernel decorator style "
+                "compiles from source and is not supported here)"
+            )
+        return _quake_to_qasm3(str(obj))
+
     raise ValueError("unknown framework " + framework)
 
 
@@ -492,6 +662,8 @@ try:
     elif FRAMEWORK == "qbraid":
         import qbraid  # noqa: F401
         import qiskit  # noqa: F401
+    elif FRAMEWORK == "cudaq":
+        import cudaq  # noqa: F401
     import numpy  # noqa: F401
 except Exception:
     pass
@@ -689,7 +861,37 @@ STARTERS: dict[str, str] = {
         circuit = transpile(qc, "qasm3")
         '''
     ),
+    "cudaq": textwrap.dedent(
+        '''\
+        # Build a Bell pair in CUDA-Q -- the same language the GPU backend
+        # speaks natively. Assign the kernel to a variable named `circuit`.
+        import cudaq
+
+        circuit = cudaq.make_kernel()
+        q = circuit.qalloc(2)
+        circuit.h(q[0])
+        circuit.cx(q[0], q[1])
+        circuit.mz(q)
+        '''
+    ),
 }
 
 
-__all__ = ["build_circuit", "CodeLabError", "STARTERS", "FRAMEWORKS"]
+def available_frameworks() -> tuple:
+    """FRAMEWORKS minus anything whose package is absent from this install.
+
+    The CUDA-Q wheel ships only with the GPU stack; advertising its starter
+    in a plain deployment would hand a learner an ImportError where the
+    platform simply lacks the package, so the framework appears exactly when
+    CUDA-Q is installed and disappears otherwise. Qiskit, Cirq and
+    PennyLane are ordinary requirements and always stay listed.
+    """
+    import importlib.util
+
+    if importlib.util.find_spec("cudaq") is not None:
+        return FRAMEWORKS
+    return tuple(f for f in FRAMEWORKS if f != "cudaq")
+
+
+__all__ = ["build_circuit", "CodeLabError", "STARTERS", "FRAMEWORKS",
+           "available_frameworks"]

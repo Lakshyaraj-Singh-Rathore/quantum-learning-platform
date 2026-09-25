@@ -310,6 +310,54 @@ One difference from the native setup: temperature reading. Containers get an
 
 ---
 
+## What every result tab reads on a CUDA-Q run
+
+Up to the state-payload ceiling (20 qubits; 21–28-qubit runs stay
+counts-only by design) each Composer tab is backed by this engine's own
+numbers — nothing is borrowed from another backend:
+
+| Tab | Source on CUDA-Q |
+| --- | --- |
+| Histogram, Probabilities, Born vs shots | `cudaq.sample` on the `nvidia` target |
+| Statevector, Phase disk, Q-sphere, Bloch sphere | `cudaq.get_state` on the `nvidia` target |
+| Density matrix | built from that statevector (view caps at 5 qubits on every engine) |
+| Ideal vs noisy | the noisy run below: two samplings, both from CUDA-Q |
+
+## Noise on CUDA-Q
+
+The noise panel's knobs (T1, T2, readout, pulse times) do real work here —
+in CUDA-Q's own formalism, not a Qiskit reinterpretation:
+
+* the GPU statevector engine cannot carry Kraus channels (noise turns a pure
+  state into a density matrix — physics, not software), so the noisy half of
+  a run executes on **CUDA-Q's own `density-matrix-cpu` target**, capped at
+  11 qubits; the GPU still supplies the ideal state views and the histogram
+  baseline;
+* thermal errors are CUDA-Q's built-in `AmplitudeDampingChannel(1−e^(−t/T1))`
+  and `PhaseFlipChannel`, attached to every pulse gate — the same damping
+  `thermal_relaxation_error` means on Aer, including virtual-Z gates costing
+  nothing;
+* readout error is a CUDA-Q `BitFlipChannel` attached to the kernel's `mz`
+  operations themselves;
+* the ideal twin histogram comes from sampling the same kernel without the
+  model, so the two bars of "Ideal vs noisy" are one engine talking to itself.
+
+Fidelity/purity gauges are deliberately absent on noisy CUDA-Q runs: 0.16's
+`get_state` refuses a noise model, and this platform never shows a number it
+did not simulate. Qiskit Aer renders both.
+
+## Code Lab: CUDA-Q as a language, not just a backend
+
+The Code Lab has a **CUDA-Q** tab when the wheel is installed (it ships with
+`make gpu`): you write `cudaq.make_kernel()` builder code, and the platform
+converts the kernel by parsing `str(kernel)` — CUDA-Q's own Quake MLIR
+printer output, the very IR its JIT consumes. Controlled gates read back from
+`quake.x [%c] %t` exactly as CUDA-Q compiled them. Decorated
+`@cudaq.kernel` functions, `for_loop`s and conditional measurement are
+refused with an instruction, not silently approximated.
+
+---
+
 ## If something breaks
 
 | Symptom | Cause |
