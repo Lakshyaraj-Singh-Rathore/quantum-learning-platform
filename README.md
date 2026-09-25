@@ -19,8 +19,15 @@ Docker Compose.
 ```bash
 cp .env.example .env
 # optional: GEMINI_API_KEY (AI tutor), QBRAID_API_KEY (qBraid backend)
-docker compose up --build
+make up        # auto-adds the GPU override iff Docker can use a GPU
 ```
+
+`make up` replaces `docker compose up --build`. If the machine's Docker can
+reach an NVIDIA GPU it automatically includes `docker-compose.gpu.yml`, so
+the **CUDA-Q GPU (up to 28 qubits)** backend is offered in the Composer; on a
+CPU-only box it is the plain stack and that backend shows greyed-out with the
+reason. No flags, no modes to remember — one command, and the backend is a
+per-run dropdown either way. (Force it with `make up GPU=1` / `GPU=0`.)
 
 Then open <http://localhost:8501>. On first load press **Ctrl+Shift+R** — the
 React bundles are fingerprinted and a cached copy can be stale.
@@ -225,8 +232,9 @@ specifically, because it is easy to do and hard to spot.
 
 ## Deployment
 
-`docker compose up -d --build` is the supported path and runs the whole stack
-locally.
+`make up` (a thin wrapper over `docker compose up --build` that adds the GPU
+override when a GPU is present) is the supported path and runs the whole
+stack locally.
 
 `docs/DEPLOYMENT.md` documents a measured free-tier cloud split (Streamlit
 Community Cloud for the UI, Render for the API, Neon for Postgres) including

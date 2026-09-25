@@ -282,8 +282,15 @@ recent versions).
 # one-time passthrough proof (prints the RTX 4050 table):
 docker run --rm --gpus all ubuntu nvidia-smi
 
+make up        # auto-detects the GPU and includes this override itself
+# (no make? the explicit form:)
 docker compose -f docker-compose.yml -f docker-compose.gpu.yml up --build
 ```
+
+`make up` runs the same Docker probe on every invocation: GPU usable → the
+compose GPU file is added; not usable → the plain CPU stack. One command,
+correct on every machine; `make gpu-check` prints which one you are about to
+get.
 
 The first build pulls ~1.5 GB of CUDA wheels (cuBLAS alone is 439 MB) on top
 of the usual image; cached afterwards, until `backend/requirements.txt` or
