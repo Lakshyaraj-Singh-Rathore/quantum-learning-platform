@@ -40,6 +40,15 @@ class Settings(BaseSettings):
     # the worker OOM-killed. Cap static circuits too, or any user can take the
     # backend down with a 30-qubit circuit.
     max_static_qubits: int = 20
+    #: GPU statevector lives in VRAM, so it has its own ceiling. 26 qubits is
+    #: 537 MB at fp32, which leaves a 6 GB card room for the desktop
+    #: compositor; 28 would fill it and stutter or OOM mid-run.
+    max_gpu_qubits: int = 26
+    #: Refuse new GPU work above this temperature. Set 0 to disable the check.
+    gpu_temp_limit_c: int = 80
+    #: Minimum gap between GPU submissions, so repeated Run presses cannot
+    #: chain back-to-back bursts.
+    gpu_cooldown_seconds: float = 3.0
     max_dynamic_shots: int = 4096
     while_cap: int = 32
     embedding_dim: int = 768

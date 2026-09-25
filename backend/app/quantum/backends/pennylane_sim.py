@@ -25,7 +25,7 @@ NAME = "pennylane"
 
 
 def run(ir: CircuitIR, shots: int = 1024, *, seed: Optional[int] = None) -> dict:
-    guard_static_size(ir)
+    guard_static_size(ir, backend="pennylane")
     try:
         import pennylane as qml
     except ImportError as exc:  # pragma: no cover

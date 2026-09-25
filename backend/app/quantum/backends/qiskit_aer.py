@@ -40,7 +40,7 @@ def run(
     except ImportError as exc:  # pragma: no cover
         raise BackendError("qiskit-aer is not installed") from exc
 
-    guard_static_size(ir)
+    guard_static_size(ir, backend="qiskit_aer")
 
     circ = to_qiskit(ir, include_measurements=True)
     warnings: list[str] = []

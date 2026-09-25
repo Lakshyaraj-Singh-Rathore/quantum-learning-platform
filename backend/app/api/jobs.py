@@ -15,7 +15,7 @@ from app.deps import get_current_user
 from app.models.job import SimulationJob
 from app.models.user import User
 from app.quantum import codegen_cirq, codegen_pennylane, codegen_qbraid, codegen_qiskit
-from app.quantum.backends import qbraid_sim
+from app.quantum.backends import cudaq_sim, qbraid_sim
 from app.quantum.inspect import compute_run_hash, inspect_circuit
 from app.quantum.ir import CircuitIR
 from app.quantum.qasm3_codec import from_qasm3, to_qasm3
@@ -40,6 +40,7 @@ def _load_ir(data: dict[str, Any]) -> CircuitIR:
 def list_backends() -> dict[str, Any]:
     """Backend catalogue with availability, for the UI selector."""
     available, reason = qbraid_sim.is_available()
+    gpu_available, gpu_reason = cudaq_sim.is_available()
     settings = get_settings()
     return {
         "backends": [
@@ -70,6 +71,13 @@ def list_backends() -> dict[str, Any]:
                 "supports": ["static"],
                 "available": available,
                 "reason": reason,
+            },
+            {
+                "id": "cudaq",
+                "label": f"CUDA-Q GPU (up to {settings.max_gpu_qubits} qubits)",
+                "supports": ["static"],
+                "available": gpu_available,
+                "reason": gpu_reason,
             },
             {
                 "id": "qiskit_dynamic",

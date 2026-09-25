@@ -10,7 +10,14 @@ from celery.exceptions import SoftTimeLimitExceeded
 from app.config import get_settings
 from app.database import SessionLocal
 from app.models.job import SimulationJob
-from app.quantum.backends import cirq_sim, dynamic_qiskit, pennylane_sim, qbraid_sim, qiskit_aer
+from app.quantum.backends import (
+    cirq_sim,
+    cudaq_sim,
+    dynamic_qiskit,
+    pennylane_sim,
+    qbraid_sim,
+    qiskit_aer,
+)
 from app.quantum.backends.base import BackendError, BackendUnavailable
 from app.quantum.ir import CircuitIR
 from app.workers.celery_app import celery_app
@@ -22,6 +29,7 @@ STATIC_RUNNERS = {
     "cirq": cirq_sim.run,
     "pennylane": pennylane_sim.run,
     "qbraid": qbraid_sim.run,
+    "cudaq": cudaq_sim.run,
 }
 
 

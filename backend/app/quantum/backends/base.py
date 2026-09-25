@@ -62,22 +62,36 @@ class Timer:
         return getattr(self, "elapsed", time.perf_counter() - self.start)
 
 
-def guard_static_size(ir: Any) -> None:
-    """Refuse circuits whose statevector will not fit in memory.
+def static_qubit_limit(backend: str = "") -> int:
+    """Qubit ceiling for one backend.
 
-    Every static backend allocates 16 bytes * 2**n. At 24 qubits that is 268 MB
-    for the amplitudes alone and the worker gets OOM-killed, which takes down
-    the whole API rather than failing one job. Fail fast with a message that
-    explains the limit instead.
+    CPU simulators are bounded by system RAM; the GPU simulator is bounded by
+    VRAM, which on a laptop card is both smaller and shared with the desktop.
+    One global limit cannot describe both, so the ceiling is per backend.
     """
     from app.config import get_settings
 
-    limit = get_settings().max_static_qubits
+    settings = get_settings()
+    if backend.startswith("cudaq"):
+        return settings.max_gpu_qubits
+    return settings.max_static_qubits
+
+
+def guard_static_size(ir: Any, backend: str = "") -> None:
+    """Refuse circuits whose statevector will not fit in memory.
+
+    A statevector costs 16 bytes * 2**n. At 24 qubits that is 268 MB for the
+    amplitudes alone and the worker gets OOM-killed, which takes down the whole
+    API rather than failing one job. Fail fast with a message that explains the
+    limit instead.
+    """
+    limit = static_qubit_limit(backend)
     if ir.n_qubits > limit:
+        where = "GPU memory" if backend.startswith("cudaq") else "memory"
         raise BackendError(
-            f"Static simulation is limited to {limit} qubits (got {ir.n_qubits}). "
+            f"This backend is limited to {limit} qubits (got {ir.n_qubits}). "
             f"A statevector for {ir.n_qubits} qubits needs about "
-            f"{2 ** ir.n_qubits * 16 / 1e9:.1f} GB of memory."
+            f"{2 ** ir.n_qubits * 16 / 1e9:.1f} GB of {where}."
         )
 
 
@@ -103,6 +117,7 @@ def statevector_to_json(sv: Any, fix_global_phase: bool = True) -> list[list[flo
 __all__ = [
     "make_result",
     "guard_static_size",
+    "static_qubit_limit",
     "statevector_to_json",
     "Timer",
     "BackendError",
