@@ -279,3 +279,112 @@ def test_only_the_portable_basis_is_accepted():
 def test_default_precision_is_single():
     """fp32 halves VRAM traffic, which roughly halves the heat."""
     assert cudaq_sim.DEFAULT_PRECISION == "fp32"
+
+
+# --------------------------------------------------- state views + sampling
+def _install_fake_cudaq_engine(monkeypatch):
+    """Stand in for the whole cudaq surface run() touches.
+
+    Enough fidelity to exercise the adapter's bookkeeping -- kernel replay,
+    get_state vs sample policy, count mapping -- on machines with no GPU,
+    while counting calls so policy can be asserted, not just outcome.
+    """
+    import contextlib
+    import sys
+    import types
+
+    calls = {"get_state": 0, "sample": 0}
+
+    class _Qubits:
+        def __getitem__(self, i):
+            return i
+
+    class _Kernel:
+        def qalloc(self, n):
+            return _Qubits()
+
+        def rx(self, theta, q):
+            pass
+        ry = rx
+        rz = rx
+
+        def cx(self, control, target):
+            pass
+
+    def get_state(kernel):
+        calls["get_state"] += 1
+        s = 2 ** -0.5
+        return [complex(s), 0j, 0j, complex(s)]
+
+    def sample(kernel, shots_count=1024):
+        calls["sample"] += 1
+        return {"00": shots_count // 2, "11": shots_count - shots_count // 2}
+
+    fake = types.SimpleNamespace(
+        make_kernel=_Kernel,
+        get_state=get_state,
+        sample=sample,
+        set_target=lambda *a, **k: None,
+        set_random_seed=lambda s: None,
+        get_targets=lambda: [types.SimpleNamespace(name="nvidia")],
+        num_available_gpus=lambda: 1,
+    )
+    monkeypatch.setitem(sys.modules, "cudaq", fake)
+    # Bypass the thermal guard: this tests translation policy, not the slot.
+    monkeypatch.setattr(cudaq_sim, "gpu_slot",
+                        lambda **kw: contextlib.nullcontext())
+    monkeypatch.setattr(cudaq_sim, "is_available", lambda: (True, ""))
+    return calls
+
+
+def _bell_measured() -> CircuitIR:
+    return CircuitIR.from_dict({
+        "n_qubits": 2, "n_clbits": 2,
+        "ops": [
+            {"kind": "gate", "gate": "h", "qubits": [0], "layer": 0},
+            {"kind": "gate", "gate": "x", "qubits": [1], "controls": [0],
+             "layer": 1},
+            {"kind": "measure", "qubits": [0], "clbits": [0], "layer": 2},
+            {"kind": "measure", "qubits": [1], "clbits": [1], "layer": 2},
+        ],
+    })
+
+
+def test_measured_circuit_still_returns_stateviews(monkeypatch):
+    """Parity with Aer/Cirq/PennyLane: state views are the ideal
+    pre-measurement state. A measure op in the IR must not blank the
+    Bloch sphere -- the kernel builder drops measures anyway."""
+    calls = _install_fake_cudaq_engine(monkeypatch)
+    result = cudaq_sim.run(_bell_measured(), shots=100)
+    assert calls["get_state"] == 1 and calls["sample"] == 1
+    assert len(result["statevector"]) == 4
+    assert result["counts"] == {"00": 50, "11": 50}
+
+
+def test_unmeasured_circuit_measures_everything(monkeypatch):
+    """An empty histogram was a CUDA-Q-only quirk; every other engine
+    auto-measures all qubits, so this one does too, with their warning."""
+    _install_fake_cudaq_engine(monkeypatch)
+    result = cudaq_sim.run(_circuit(2), shots=50)
+    assert result["counts"] == {"00": 25, "11": 25}
+    assert any("measured all qubits automatically" in w
+               for w in result["metadata"]["warnings"])
+
+
+def test_stateviews_capped_at_the_platforms_payload_budget(monkeypatch):
+    """2**n amplitudes out of VRAM into a JSON job row is a worker OOM,
+    not a feature -- above the CPU engines' ceiling the run is counts-only,
+    loudly. get_state must not even be called."""
+    calls = _install_fake_cudaq_engine(monkeypatch)
+    big = CircuitIR.from_dict({
+        "n_qubits": 21, "n_clbits": 21,
+        "ops": [
+            {"kind": "gate", "gate": "h", "qubits": [0], "layer": 0},
+            {"kind": "measure", "qubits": [0], "clbits": [0], "layer": 1},
+        ],
+    })
+    result = cudaq_sim.run(big, shots=10)
+    assert calls["get_state"] == 0
+    assert not result["statevector"]
+    assert result["counts"]
+    assert any("omitted" in w for w in result["metadata"]["warnings"])

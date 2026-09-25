@@ -191,10 +191,14 @@ def run(
     mapping = measured_qubit_map(ir)
     warnings: list[str] = []
 
-    if not ir.has_measurements():
+    if not mapping:
+        # Same convention as Qiskit Aer, Cirq and PennyLane: an unmeasured
+        # circuit is measured across every qubit rather than returning an
+        # empty histogram. The IR validator pads n_clbits up to n_qubits, so
+        # the mapping always has somewhere to land.
+        mapping = {q: q for q in range(ir.n_qubits)}
         warnings.append(
-            "No measurements in the circuit, so counts are empty. "
-            "Use 'Measure All' to sample outcomes."
+            "No measurements in circuit; measured all qubits automatically."
         )
 
     try:
@@ -210,16 +214,29 @@ def run(
 
                 kernel, _qubits = build_kernel(circ, ir.n_qubits)
 
-                # The statevector is only meaningful for a unitary circuit.
+                # State views show the ideal PRE-MEASUREMENT state on every
+                # engine -- build_kernel drops measure ops, so get_state
+                # answers that question here too, measured circuit or not.
+                # The only thing that stops it is payload: 2**n complex
+                # numbers copied out of VRAM, rebuilt as Python floats and
+                # serialized into the job row. The GPU ceiling sits eight
+                # qubits above the CPU one, so state views share the budget
+                # every engine obeys; bigger circuits keep the histogram and
+                # are told exactly why the amplitudes are absent.
                 statevector = None
-                if not ir.has_measurements():
+                cap = settings.max_static_qubits
+                if ir.n_qubits <= cap:
                     state = cudaq.get_state(kernel)
                     statevector = statevector_to_json(list(state))
+                else:
+                    warnings.append(
+                        f"State views omitted above {cap} qubits: 2^{ir.n_qubits} "
+                        "amplitudes through JSON would outrun the worker's "
+                        "memory. Counts are complete."
+                    )
 
-                counts: dict[str, int] = {}
-                if ir.has_measurements():
-                    sample = cudaq.sample(kernel, shots_count=int(shots))
-                    counts = _counts_from_sample(sample, ir, mapping)
+                sample = cudaq.sample(kernel, shots_count=int(shots))
+                counts = _counts_from_sample(sample, ir, mapping)
     except RuntimeError as exc:
         # Raised by gpu_slot when the card is busy, hot, or cooling down.
         raise BackendError(str(exc)) from exc
