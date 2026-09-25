@@ -15,7 +15,7 @@ endif
 
 COMPOSE := docker compose $(GPU_FILES)
 
-.PHONY: up down logs test seed migrate revision composer gpu-check
+.PHONY: up upd down logs ps test seed migrate revision composer gpu-check
 
 gpu-check:
 	@echo "$(if $(GPU_FILES),GPU mode: CUDA-Q will be available (up to 28 qubits),CPU mode: plain stack - Docker sees no usable NVIDIA GPU)"
@@ -23,8 +23,17 @@ gpu-check:
 up:
 	$(COMPOSE) up --build
 
+# Same stack, in the background: the terminal comes back, and Ctrl+C or a
+# closed window does NOT stop the platform (that bit people using `make up`
+# as a launcher, then running `docker compose exec` in a second shell).
+upd:
+	$(COMPOSE) up -d --build
+
 down:
 	$(COMPOSE) down
+
+ps:
+	$(COMPOSE) ps
 
 logs:
 	$(COMPOSE) logs -f api worker streamlit
