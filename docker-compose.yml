@@ -28,7 +28,11 @@ services:
   api:
     build:
       context: ./backend
-    env_file: .env
+    # .env only OVERRIDES the ${VAR:-defaults} below; a fresh clone must be
+    # able to `make up` before anyone has copied .env.example (Compose >= 2.24).
+    env_file:
+      - path: .env
+        required: false
     environment:
       DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://quantum:quantum@postgres:5432/quantum_learn}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
@@ -51,7 +55,11 @@ services:
   worker:
     build:
       context: ./backend
-    env_file: .env
+    # .env only OVERRIDES the ${VAR:-defaults} below; a fresh clone must be
+    # able to `make up` before anyone has copied .env.example (Compose >= 2.24).
+    env_file:
+      - path: .env
+        required: false
     environment:
       DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://quantum:quantum@postgres:5432/quantum_learn}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
@@ -73,7 +81,11 @@ services:
   streamlit:
     build:
       context: ./frontend
-    env_file: .env
+    # .env only OVERRIDES the ${VAR:-defaults} below; a fresh clone must be
+    # able to `make up` before anyone has copied .env.example (Compose >= 2.24).
+    env_file:
+      - path: .env
+        required: false
     environment:
       API_BASE_URL: ${STREAMLIT_API_URL:-http://api:8000}
       PYTHONPATH: /backend
