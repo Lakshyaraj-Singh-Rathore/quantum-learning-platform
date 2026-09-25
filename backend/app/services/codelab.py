@@ -26,6 +26,7 @@ add OS-level isolation (a container per run, seccomp, or gVisor).
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -38,8 +39,26 @@ from app.quantum.qasm3_codec import from_qasm3
 #: anything slower is a bug or a loop, and the user needs to hear about it.
 BUILD_TIMEOUT_SECONDS = 12
 
-#: Address-space cap for the child process (POSIX only).
-MEMORY_LIMIT_MB = 1024
+#: Address-space cap for the child process (POSIX only). This is RLIMIT_AS --
+#: virtual, not resident -- and it has to be generous, because importing
+#: numpy/BLAS at all reserves ~40 MB of address space per OpenBLAS worker
+#: thread. On a many-core laptop, cirq's or qbraid's own imports blow through
+#: a tight cap and the learner sees "failed to map segment from shared
+#: object" for code that is perfectly fine. BLAS threading is pinned to one
+#: in the child env so the footprint is core-count independent; 2 GB on top
+#: of that leaves the learner's own allocations, which is what this limit is
+#: actually for, bounded.
+MEMORY_LIMIT_MB = 2048
+
+#: OpenBLAS/OMP thread pinning for the child (see MEMORY_LIMIT_MB). Learner
+#: code is small matrix math; BLAS threading only costs import-time address
+#: space and oversubscribes CPUs next to running simulations.
+_CHILD_ENV = {
+    "OPENBLAS_NUM_THREADS": "1",
+    "OMP_NUM_THREADS": "1",
+    "MKL_NUM_THREADS": "1",
+    "NUMEXPR_NUM_THREADS": "1",
+}
 
 MAX_CODE_CHARS = 20_000
 
@@ -141,9 +160,12 @@ try:
     import resource
     nbytes = LIMIT_MB * 1024 * 1024
     resource.setrlimit(resource.RLIMIT_AS, (nbytes, nbytes))
-    # NB: do not set RLIMIT_NPROC to 0. numpy's OpenBLAS spawns worker
-    # threads at import time; blocking that makes numpy fail with a
-    # misleading "importing from source directory" error. The parent's
+    # NB: do not set RLIMIT_NPROC to 0. numpy's OpenBLAS spawning worker
+    # threads at import time is expected -- blocking thread creation makes
+    # numpy fail with a misleading "importing from source directory" error.
+    # Instead the parent pins BLAS to a single thread via *_NUM_THREADS in
+    # the child env, which is what keeps the address space this limit has to
+    # cover small and, unlike NPROC, does not break anything. The parent's
     # wall-clock timeout is what actually contains runaway work.
 except Exception:
     pass  # non-POSIX: rely on the parent's timeout
@@ -549,6 +571,7 @@ def build_circuit(code: str, framework: str) -> dict[str, Any]:
                 text=True,
                 timeout=BUILD_TIMEOUT_SECONDS,
                 cwd=workdir,
+                env={**os.environ, **_CHILD_ENV},
             )
     except subprocess.TimeoutExpired as exc:
         raise CodeLabError(

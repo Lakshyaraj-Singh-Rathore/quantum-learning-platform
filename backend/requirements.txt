@@ -30,6 +30,10 @@ redis==5.2.1
 
 # --- quantum stack
 numpy==1.26.4
+# scipy is unpinned by every framework here, and 1.18+ requires numpy>=2 --
+# an install-order-dependent landmine the resolver may leave unconflicted.
+# Pin the combination actually verified with numpy<2.
+scipy==1.17.1
 qiskit==1.2.4
 qiskit-aer==0.16.0
 openqasm3[parser]==1.0.0
