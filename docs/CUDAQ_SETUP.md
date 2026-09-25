@@ -210,13 +210,13 @@ Defaults are in `backend/app/config.py` and all are environment-overridable:
 
 | Setting | Default | What it does |
 | --- | --- | --- |
-| `MAX_GPU_QUBITS` | 26 | 537 MB at fp32, leaving the 6 GB card room for the desktop |
+| `MAX_GPU_QUBITS` | 28 | 2.5 GB at fp32 including workspace; fits fp64 too |
 | `GPU_TEMP_LIMIT_C` | 80 | refuse new GPU work above this; 0 disables |
 | `GPU_COOLDOWN_SECONDS` | 3 | minimum gap between GPU jobs |
 
-Why 26 rather than 28: a 28-qubit fp64 state is 4.3 GB on a 6 GB card, and
-Windows needs 1–1.5 GB for the desktop compositor. You would get display
-stutter or an out-of-memory crash mid-run.
+Why 28 rather than 29: measured on a mobile RTX 4050 the card reports 6141 MiB
+total with only 84 MiB used, because an Optimus laptop drives the desktop from
+the Intel iGPU. 29 qubits would fit fp32 but not fp64, so 28 keeps both usable.
 
 **The workload is burstier than you might expect.** A 26-qubit, 100-gate
 circuit moves about 107 GB through VRAM — roughly half a second. The Celery

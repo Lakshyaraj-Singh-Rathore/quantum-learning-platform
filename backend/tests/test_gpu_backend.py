@@ -32,7 +32,7 @@ def test_cpu_backends_share_the_ram_ceiling():
 
 def test_gpu_gets_its_own_ceiling():
     """VRAM is a different budget from system RAM, so one limit cannot serve."""
-    assert static_qubit_limit("cudaq") == 26
+    assert static_qubit_limit("cudaq") == 28
     assert static_qubit_limit("cudaq") != static_qubit_limit("qiskit_aer")
 
 
@@ -41,11 +41,17 @@ def test_unknown_backend_falls_back_to_the_cpu_ceiling():
     assert static_qubit_limit("") == 20
 
 
-def test_gpu_ceiling_leaves_vram_headroom():
-    """26 qubits at fp32 is ~537 MB; 28 would fill a 6 GB card."""
+def test_gpu_ceiling_fits_a_six_gb_card_in_both_precisions():
+    """Measured on a mobile RTX 4050: 6141 MiB total, 84 MiB used.
+
+    The ceiling must fit fp64 as well as fp32, otherwise selecting double
+    precision would OOM at a qubit count the UI advertises as supported.
+    """
     limit = static_qubit_limit("cudaq")
-    fp32_bytes = (2**limit) * 8
-    assert fp32_bytes < 1.5e9, "GPU ceiling must leave room for the desktop"
+    free_bytes = (6141 - 84) * 1024**2
+    for per_amplitude in (8, 16):          # fp32, fp64
+        needed = (2**limit) * per_amplitude * 1.15   # +15% workspace
+        assert needed < free_bytes, f"{limit}q at {per_amplitude}B does not fit"
 
 
 # ------------------------------------------------------------ availability

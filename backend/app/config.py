@@ -40,10 +40,13 @@ class Settings(BaseSettings):
     # the worker OOM-killed. Cap static circuits too, or any user can take the
     # backend down with a 30-qubit circuit.
     max_static_qubits: int = 20
-    #: GPU statevector lives in VRAM, so it has its own ceiling. 26 qubits is
-    #: 537 MB at fp32, which leaves a 6 GB card room for the desktop
-    #: compositor; 28 would fill it and stutter or OOM mid-run.
-    max_gpu_qubits: int = 26
+    #: GPU statevector lives in VRAM, so it has its own ceiling. Measured on a
+    #: mobile RTX 4050: 6141 MiB total with only 84 MiB in use, because on an
+    #: Optimus laptop the desktop is driven by the Intel iGPU and the discrete
+    #: card sits nearly idle. 28 qubits at fp32 is 2.5 GB including cuStateVec
+    #: workspace, leaving comfortable headroom. 29 would fit fp32 but not fp64,
+    #: so 28 keeps both precisions usable.
+    max_gpu_qubits: int = 28
     #: Refuse new GPU work above this temperature. Set 0 to disable the check.
     gpu_temp_limit_c: int = 80
     #: Minimum gap between GPU submissions, so repeated Run presses cannot
