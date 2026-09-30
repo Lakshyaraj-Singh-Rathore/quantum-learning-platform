@@ -13,6 +13,10 @@ import { fileURLToPath } from "node:url";
 import { renderToString } from "react-dom/server";
 import { createElement } from "react";
 import type { RunResult } from "../src/api/jobs.ts";
+import { makeOp } from "../../circuit_composer/frontend/src/ir.ts";
+import type { CircuitIR } from "../../circuit_composer/frontend/src/types.ts";
+import { PhaseDisk, QSphere } from "../src/components/results/GeometryViews.tsx";
+import { CircuitDiagram } from "../src/components/results/CircuitDiagram.tsx";
 import {
   BlochView,
   BornVsShots,
@@ -158,6 +162,66 @@ const noisy = cases.bell_noisy;
   check(
     "bloch view says it needs a statevector",
     render(createElement(BlochView, { result: noSv })).includes("needs a statevector"),
+  );
+}
+
+// ------------------------------------------- phase disk, Q-sphere, diagram
+{
+  const noSv: RunResult = { ...bell, statevector: null };
+
+  const disk = render(createElement(PhaseDisk, { result: bell }));
+  check("phase disk labels each basis state", disk.includes("|00⟩") && disk.includes("|11⟩"));
+  check("phase disk explains the per-state rings", disk.includes("own ring"));
+  // A Bell pair shares one phase: without per-state rings the two markers
+  // would land on the same point, which is the bug this design fixes.
+  check(
+    "phase disk draws one ring per populated state",
+    (disk.match(/<circle[^>]*fill="none"/g) ?? []).length >= 2,
+  );
+  check(
+    "phase disk says why it is unavailable without a statevector",
+    render(createElement(PhaseDisk, { result: noSv })).includes("no statevector"),
+  );
+
+  const sphere = render(createElement(QSphere, { result: ghz3 }));
+  check("Q-sphere shows the Hamming-weight poles", sphere.includes("|000⟩") && sphere.includes("|111⟩"));
+  check("Q-sphere explains latitude and phase", sphere.includes("Latitude is Hamming weight"));
+  check("Q-sphere warns it is not a Bloch sphere", sphere.includes("cannot show a mixed state"));
+  check(
+    "Q-sphere says why it is unavailable without a statevector",
+    render(createElement(QSphere, { result: noSv })).includes("Q-sphere unavailable"),
+  );
+}
+
+{
+  const bellIr: CircuitIR = {
+    name: "bell",
+    n_qubits: 2,
+    n_clbits: 2,
+    ops: [
+      makeOp("gate", { gate: "h", qubits: [0], layer: 0 }),
+      makeOp("gate", { gate: "x", qubits: [1], controls: [0], layer: 1 }),
+      makeOp("measure", { qubits: [0], clbits: [0], layer: 2 }),
+      makeOp("measure", { qubits: [1], clbits: [1], layer: 2 }),
+    ],
+  };
+  const html = render(createElement(CircuitDiagram, { ir: bellIr }));
+  check("diagram draws one wire per qubit", html.includes("q[0]") && html.includes("q[1]"));
+  check("diagram labels the gates", html.includes("H"));
+  check("diagram marks measurements", html.includes("M"));
+  check(
+    "diagram draws a controlled-X target as a ring, not an X box",
+    html.includes('r="14"'),
+  );
+  check(
+    "diagram uses the app tokens rather than a hardcoded light palette",
+    html.includes("var(--ink-3)") && !html.includes("#2D3436"),
+  );
+
+  const empty: CircuitIR = { name: "empty", n_qubits: 2, n_clbits: 2, ops: [] };
+  check(
+    "an empty circuit says so instead of drawing nothing",
+    render(createElement(CircuitDiagram, { ir: empty })).includes("Circuit is empty"),
   );
 }
 

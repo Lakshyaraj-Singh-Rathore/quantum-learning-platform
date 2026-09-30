@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { jobResult, jobStatus } from "../../api/jobs";
+import type { CircuitIR } from "@composer/types";
 import { Badge, ErrorNote, Spinner, cn } from "../ui";
 import {
   BlochView,
@@ -13,6 +14,8 @@ import {
   ResultSummary,
   StatevectorTable,
 } from "./ResultsViews";
+import { PhaseDisk, QSphere } from "./GeometryViews";
+import { CircuitDiagram } from "./CircuitDiagram";
 
 const TABS = [
   { id: "histogram", label: "Histogram" },
@@ -20,8 +23,11 @@ const TABS = [
   { id: "born", label: "Born vs shots" },
   { id: "probabilities", label: "Probabilities" },
   { id: "statevector", label: "Statevector" },
+  { id: "phase", label: "Phase disk" },
+  { id: "qsphere", label: "Q-sphere" },
   { id: "density", label: "Density matrix" },
   { id: "bloch", label: "Bloch" },
+  { id: "diagram", label: "Diagram" },
 ] as const;
 
 type TabId = (typeof TABS)[number]["id"];
@@ -38,11 +44,14 @@ export function ResultsPanel({
   stale,
   ranQubits,
   currentQubits,
+  ir,
 }: {
   jobId: number | null;
   stale: boolean;
   ranQubits: number | null;
   currentQubits: number;
+  /** The grid's current circuit, for the diagram tab. */
+  ir: CircuitIR;
 }) {
   const [status, setStatus] = useState<string | null>(null);
   const [tab, setTab] = useState<TabId>("histogram");
@@ -150,8 +159,11 @@ export function ResultsPanel({
             {tab === "born" && <BornVsShots result={data} />}
             {tab === "probabilities" && <ProbabilityTable result={data} />}
             {tab === "statevector" && <StatevectorTable result={data} />}
+            {tab === "phase" && <PhaseDisk result={data} />}
+            {tab === "qsphere" && <QSphere result={data} />}
             {tab === "density" && <DensityMatrix result={data} />}
             {tab === "bloch" && <BlochView result={data} />}
+            {tab === "diagram" && <CircuitDiagram ir={ir} />}
           </div>
         </>
       )}

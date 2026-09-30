@@ -254,6 +254,7 @@ export function ComposerPage() {
         stale={jobId !== null && runSnapshot !== null && runSnapshot !== irKey}
         ranQubits={ranQubits}
         currentQubits={ir.n_qubits}
+        ir={ir}
       />
     </div>
   );
