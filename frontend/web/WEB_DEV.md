@@ -137,3 +137,59 @@ browser.
   `make upd` locally; the two URLs above are the check. Jobs also cannot
   *complete* in the sandbox (no Redis/Celery), so every run there fails with
   the enqueue error rather than producing counts.
+
+## P3 — Code Lab
+
+The editor page (`src/pages/CodeLabPage.tsx`) replaces the P3 placeholder. It
+keeps every element the Streamlit page had: the six-framework language list, the
+editor, live problem reporting with a marker view, the sandbox rules, the AI
+draft box with its "nothing runs until you build" note, build output, and the
+same result views as the Composer.
+
+### The checks moved to the server
+
+`frontend/lib/code_checks.py` is now `backend/app/services/code_checks.py`. The
+Streamlit page imports it through a shim (`frontend/lib/code_checks.py`) so the
+frozen app and the new UI run one implementation, and the new page calls it over
+`POST /codelab/check` (auth required) instead of in-process. The endpoint never
+executes the learner's program — it is a syntax/import pass meant to run while
+they type, debounced 400 ms.
+
+`backend/tests/test_codelab_check.py` pins that contract (12 tests): findings
+are 1-based, a nonsense buffer never 500s, and an anonymous POST never reaches
+the checker.
+
+### Two things worth knowing
+
+**The editor is lazily loaded.** CodeMirror is ~163 kB gzipped and only Code Lab
+uses it, so the route is a `React.lazy` split. The main chunk stays at ~302 kB
+(95.5 kB gzipped) and the editor's 486 kB chunk loads only on visiting `/codelab`.
+
+**`render:codelab` proves less than it looks.** Under `renderToString` effects
+never run, so the language is still unselected and the buffer empty; CodeMirror
+mounts as `<div class="cm-theme-light">` and fills itself in on the client. The
+16 checks therefore cover the part that does not move — the language list from
+`GET /codelab/starters`, the sandbox rules, the AI honesty note, and that no
+result is claimed before a build. Picking a language, typing, Build and Run are
+**browser-only** and still need a real pass.
+
+### Verified here
+
+* `npm run build` — clean; main chunk 302.30 kB / 95.50 kB gzipped,
+  `CodeLabPage` 485.59 kB / 162.64 kB gzipped in its own chunk.
+* `npm run render:codelab` — 16/16.
+* `npm run render:check` — 54/54 across student, anonymous and instructor.
+* `npm run golden:quantum` — 190/190. `npm run render:results` — all passed.
+* Backend `511 passed, 5 skipped`; frontend `418 passed, 77 skipped`.
+* Live API smoke against a running backend: `GET /codelab/starters` returns the
+  five frameworks installable here (CUDA-Q is absent because the wheel is — the
+  availability filter working as intended); `/codelab/check` returns findings
+  and a marker view for a blocked import; `/codelab/build` turns the Qiskit and
+  QASM 3 starters into IR (2 qubits, depth 3) and returns 422 for a blocked
+  import; an anonymous check gets 401.
+
+### Not verified here
+
+Real-browser interaction (no Chromium in the sandbox): typing in the editor, the
+debounced diagnostics firing, Build → Run producing results, and the AI draft
+box. Docker is also unavailable, so the built image is untested.

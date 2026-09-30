@@ -28,6 +28,12 @@ BACKEND = ROOT.parent / "backend"
 SAFE_BACKEND_MODULES = {
     "app.quantum.ir",
     "app.quantum.params",
+    # The Code Lab's static checks: stdlib only (ast, re). The new React UI
+    # calls them through POST /codelab/check, and the frozen Streamlit page
+    # imports this same module through lib/code_checks.py, so both editors run
+    # one implementation. Safe here because app/services/__init__.py is empty:
+    # importing this module does not drag in codelab.py and its SDKs.
+    "app.services.code_checks",
 }
 
 PYTHON_FILES = sorted(

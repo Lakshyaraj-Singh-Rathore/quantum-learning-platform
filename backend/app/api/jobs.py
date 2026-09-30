@@ -20,8 +20,14 @@ from app.quantum.inspect import compute_run_hash, inspect_circuit
 from app.quantum.ir import CircuitIR
 from app.quantum.qasm3_codec import from_qasm3, to_qasm3
 from app.ai import gemini_client
-from app.services import codelab, codelab_ai
-from app.schemas.circuit import CodeLabGenerateIn, CodeLabIn, InspectIn, QasmIn
+from app.services import codelab, codelab_ai, code_checks
+from app.schemas.circuit import (
+    CodeLabCheckIn,
+    CodeLabGenerateIn,
+    CodeLabIn,
+    InspectIn,
+    QasmIn,
+)
 from app.schemas.job import JobCreate, JobOut, JobResultOut
 from app.quantum.backends.base import BackendError
 from app.workers.tasks import resolve_backend, run_simulation
@@ -285,6 +291,29 @@ def export_code(
 # --------------------------------------------------------------------------- #
 # Code lab: build a circuit from a learner-written program
 # --------------------------------------------------------------------------- #
+
+@router.post("/codelab/check")
+def codelab_check(
+    payload: CodeLabCheckIn, user: User = Depends(get_current_user)
+) -> dict[str, Any]:
+    """Static checks for Code Lab source, for live editor diagnostics.
+
+    The Streamlit editor is a plain textarea, so it ran these locally in
+    Python; the new editor has a gutter and asks the server instead. Same
+    function, same rules, one implementation. Nothing here executes the
+    learner's program -- it is a syntax/import pass that runs on every
+    keystroke and never raises, so a broken checker cannot break the page.
+    """
+    findings = code_checks.check(payload.code, payload.framework)
+    return {
+        "findings": [
+            {"line": line, "column": column, "message": message}
+            for line, column, message in findings
+        ],
+        "annotated": code_checks.annotate(payload.code, findings) if findings else payload.code,
+    }
+
+
 @router.post("/codelab/build")
 def codelab_build(
     payload: CodeLabIn, user: User = Depends(get_current_user)

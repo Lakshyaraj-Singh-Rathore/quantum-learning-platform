@@ -117,7 +117,11 @@ if (anon) {
   // than render even a sliver of the app.
   for (const path of ["/learn", "/composer", "/codelab", "/dashboard", "/games", "/playground"]) {
     const html = renderAt(path);
-    check(`${path} leaks nothing to an anonymous visitor`, html === "", `${html.length} chars`);
+    // React wraps every Suspense boundary in `<!--$-->...<!--/$-->` markers,
+    // and the Code Lab route is lazily loaded, so an empty render is no longer
+    // a zero-length string. Strip the markers and assert on what is left.
+    const markup = html.replace(/<!--.*?-->/g, "").trim();
+    check(`${path} leaks nothing to an anonymous visitor`, markup === "", `${markup.length} chars of markup`);
   }
   const login = renderAt("/login");
   check("the login screen renders for an anonymous visitor", login.includes("Sign in") && login.includes("Create account"));

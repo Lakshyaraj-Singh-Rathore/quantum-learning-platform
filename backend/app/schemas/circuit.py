@@ -29,6 +29,19 @@ class InspectIn(BaseModel):
     shots: Optional[int] = None
 
 
+class CodeLabCheckIn(BaseModel):
+    """Source to run the static Code Lab checks against.
+
+    Deliberately the same two fields as CodeLabIn: the new React UI asks the
+    server to check code with the rules the Streamlit page runs locally, so
+    there is one implementation of those rules rather than a Python one and a
+    TypeScript one that can disagree.
+    """
+
+    code: str
+    framework: str = "qiskit"
+
+
 class CodeLabIn(BaseModel):
     """A learner-written program to be compiled into a circuit."""
 
