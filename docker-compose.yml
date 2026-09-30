@@ -102,5 +102,19 @@ services:
       - api
     command: streamlit run Home.py --server.address 0.0.0.0 --server.port 8501
 
+  # The new React SPA (docs/UI_REDESIGN_PLAN.md, phase P0). Static bundle +
+  # /api proxy via its own nginx, so the browser stays same-origin and CORS
+  # is a dev-only detail. The dist is BAKED into the image (no bind mount):
+  # `make up` rebuilds this service's image only when frontend/web sources
+  # change, and a fresh clone works with zero host tooling. The frozen
+  # Streamlit app keeps :8501 until the parity cutover (P8).
+  web:
+    build:
+      context: ./frontend/web
+    ports:
+      - "3000:80"
+    depends_on:
+      - api
+
 volumes:
   pgdata:

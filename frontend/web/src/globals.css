@@ -1,0 +1,87 @@
+@import "tailwindcss";
+
+/* Dark-first: the tokens on :root ARE the dark palette (QuantumLearn night,
+   the ChatGPT-after-dark posture this redesign signed up for). A `.light`
+   class on <html> overrides them; components only ever consume the tokens,
+   never raw colors, so a theme switch re-skins everything at once. */
+
+:root {
+  --bg: #0d0d0f;
+  --bg-raised: #17171a;
+  --bg-hover: #1f1f23;
+  --bg-active: #26262c;
+  --line: #2a2a30;
+  --line-soft: #202024;
+  --ink: #ececee;
+  --ink-secondary: #b9b9c1;
+  --ink-muted: #8b8b95;
+  --accent: #3dd6c6;
+  --accent-ink: #06231f;
+  --danger: #ff5d5d;
+  --warn: #ffd166;
+  color-scheme: dark;
+}
+
+html.light {
+  --bg: #fafafa;
+  --bg-raised: #ffffff;
+  --bg-hover: #f0f0f1;
+  --bg-active: #e7e7e9;
+  --line: #e2e2e6;
+  --line-soft: #ececee;
+  --ink: #17171a;
+  --ink-secondary: #43434b;
+  --ink-muted: #74747e;
+  --accent: #0d9488;
+  --accent-ink: #ffffff;
+  --danger: #d43d3d;
+  --warn: #a2740a;
+  color-scheme: light;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-raised: var(--bg-raised);
+  --color-hover: var(--bg-hover);
+  --color-active: var(--bg-active);
+  --color-line: var(--line);
+  --color-line-soft: var(--line-soft);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-secondary);
+  --color-ink-3: var(--ink-muted);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-danger: var(--danger);
+  --color-warn: var(--warn);
+  --font-sans:
+    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue",
+    Arial, sans-serif;
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+  body {
+    @apply bg-bg text-ink font-sans antialiased;
+    font-size: 15px;
+    line-height: 1.55;
+  }
+  /* ChatGPT-grade restraint: no shadows, no gradients. Focus visibility is
+     the one loud thing we allow. */
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}

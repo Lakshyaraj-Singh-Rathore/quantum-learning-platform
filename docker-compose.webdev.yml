@@ -1,0 +1,25 @@
+# Dev-only override for the new web UI: `make web-dev`.
+#
+# Vite runs in a container (no Node on Windows required); the source tree is
+# bind-mounted for HMR while node_modules lives in a named volume so the
+# container's installs never pollute the repo. Vite proxies /api to the api
+# service on the compose network, so dev and prod speak the identical
+# same-origin URL.
+
+services:
+  web-dev:
+    image: node:22-alpine
+    working_dir: /app
+    command: sh -c "npm install --no-audit --no-fund && npm run dev"
+    volumes:
+      - ./frontend/web:/app
+      - webdev-npm:/app/node_modules
+    environment:
+      VITE_PROXY_TARGET: http://api:8000
+    ports:
+      - "3001:3001"
+    depends_on:
+      - api
+
+volumes:
+  webdev-npm:

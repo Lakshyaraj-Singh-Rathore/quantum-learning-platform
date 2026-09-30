@@ -15,7 +15,7 @@ endif
 
 COMPOSE := docker compose $(GPU_FILES)
 
-.PHONY: up upd down logs ps test seed migrate revision composer gpu-check
+.PHONY: up upd web web-dev down logs ps test seed migrate revision composer gpu-check
 
 gpu-check:
 	@echo "$(if $(GPU_FILES),GPU mode: CUDA-Q will be available (up to 28 qubits),CPU mode: plain stack - Docker sees no usable NVIDIA GPU)"
@@ -28,6 +28,16 @@ up:
 # as a launcher, then running `docker compose exec` in a second shell).
 upd:
 	$(COMPOSE) up -d --build
+
+# Rebuild only the new React SPA image (fast; Docker layer caching skips the
+# npm install unless package.json changed). Picked up by `make up` too.
+web:
+	docker compose -f docker-compose.yml build web
+
+# Vite dev server with HMR at :3001, proxying /api to the running api
+# service. Start the stack first (`make upd`); api and web run alongside.
+web-dev:
+	docker compose -f docker-compose.yml -f docker-compose.webdev.yml up web-dev
 
 down:
 	$(COMPOSE) down
