@@ -1,14 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { Play, RotateCcw, Sparkles } from "lucide-react";
 import { ComposerInner } from "@composer/Composer";
 import { circuitIsDynamic, makeOp, maxLayer } from "@composer/ir";
 import type { CircuitIR } from "@composer/types";
 import { useTheme } from "../state/theme";
 import { backends } from "../api/backends";
-import { inspectCircuit, jobResult, jobStatus, submitJob } from "../api/jobs";
+import { inspectCircuit, submitJob } from "../api/jobs";
 import type { NoiseIn } from "../api/jobs";
 import { Badge, Button, Card, ErrorNote, Input, Label, Separator, Spinner, cn } from "../components/ui";
+import { ResultsPanel } from "../components/results/ResultsPanel";
 
 const SHOT_CHOICES = [128, 256, 512, 1024, 2048, 4096, 8192];
 
@@ -55,7 +56,6 @@ export function ComposerPage() {
   const [ranQubits, setRanQubits] = useState<number | null>(null);
   const [runError, setRunError] = useState<string | null>(null);
   const { theme } = useTheme();
-  const queryClient = useQueryClient();
 
   const { data: catalogue } = useQuery({ queryKey: ["backends"], queryFn: backends, staleTime: 30_000 });
 
@@ -254,7 +254,6 @@ export function ComposerPage() {
         stale={jobId !== null && runSnapshot !== null && runSnapshot !== irKey}
         ranQubits={ranQubits}
         currentQubits={ir.n_qubits}
-        onDone={() => void queryClient.invalidateQueries({ queryKey: ["jobs"] })}
       />
     </div>
   );
@@ -368,128 +367,5 @@ function NumberField({
         }}
       />
     </div>
-  );
-}
-
-// ------------------------------------------------------------------- results
-
-function ResultsPanel({
-  jobId,
-  stale,
-  ranQubits,
-  currentQubits,
-  onDone,
-}: {
-  jobId: number | null;
-  stale: boolean;
-  ranQubits: number | null;
-  currentQubits: number;
-  onDone: () => void;
-}) {
-  const [status, setStatus] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (jobId === null) return;
-    let cancelled = false;
-    let timer: ReturnType<typeof setTimeout>;
-    let delay = 400;
-    const tick = async () => {
-      try {
-        const s = await jobStatus(jobId);
-        if (cancelled) return;
-        setStatus(s.status);
-        if (s.status === "completed" || s.status === "failed") {
-          onDone();
-          return;
-        }
-      } catch {
-        if (!cancelled) setStatus("unreachable");
-        return;
-      }
-      timer = setTimeout(tick, delay);
-      delay = Math.min(Math.round(delay * 1.5), 1500);
-    };
-    void tick();
-    return () => {
-      cancelled = true;
-      clearTimeout(timer);
-    };
-  }, [jobId, onDone]);
-
-  const result = useQuery({
-    queryKey: ["job-result", jobId],
-    queryFn: () => jobResult(jobId as number),
-    enabled: jobId !== null && status === "completed",
-    staleTime: Infinity,
-  });
-
-  if (jobId === null) return null;
-
-  const running = status !== null && status !== "completed" && status !== "failed";
-  const counts = result.data?.result?.counts ?? null;
-  const total = counts ? Object.values(counts).reduce((a, b) => a + b, 0) : 0;
-
-  return (
-    <Card>
-      <div className="mb-3 flex items-center gap-3">
-        <h3 className="text-sm font-semibold">Results — job #{jobId}</h3>
-        {running && (
-          <span className="flex items-center gap-2 text-[13px] text-ink-3">
-            <Spinner /> {status}…
-          </span>
-        )}
-        {status === "completed" && <Badge tone="accent">completed</Badge>}
-        {(status === "failed" || result.data?.error) && (
-          <Badge tone="danger">failed</Badge>
-        )}
-      </div>
-
-      {stale && (
-        <p className="mb-3 rounded-lg border border-warn/40 bg-warn/10 p-3 text-[13px] leading-relaxed text-warn">
-          These results are from an earlier version of the circuit.
-          {ranQubits !== null && ranQubits !== currentQubits && (
-            <>
-              {" "}
-              It ran on {ranQubits} qubit{ranQubits === 1 ? "" : "s"}; the grid now has{" "}
-              {currentQubits}.
-            </>
-          )}{" "}
-          Press <strong className="font-semibold">Run simulation</strong> to refresh
-          them.
-        </p>
-      )}
-
-      {result.data?.error && <ErrorNote className="mb-3">{result.data.error}</ErrorNote>}
-      {result.isError && <ErrorNote className="mb-3">{String(result.error)}</ErrorNote>}
-
-      {counts && (
-        <div className="flex flex-col gap-1.5">
-          {Object.entries(counts)
-            .sort((a, b) => b[1] - a[1])
-            .map(([bits, n]) => {
-              const pct = total > 0 ? (n / total) * 100 : 0;
-              return (
-                <div key={bits} className="flex items-center gap-3 text-sm">
-                  <code className="w-20 shrink-0 font-mono text-[13px] text-ink">{bits}</code>
-                  <div className="h-2 flex-1 overflow-hidden rounded-full bg-hover">
-                    <div
-                      className="h-full rounded-full bg-accent"
-                      style={{ width: `${pct}%` }}
-                    />
-                  </div>
-                  <span className="w-28 shrink-0 text-right text-[13px] tabular-nums text-ink-2">
-                    {n} · {pct.toFixed(1)}%
-                  </span>
-                </div>
-              );
-            })}
-          <p className="mt-3 text-xs text-ink-3">
-            {result.data?.result?.metadata.bit_order} ·{" "}
-            {result.data?.result?.metadata.backend} ·{" "}
-            {result.data?.result?.metadata.runtime_seconds}s · {total} shots
-          </p>
-        </div>
-      )}
-    </Card>
   );
 }

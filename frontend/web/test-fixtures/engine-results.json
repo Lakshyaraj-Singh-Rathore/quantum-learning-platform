@@ -1,0 +1,181 @@
+{
+  "bell": {
+    "counts": {
+      "00": 503,
+      "11": 521
+    },
+    "probabilities": {
+      "00": 0.4912109375,
+      "11": 0.5087890625
+    },
+    "statevector": [
+      [
+        0.7071067811865475,
+        0.0
+      ],
+      [
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0
+      ],
+      [
+        0.7071067811865475,
+        0.0
+      ]
+    ],
+    "metadata": {
+      "backend": "qiskit_aer",
+      "shots": 1024,
+      "n_qubits": 2,
+      "runtime_seconds": 0.369,
+      "bit_order": "qiskit (qubit 0 = rightmost)",
+      "warnings": [],
+      "mode": "static",
+      "noise": {
+        "enabled": false
+      },
+      "metrics": {
+        "entanglement_entropy": 1.0,
+        "concurrence": 0.9999999999999994,
+        "entangled": true,
+        "fidelity": 1.0,
+        "purity": 1.0,
+        "total_variation": 0.0,
+        "shot_leakage": 0.0
+      },
+      "ideal_counts": null
+    }
+  },
+  "ghz3": {
+    "counts": {
+      "000": 1046,
+      "111": 1002
+    },
+    "probabilities": {
+      "000": 0.5107421875,
+      "111": 0.4892578125
+    },
+    "statevector": [
+      [
+        0.7071067811865475,
+        0.0
+      ],
+      [
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0
+      ],
+      [
+        0.5,
+        0.4999999999999999
+      ]
+    ],
+    "metadata": {
+      "backend": "qiskit_aer",
+      "shots": 2048,
+      "n_qubits": 3,
+      "runtime_seconds": 0.0272,
+      "bit_order": "qiskit (qubit 0 = rightmost)",
+      "warnings": [],
+      "mode": "static",
+      "noise": {
+        "enabled": false
+      },
+      "metrics": {
+        "entanglement_entropy": 1.0,
+        "concurrence": null,
+        "entangled": true,
+        "fidelity": 1.0,
+        "purity": 1.0,
+        "total_variation": 0.0,
+        "shot_leakage": 0.0
+      },
+      "ideal_counts": null
+    }
+  },
+  "bell_noisy": {
+    "counts": {
+      "00": 507,
+      "01": 30,
+      "10": 27,
+      "11": 460
+    },
+    "probabilities": {
+      "00": 0.4951171875,
+      "01": 0.029296875,
+      "10": 0.0263671875,
+      "11": 0.44921875
+    },
+    "statevector": [
+      [
+        0.7071067811865475,
+        0.0
+      ],
+      [
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0
+      ],
+      [
+        0.7071067811865475,
+        0.0
+      ]
+    ],
+    "metadata": {
+      "backend": "qiskit_aer",
+      "shots": 1024,
+      "n_qubits": 2,
+      "runtime_seconds": 0.0218,
+      "bit_order": "qiskit (qubit 0 = rightmost)",
+      "warnings": [
+        "Noise model is a teaching approximation with parameters you chose, not calibration from any real device.",
+        "Statevector shown is the IDEAL state; only the counts carry noise."
+      ],
+      "mode": "static",
+      "noise": {
+        "enabled": true,
+        "t1_us": 50.0,
+        "t2_us": 30.0,
+        "readout_error": 0.02
+      },
+      "metrics": {
+        "entanglement_entropy": 1.0,
+        "concurrence": 0.9999999999999994,
+        "entangled": true,
+        "total_variation": 0.0595703125,
+        "shot_leakage": 0.0556640625,
+        "fidelity": 0.9812783660788204,
+        "purity": 0.9631052014928514
+      },
+      "ideal_counts": {
+        "00": 503,
+        "11": 521
+      }
+    }
+  }
+}

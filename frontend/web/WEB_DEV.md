@@ -2,10 +2,13 @@
 
 The React SPA in this folder is the replacement front end described in
 `docs/UI_REDESIGN_PLAN.md`. **P0 delivered the shell** (routing, auth, design
-tokens) and **P1 rebuilt the Composer**: the drag-and-drop grid, the run
-settings, noise model and job lifecycle. The other six pages are still
-placeholders that say so. The Streamlit app on `:8501` remains the real UI for
-everything else until the parity cutover (P8).
+tokens), **P1 rebuilt the Composer** (grid, run settings, noise, job lifecycle)
+and **P2 delivered the result suite** (gauges, histogram, tables, comparisons,
+density matrix, Bloch). Three views from Streamlit's result tabs are not yet
+ported — phase disk, Q-sphere and the circuit diagram — and say so in the tab
+strip's absence. The other six pages are still placeholders. The Streamlit app
+on `:8501` remains the real UI for everything else until the parity cutover
+(P8).
 
 ## Run it
 
@@ -102,6 +105,26 @@ state passes `/inspect`, an overlapping layer is rejected with the message the
 page shows, a job is created with the chosen backend/shots, and the noise model
 is refused on backends the page disables it for. It needs no Celery worker —
 unprocessed jobs are asserted, not waited out.
+
+### The result views are checked against real numbers
+
+Two fixtures carry the truth, and both are generated rather than hand-written:
+
+* `test-fixtures/quantum-golden.json` — numpy's answers for the maths in
+  `src/lib/quantum.ts` (Bloch vectors, entropy, purity, relative phases).
+  Regenerate with `scripts/golden-quantum.py` (run it from the backend venv);
+  `npm run golden:quantum` checks the TypeScript agrees to 1e-9. This caught a
+  determinant error that produced a purity of 1.375 — impossible, and invisible
+  without the fixture.
+* `test-fixtures/engine-results.json` — genuine `qiskit_aer.run()` output for a
+  Bell state, a 3-qubit GHZ and a noisy Bell. Regenerate with
+  `npm run fixtures:engine` (needs the backend venv, for qiskit-aer);
+  `npm run render:results` renders every view against them and checks the
+  bitstrings, gauge values and refusal messages.
+
+The views themselves are plain SVG/CSS, not plotly: bars, arcs and grids do not
+need a megabyte of JavaScript, and this way every view is checkable without a
+browser.
 
 ## Honest status of P0
 

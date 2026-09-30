@@ -10,7 +10,10 @@
     "typecheck": "node scripts/link-shared.mjs && tsc --noEmit",
     "smoke:auth": "tsx scripts/smoke-auth.mts",
     "render:check": "tsx scripts/render-check.mts && tsx scripts/render-check.mts --anon && tsx scripts/render-check.mts --staff",
-    "smoke:composer": "tsx scripts/smoke-composer.mts"
+    "smoke:composer": "tsx scripts/smoke-composer.mts",
+    "render:results": "tsx scripts/render-results.mts",
+    "fixtures:engine": "python3 scripts/engine-fixtures.py",
+    "golden:quantum": "tsx scripts/golden-quantum.mts"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.62.0",
