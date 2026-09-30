@@ -16,14 +16,30 @@ export class ApiError extends Error {
   }
 }
 
-/** FastAPI puts the learner-facing message in `detail`; validation errors
- *  arrive as a list — surface the first one, never a JSON dump. */
+/** FastAPI puts the learner-facing message in `detail`, and this API uses
+ *  three shapes: a plain string, a pydantic validation list, or an object with
+ *  `errors` (job rejections, e.g. "noise needs Qiskit Aer or CUDA-Q"). Mirror
+ *  frontend/lib/api_client.py::_format_detail so both UIs say the same thing —
+ *  an opaque "Request failed (422)" sends people hunting for a bug that is
+ *  really a message they never saw. */
 function readableError(status: number, detail: unknown): string {
   if (typeof detail === "string") return detail;
+
   if (Array.isArray(detail) && detail.length > 0) {
     const first = detail[0] as { msg?: string };
     if (first?.msg) return humanizeValidation(first.msg);
+    return String(detail[0]);
   }
+
+  if (detail && typeof detail === "object") {
+    const errors = (detail as { errors?: unknown }).errors;
+    if (Array.isArray(errors) && errors.length > 0) {
+      return errors.map((e) => `- ${String(e)}`).join("\n");
+    }
+    const inner = (detail as { detail?: unknown }).detail;
+    if (typeof inner === "string") return inner;
+  }
+
   return status === 0 ? "Cannot reach the API" : `Request failed (${status})`;
 }
 

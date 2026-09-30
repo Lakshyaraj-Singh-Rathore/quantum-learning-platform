@@ -3,6 +3,7 @@ import { AppShell } from "./components/shell/AppShell";
 import { RequireAuth } from "./components/RequireAuth";
 import { LoginPage } from "./pages/LoginPage";
 import { PlaceholderPage } from "./pages/PlaceholderPage";
+import { ComposerPage } from "./pages/ComposerPage";
 
 function NotFound() {
   return (
@@ -45,23 +46,7 @@ export default function App() {
               />
             }
           />
-          <Route
-            path="/composer"
-            element={
-              <PlaceholderPage
-                title="Composer"
-                phase="P1–P2"
-                intro="The drag-and-drop canvas (already React), the run panel, and the full result tab strip — histogram to phase disk to ideal-vs-noisy — all fed by the same /jobs results the frozen UI shows."
-                bullets={[
-                  "Canvas island mount with initialIr/onChange props (P1)",
-                  "Gate palette, parameter expressions, save/load, QASM import/export (P1)",
-                  "Backends incl. CUDA-Q GPU + reasons, shots, seed, precision, noise panel (P1)",
-                  "All result tabs, metric gauges, timeline, stale-result guard (P2)",
-                ]}
-                proof
-              />
-            }
-          />
+          <Route path="/composer" element={<ComposerPage />} />
           <Route
             path="/challenges"
             element={

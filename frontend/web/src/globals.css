@@ -1,3 +1,8 @@
+/* The drag-and-drop grid's own stylesheet. Loaded here rather than inside the
+   Composer page so the bundle stays a single CSS file; its tokens are scoped
+   to .composer-host, so it cannot restyle the rest of the app. */
+@import "@composer/styles.css";
+
 @import "tailwindcss";
 
 /* Dark-first: the tokens on :root ARE the dark palette (QuantumLearn night,

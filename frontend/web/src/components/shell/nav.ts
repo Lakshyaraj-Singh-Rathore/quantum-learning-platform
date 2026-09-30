@@ -15,13 +15,15 @@ export interface NavItem {
   icon: LucideIcon;
   /** Which redesign phase takes this page from placeholder to rebuilt —
    * kept in the UI so the parity progress is visible to anyone, not just
-   * in docs. */
+   * in docs. `live: true` means the real page has replaced the placeholder
+   * (later phases still deepen it). */
   phase: string;
+  live?: boolean;
 }
 
 export const NAV_ITEMS: NavItem[] = [
   { to: "/learn", label: "Learn", icon: BookOpen, phase: "P4" },
-  { to: "/composer", label: "Composer", icon: Blocks, phase: "P1–P2" },
+  { to: "/composer", label: "Composer", icon: Blocks, phase: "P1 · live", live: true },
   { to: "/challenges", label: "Challenges", icon: Trophy, phase: "P5" },
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, phase: "P5" },
   { to: "/codelab", label: "Code Lab", icon: Code2, phase: "P3" },

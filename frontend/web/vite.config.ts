@@ -1,6 +1,21 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
+import { fileURLToPath } from "node:url";
+
+// The drag-and-drop grid is shared with the Streamlit component that owns it
+// (frontend/circuit_composer). Both hosts build from the SAME source, so the
+// grid can never drift between the two UIs. It is aliased rather than moved
+// because Streamlit's Dockerfile builds it in place, and that app has to keep
+// working untouched until the P8 cutover.
+//
+// The paths are absolute so they resolve identically on a dev host and inside
+// the image, where the build context is ./frontend and the two trees sit side
+// by side (see frontend/web/Dockerfile).
+const composerSrc = fileURLToPath(
+  new URL("../circuit_composer/frontend/src", import.meta.url),
+);
+const frontendRoot = fileURLToPath(new URL("..", import.meta.url));
 
 // The browser only ever calls /api/*; the proxy (nginx in compose, Vite here)
 // strips /api and forwards to the FastAPI root, so the SPA is same-origin in
@@ -16,11 +31,23 @@ const allowedHosts = process.env.VITE_ALLOWED_HOSTS
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  resolve: {
+    alias: { "@composer": composerSrc },
+    // The grid's source lives in the Streamlit component's tree, which has its
+    // own node_modules when the component has been built locally. Without
+    // dedupe, `react` imported from there resolves to that second copy and the
+    // bundle ships two Reacts — which fails at runtime with "invalid hook
+    // call", not at build time. One React, resolved from this app.
+    dedupe: ["react", "react-dom"],
+  },
   server: {
     host: "0.0.0.0",
     port: 3001,
     strictPort: true,
     allowedHosts,
+    // The grid's source sits outside this app's root, so Vite (dev) must be
+    // told it is allowed to serve it.
+    fs: { allow: [frontendRoot] },
     watch: { usePolling: true },
     proxy: {
       "/api": {

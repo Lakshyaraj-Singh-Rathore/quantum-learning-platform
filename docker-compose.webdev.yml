@@ -9,11 +9,14 @@
 services:
   web-dev:
     image: node:22-alpine
-    working_dir: /app
+    # The whole ./frontend tree is mounted and the dev server runs from the
+    # web/ subdirectory, so the shared grid at ../circuit_composer resolves
+    # exactly as it does in the production image.
+    working_dir: /fe/web
     command: sh -c "npm install --no-audit --no-fund && npm run dev"
     volumes:
-      - ./frontend/web:/app
-      - webdev-npm:/app/node_modules
+      - ./frontend:/fe
+      - webdev-npm:/fe/web/node_modules
     environment:
       VITE_PROXY_TARGET: http://api:8000
     ports:

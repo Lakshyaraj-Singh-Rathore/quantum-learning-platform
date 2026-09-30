@@ -67,6 +67,7 @@ const App = (await import("../src/App.tsx")).default;
 const { Sidebar } = await import("../src/components/shell/Sidebar.tsx");
 const { TopBar } = await import("../src/components/shell/TopBar.tsx");
 const { PlaceholderPage } = await import("../src/pages/PlaceholderPage.tsx");
+const { ComposerPage } = await import("../src/pages/ComposerPage.tsx");
 const { useTheme } = await import("../src/state/theme.ts");
 
 let failures = 0;
@@ -138,7 +139,10 @@ if (anon) {
 
   check(`the sidebar renders (${mode})`, rail.length > 0, `${rail.length} chars`);
   check("sidebar lists all seven pages", NAV.every((l) => rail.includes(l)), NAV.filter((l) => !rail.includes(l)).join(", ") || "all present");
-  check("sidebar links carry their rebuild phase", rail.includes("rebuilt in P4") && rail.includes("rebuilt in P1–P2"));
+  check(
+    "sidebar marks both the pending pages and the rebuilt one",
+    rail.includes("rebuilt in P4") && /rebuilt \(P1/.test(rail),
+  );
   check("sidebar states the migration is in progress", rail.includes("UI migration in progress"));
   check(`the top bar renders (${mode})`, bar.length > 0, `${bar.length} chars`);
   check("top bar carries the engine badge", bar.includes("engines"));
@@ -147,6 +151,16 @@ if (anon) {
   check("page states plainly that it is not rebuilt yet", page.includes("rebuilt in"));
   check("page lists what is coming", page.includes("Canvas island mount") && page.includes("All result tabs"));
   check("live-proof strip renders its own heading", page.includes("Live from the API"));
+
+  // The rebuilt Composer: the real page, mounting the shared drag-and-drop grid.
+  const composer = renderWith(createElement(ComposerPage));
+  check("the Composer page renders", composer.length > 0, `${composer.length} chars`);
+  check("it mounts the shared grid inside its own style scope", composer.includes("composer-host"));
+  check("run settings are present", composer.includes("Run settings") && composer.includes("Backend") && composer.includes("Shots"));
+  check("the run button is present", composer.includes("Run simulation"));
+  check("presets are offered", composer.includes("Bell state") && composer.includes("Clear"));
+  check("circuit analysis panel is present", composer.includes("Circuit analysis"));
+  check("no exception text leaked into the Composer", !/Cannot read|is not a function|undefined is not/.test(composer));
   for (const [name, html] of [["sidebar", rail], ["top bar", bar], ["page", page]] as const) {
     check(`no exception text leaked into the ${name}`, !/Cannot read|is not a function|undefined is not/.test(html));
   }

@@ -16,7 +16,14 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
     "baseUrl": ".",
-    "paths": { "@/*": ["src/*"] }
+    "paths": {
+      "@/*": ["src/*"],
+      "@composer/*": ["../circuit_composer/frontend/src/*"]
+    }
   },
-  "include": ["src"]
+  // The grid's source is part of this program (see the @composer alias): it is
+  // compiled into this app, and tools that look up a tsconfig per file (tsx,
+  // used by scripts/render-check.mts) only apply it to files listed here —
+  // otherwise their JSX is transformed in classic mode and React is undefined.
+  "include": ["src", "../circuit_composer/frontend/src"]
 }

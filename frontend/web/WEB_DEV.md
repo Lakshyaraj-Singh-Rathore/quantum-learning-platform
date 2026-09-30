@@ -1,10 +1,11 @@
 # Working on the new web UI (phase P0)
 
 The React SPA in this folder is the replacement front end described in
-`docs/UI_REDESIGN_PLAN.md`. **P0 delivers the shell only**: routing, auth, the
-design tokens, and the seven page placeholders. The Streamlit app on `:8501`
-remains the real UI until the parity cutover (P8) — nothing has been switched
-over and no page has been rebuilt yet.
+`docs/UI_REDESIGN_PLAN.md`. **P0 delivered the shell** (routing, auth, design
+tokens) and **P1 rebuilt the Composer**: the drag-and-drop grid, the run
+settings, noise model and job lifecycle. The other six pages are still
+placeholders that say so. The Streamlit app on `:8501` remains the real UI for
+everything else until the parity cutover (P8).
 
 ## Run it
 
@@ -40,6 +41,27 @@ everywhere and CORS is a development convenience rather than a deployment
 requirement. `VITE_PROXY_TARGET` overrides the dev target; it defaults to
 `http://localhost:8000`.
 
+## The grid is shared with Streamlit, not copied
+
+`frontend/circuit_composer/frontend/src` is the single implementation of the
+drag-and-drop grid and is compiled into **both** UIs — Streamlit through
+`streamlit.tsx` (which wires `setComponentValue` / `setFrameHeight`), and this
+app through `ComposerInner` with plain props. `Composer.tsx` itself imports no
+`streamlit-component-lib`, so the SPA ships none of it.
+
+Two consequences worth knowing:
+
+* **One React only.** The grid's directory sits outside this app, so
+  `scripts/link-shared.mjs` (run automatically by `dev`/`build`) points
+  `frontend/node_modules/{react,react-dom,@types}` at this app's copies. `npm
+  install` inside the component creates a *second* React; Vite's `dedupe`
+  keeps the bundle correct, but plain Node would pick the wrong one and
+  `npm run render:check` would fail — the script warns if it sees it.
+* **The grid's CSS is scoped.** Its stylesheet used to set `--bg`/`--line`
+  on `:root`, which would have hijacked this app's palette. Those two blocks
+  are now `.composer-host`, and the page supplies that class, so the grid
+  keeps its own colours inside its card.
+
 ## Layout
 
 ```
@@ -72,14 +94,23 @@ catalogue, and that FastAPI's own error text reaches the user:
 ```bash
 # from the repo root, with the stack up (WSL/Git Bash)
 API_TARGET=http://localhost:8000 npm --prefix frontend/web run smoke:auth
+API_TARGET=http://localhost:8000 npm --prefix frontend/web run smoke:composer
 ```
+
+`smoke:composer` exercises the Composer's data path against a live API: a Bell
+state passes `/inspect`, an overlapping layer is rejected with the message the
+page shows, a job is created with the chosen backend/shots, and the noise model
+is refused on backends the page disables it for. It needs no Celery worker —
+unprocessed jobs are asserted, not waited out.
 
 ## Honest status of P0
 
-- Verified here: TypeScript compiles, the bundle builds (≈234 kB, 75 kB gzipped),
-  tokens resolve to the intended CSS variables, the auth flow works against a
-  real FastAPI instance, protected routes leak nothing when signed out, and the
-  served bundle proxies `/api` correctly.
-- **Not** verified here: the Docker build (no Docker in the authoring sandbox)
-  and real-browser interaction. Run `make upd` locally and the two URLs above
-  are the check.
+- Verified here: TypeScript compiles, the bundle builds (≈274 kB, 87 kB gzipped),
+  tokens resolve to the intended CSS variables, the auth flow and the Composer
+  data path work against a real FastAPI instance, protected routes leak nothing
+  when signed out, and the served bundle proxies `/api` correctly.
+- **Not** verified here: the Docker build and real-browser interaction — the
+  authoring sandbox has neither Docker nor a downloadable Chromium. Run
+  `make upd` locally; the two URLs above are the check. Jobs also cannot
+  *complete* in the sandbox (no Redis/Celery), so every run there fails with
+  the enqueue error rather than producing counts.

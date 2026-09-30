@@ -1,7 +1,15 @@
 import ReactDOM from "react-dom/client"
 import { Streamlit } from "streamlit-component-lib"
-import Composer from "./Composer"
+// The Streamlit-specific host adapter (see ./streamlit.tsx). Composer.tsx is
+// shared with the new React SPA and must not import streamlit-component-lib.
+import StreamlitComposer from "./streamlit"
 import "./styles.css"
+
+// styles.css scopes its variables to `.composer-host` instead of `:root`/`body`
+// so the new React SPA can embed the grid on a page without the composer's
+// palette overwriting the host app's. In the Streamlit iframe the body IS the
+// host, so add the class here and every rule resolves exactly as before.
+document.body.classList.add("composer-host")
 
 // streamlit-component-lib calls Streamlit.setFrameHeight() with no argument on
 // mount and after every render. It defaults to document.body.scrollHeight,
@@ -29,7 +37,7 @@ Streamlit.setFrameHeight = (height?: number) => {
 // Streamlit is delivering its one and only RENDER event. When that happens
 // renderData stays null forever, the wrapper returns null, and the component is
 // a permanently blank white iframe with no error in the console.
-ReactDOM.createRoot(document.getElementById("root")!).render(<Composer />)
+ReactDOM.createRoot(document.getElementById("root")!).render(<StreamlitComposer />)
 
 // Safety net. If Streamlit's RENDER event is missed, the wrapper renders null
 // and the user is left staring at an empty white box with no clue why.

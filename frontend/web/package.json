@@ -4,12 +4,13 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc --noEmit && vite build",
+    "dev": "node scripts/link-shared.mjs && vite",
+    "build": "node scripts/link-shared.mjs && tsc --noEmit && vite build",
     "preview": "vite preview",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "node scripts/link-shared.mjs && tsc --noEmit",
     "smoke:auth": "tsx scripts/smoke-auth.mts",
-    "render:check": "tsx scripts/render-check.mts && tsx scripts/render-check.mts --anon && tsx scripts/render-check.mts --staff"
+    "render:check": "tsx scripts/render-check.mts && tsx scripts/render-check.mts --anon && tsx scripts/render-check.mts --staff",
+    "smoke:composer": "tsx scripts/smoke-composer.mts"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.62.0",
@@ -25,6 +26,7 @@
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.4",
+    "streamlit-component-lib": "^2.0.0",
     "tailwindcss": "^4.0.0",
     "tsx": "^4.23.15",
     "typescript": "^5.7.2",

@@ -16,11 +16,11 @@ export function Sidebar() {
       </div>
 
       <nav className="flex flex-1 flex-col gap-0.5 px-2.5 pt-3 max-[1100px]:px-2" aria-label="Primary">
-        {NAV_ITEMS.map(({ to, label, icon: Icon, phase }) => (
+        {NAV_ITEMS.map(({ to, label, icon: Icon, phase, live }) => (
           <NavLink
             key={to}
             to={to}
-            title={`${label} · rebuilt in ${phase}`}
+            title={live ? `${label} · rebuilt (${phase})` : `${label} · rebuilt in ${phase}`}
             className={({ isActive }) =>
               cn(
                 "flex items-center gap-3 rounded-lg px-2.5 py-2 text-sm text-ink-2 transition-colors duration-150",
@@ -32,6 +32,13 @@ export function Sidebar() {
           >
             <Icon className="h-4 w-4 shrink-0" aria-hidden />
             <span className="flex-1 max-[1100px]:hidden">{label}</span>
+            {live && (
+              <span
+                aria-label="rebuilt"
+                title="Rebuilt in the new UI"
+                className="h-1.5 w-1.5 shrink-0 rounded-full bg-accent max-[1100px]:hidden"
+              />
+            )}
           </NavLink>
         ))}
       </nav>

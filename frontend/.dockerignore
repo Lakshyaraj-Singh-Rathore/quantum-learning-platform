@@ -1,0 +1,14 @@
+# Shared by both images built from this context (./frontend):
+#   docker build .                    -> the Streamlit app
+#   docker build -f web/Dockerfile .  -> the new React SPA
+#
+# Without this, Streamlit's build context also drags in the SPA's node_modules.
+**/node_modules
+**/dist
+__pycache__
+*.pyc
+# Built component bundles are produced inside the images, never copied in.
+circuit_composer/frontend/build
+live_bloch/frontend/build
+web/dist
+.git

@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import {
-  Streamlit,
-  StreamlitComponentBase,
-  withStreamlitConnection,
-} from "streamlit-component-lib"
-import type { ComponentProps } from "streamlit-component-lib"
+// NOTE: this file is deliberately free of `streamlit-component-lib`.
+//
+// It is the single implementation of the drag-and-drop grid, and it is used by
+// two hosts: Streamlit (via ./streamlit.tsx, which wires the callbacks to
+// setComponentValue / setFrameHeight) and the new React SPA (via
+// frontend/web, which wires them to props and React state). Keeping the
+// Streamlit import out of here means the SPA bundles no Streamlit code, and
+// Streamlit's iframe behaviour is decided in exactly one file.
 import { BLOCKS, MULTI_PALETTE, PALETTE, STRUCTURAL, WHILE_CAP } from "./types"
 import type { CircuitIR, Op, PaletteItem } from "./types"
 import {
@@ -59,10 +61,22 @@ function setAtPath(ops: Op[], rootIndex: number, path: PathStep[], next: Op): Op
   return clone
 }
 
-function ComposerInner({ args, theme }: ComponentProps) {
-  const incoming = (args["value"] ?? null) as CircuitIR | null
+export interface ComposerProps {
+  /** The circuit to show; null/empty starts from `nQubits` empty rows. */
+  value?: CircuitIR | null
+  nQubits?: number
+  /** Called (debounced) whenever the circuit changes. Omit for a read-only grid. */
+  onChange?: (ir: CircuitIR) => void
+  /** Called with the height the host should reserve. Streamlit needs this; a
+   *  plain React host can ignore it and let the grid size itself. */
+  onHeight?: (height: number) => void
+  theme?: { base?: string }
+}
+
+export function ComposerInner({ value, nQubits, onChange, onHeight, theme }: ComposerProps) {
+  const incoming = value ?? null
   const initial = useMemo<CircuitIR>(
-    () => (incoming && incoming.ops ? incoming : emptyCircuit(args["nQubits"] ?? 2)),
+    () => (incoming && incoming.ops ? incoming : emptyCircuit(nQubits ?? 2)),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
   )
@@ -97,8 +111,10 @@ function ComposerInner({ args, theme }: ComponentProps) {
       document.documentElement?.scrollHeight ?? 0,
       rootRef.current?.scrollHeight ?? 0,
     )
-    Streamlit.setFrameHeight(Math.max(measured, MIN_FRAME_HEIGHT))
-  }, [])
+    // Streamlit needs the height pushed to the parent frame; a plain React
+    // host usually just lets the grid size itself, hence the optional hook.
+    onHeight?.(Math.max(measured, MIN_FRAME_HEIGHT))
+  }, [onHeight])
 
   useEffect(() => {
     resize()
@@ -130,9 +146,9 @@ function ComposerInner({ args, theme }: ComponentProps) {
     const json = JSON.stringify(payload)
     if (json !== lastSent.current) {
       lastSent.current = json
-      Streamlit.setComponentValue(payload)
+      onChange?.(payload)
     }
-  }, [])
+  }, [onChange])
 
   // Every setComponentValue triggers a full Python rerun of the page, and the
   // whole Composer (timeline, analysis, export tabs) re-renders. Committing
@@ -499,11 +515,6 @@ function ComposerInner({ args, theme }: ComponentProps) {
   )
 }
 
-/** Class wrapper required by withStreamlitConnection. */
-class Composer extends StreamlitComponentBase {
-  public render() {
-    return <ComposerInner {...(this.props as ComponentProps)} />
-  }
-}
-
-export default withStreamlitConnection(Composer)
+// No default export on purpose: hosts import { ComposerInner } explicitly.
+// The Streamlit adapter lives in ./streamlit.tsx so that this file stays free
+// of streamlit-component-lib (see the note at the top).
