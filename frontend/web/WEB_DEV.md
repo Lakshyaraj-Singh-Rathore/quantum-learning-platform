@@ -368,3 +368,49 @@ gone.
 cannot reach, so the result panels were checked by rendering `LevelResult`
 directly with real grader output. Tab switching, Docker and real-browser
 behaviour remain unverified, as before.
+
+## P6c — the Grover password-search lab
+
+The featured module on the Games page, reached from its own card. Not a graded
+level: it is a simulation you explore, so it sits outside the challenge
+pipeline and has no score.
+
+`src/lib/grover.ts` ports `frontend/lib/grover_lab.py` — uniform superposition,
+the oracle phase flip, inversion about the mean, the step-by-step frames, the
+closed form, sampling and the classical comparison. `scripts/golden-grover.py`
+regenerates the fixture by calling that same `grover_lab.py`, and
+`npm run golden:grover` checks the port agrees: **3306 values at 1e-9**.
+
+Two properties the module is built around are asserted directly, because they
+are the lesson rather than an implementation detail:
+
+* the closed form sin²((2k+1)·asin(1/√N)) agrees with the simulation;
+* going past the optimum makes the probability **fall**. In the recorded
+  numbers that is 1/64 → 99.66% at iteration 6 → back down to 0.01%, which is
+  the over-rotation story the plan called out.
+
+`render:grover` asserts the framing as well as the numbers: that quantum
+computers do not magically crack passwords, that the speedup is quadratic and
+needs an oracle you already have, and that Grover is probabilistic rather than
+guaranteed. The 99.66% in those checks is computed by the page, not
+transcribed.
+
+`measure` is not pinned to numpy for the same reason `sample` is not: it draws
+from PCG64, which JavaScript cannot reproduce, and the lesson is the
+distribution, not the draw.
+
+### Verified here
+
+* `npm run build` — clean; main 299.66 kB / 94.64 kB gzipped. Games grew to
+  8.68 kB gzipped now that it carries the lab.
+* `golden:grover` 3306/3306, `render:grover` 27/27, plus every earlier harness
+  still green: `render:check` 54/54, `render:games` 30/30,
+  `render:playground` 20/20, `render:p5`, `render:learn`, `render:codelab`,
+  `render:results`, `golden:quantum` 190/190, `golden:demos` 804/804.
+* Backend `511 passed, 5 skipped`; frontend `418 passed, 77 skipped`.
+
+### Not verified here
+
+The predict-and-reveal button and the over-rotation toggle are local state, so
+renderToString cannot reach them. The over-rotation property itself is asserted
+in the golden check instead, where it belongs.

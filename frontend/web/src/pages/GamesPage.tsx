@@ -8,9 +8,13 @@ import { getAttempt, submitChallenge, type ChallengeAttempt } from "../api/asses
 import { circuitStamp, emptyCircuit, useCircuit } from "../state/circuit";
 import { useTheme } from "../state/theme";
 import { CountsBar } from "../components/demos/Demos";
+import { GroverLab } from "../components/grover/GroverLab";
 import { Badge, Button, Card, ErrorNote, Spinner, cn } from "../components/ui";
 
 /** A result describes the circuit that was graded — see the note in LevelPlay. */
+/** Slug for the featured module, which is not a challenge. */
+const GROVER_SLUG = "grover-lab";
+
 interface ScoredRun {
   outcome: ChallengeAttempt;
   stamp: string;
@@ -39,6 +43,21 @@ export function GamesPage() {
     );
   }
   if (games.isError) return <ErrorNote className="m-6">{String(games.error)}</ErrorNote>;
+
+  // Not a graded level: it is a simulation you explore, so it sits outside the
+  // challenge pipeline and has no score.
+  if (slug === GROVER_SLUG) {
+    return (
+      <div className="flex flex-col gap-4">
+        <div className="flex justify-end">
+          <Button size="sm" onClick={() => setSlug(null)}>
+            ← All games
+          </Button>
+        </div>
+        <GroverLab />
+      </div>
+    );
+  }
   if (all.length === 0) {
     return (
       <Card className="m-6">
@@ -75,6 +94,21 @@ export function Catalogue({
         Each level is a real circuit puzzle, graded by the same engine as the coding challenges.
         Pick one to start.
       </p>
+
+      <Card className="border-accent/40">
+        <div className="flex flex-wrap items-start gap-3">
+          <div className="min-w-0 flex-1">
+            <h3 className="text-base font-semibold text-ink">🔐 Quantum Password Search</h3>
+            <p className="text-[13px] text-ink-3">
+              Watch Grover&apos;s algorithm amplify a target state instead of checking candidates
+              one by one.
+            </p>
+          </div>
+          <Button size="sm" variant="primary" onClick={() => onPlay(GROVER_SLUG)}>
+            Open
+          </Button>
+        </div>
+      </Card>
       {games.map((game) => (
         <Card key={game.game_id}>
           <div className="mb-4 flex flex-wrap items-start gap-3">
