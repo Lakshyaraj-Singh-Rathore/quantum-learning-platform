@@ -307,3 +307,64 @@ Two things behind a click, which renderToString cannot reach: the scored quiz
 view and the graded-attempt result. Both were exercised against a live API
 instead (above). Slider/select interaction, Docker and real-browser behaviour
 remain unverified, as before.
+
+## P6 — Games and Playground
+
+### P6a: Games
+
+The catalogue with per-game progress, and playing a level on the real
+drag-and-drop grid with its objective, rules and grading result.
+
+All four grader result panels are covered, because each level's grader reports
+differently: the truth table (with its superposed-input warning and the rule
+for reading controls), Shot Detective's convergence curve with the subsampling
+caveat, Find the Bug's edit budget, and the fidelity note on the state-graded
+levels, including why a histogram cannot tell |Φ+⟩ from |Φ−⟩.
+
+A result describes the circuit that was graded, not whatever is on the grid
+now. The circuit is stamped (op ids stripped, since they are regenerated on
+every edit) and a result is discarded once the grid no longer matches —
+otherwise a "Level complete" banner sits beside a circuit the grader never saw.
+
+Both fixtures are generated, not written by hand: `test-fixtures/games.json`
+is a live `GET /games` (4 games, 10 levels), and
+`test-fixtures/games-results.json` is the platform's **own** `game_graders.py`
+running on real Aer counts — a 4/4 truth table and a subsampled curve from
+4096 real shots.
+
+### P6b: Playground
+
+Seven tabs. Five of them *are* the lesson demos and are rendered from the same
+components — `render:playground` asserts that reuse rather than trusting it.
+The other two are Playground-specific: Bit vs Qubit (the simpler form, without
+the measure/reset cycle) and Build a Qubit, which dials in a state by
+amplitudes or angles and then applies the gates off the **real** grid.
+
+Build a Qubit models one qubit, so `gatesFromIr` reports what it could not
+apply rather than silently dropping it: with the shared Bell circuit, H is
+applied to q0 and the CNOT and both measurements are reported as skipped, with
+a pointer to the Composer where the full simulator runs.
+
+### All seven pages are now real
+
+`PlaceholderPage` is no longer imported anywhere: Learn, Composer, Challenges,
+Dashboard, Code Lab, Games and Playground are all live routes. The main chunk
+shrank to 299.66 kB (94.64 kB gzipped) now that the placeholder scaffolding is
+gone.
+
+### Verified here
+
+* `npm run build` — clean; main 299.66 kB / 94.64 kB gzipped, with LearnPage
+  2.90, Dashboard 2.26, Challenges 2.78, Playground 3.06, Games 4.27 and
+  CodeLab 162.64 kB gzipped in their own chunks.
+* `render:games` 30/30, `render:playground` 20/20, `render:check` 54/54,
+  plus `render:p5`, `render:learn`, `render:codelab`, `render:results`,
+  `golden:quantum` 190/190 and `golden:demos` 804/804.
+* Backend `511 passed, 5 skipped`; frontend `418 passed, 77 skipped`.
+
+### Not verified here
+
+"Run & score" and the polling it starts are behind a click that renderToString
+cannot reach, so the result panels were checked by rendering `LevelResult`
+directly with real grader output. Tab switching, Docker and real-browser
+behaviour remain unverified, as before.

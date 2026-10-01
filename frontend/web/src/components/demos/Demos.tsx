@@ -485,7 +485,8 @@ function GateSandbox() {
   );
 }
 
-function PlusVsMinus() {
+/** Also reused by the Playground, which collects the demos in one place. */
+export function PlusVsMinus() {
   const [applyH, setApplyH] = useState(false);
   let plus = stateFromAngles(90, 0);
   let minus = stateFromAngles(90, 180);
@@ -547,7 +548,8 @@ function PlusVsMinus() {
 /* 04 measurement                                                             */
 /* -------------------------------------------------------------------------- */
 
-function MeasurementLab() {
+/** Also reused by the Playground, which collects the demos in one place. */
+export function MeasurementLab() {
   const [theta, setTheta] = useState(90);
   const [shots, setShots] = useState(1024);
   const [seed, setSeed] = useState(0);
@@ -612,7 +614,8 @@ function MeasurementLab() {
 /* 05 deutsch-jozsa / 06 grover                                               */
 /* -------------------------------------------------------------------------- */
 
-function InterferenceLab() {
+/** Also reused by the Playground, which collects the demos in one place. */
+export function InterferenceLab() {
   const [ampA, setAmpA] = useState(SQRT1_2);
   const [ampB, setAmpB] = useState(-SQRT1_2);
   const result = interference(ampA, ampB);
@@ -667,7 +670,8 @@ function InterferenceLab() {
 /* 03 entanglement / 11 bell states                                           */
 /* -------------------------------------------------------------------------- */
 
-function StateSpaceGrowth() {
+/** Also reused by the Playground, which collects the demos in one place. */
+export function StateSpaceGrowth() {
   const [n, setN] = useState(10);
   const states = 2 ** n;
   const memory = (states * 16) / 1e6;
@@ -714,7 +718,8 @@ function StateSpaceGrowth() {
 /* 04 measurement / 12 control flow                                           */
 /* -------------------------------------------------------------------------- */
 
-function BitOrdering() {
+/** Also reused by the Playground, which collects the demos in one place. */
+export function BitOrdering() {
   const [nBits, setNBits] = useState(3);
   const [value, setValue] = useState(1);
   const bits = value.toString(2).padStart(nBits, "0");

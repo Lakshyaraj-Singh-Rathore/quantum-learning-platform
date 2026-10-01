@@ -3,7 +3,6 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { AppShell } from "./components/shell/AppShell";
 import { RequireAuth } from "./components/RequireAuth";
 import { LoginPage } from "./pages/LoginPage";
-import { PlaceholderPage } from "./pages/PlaceholderPage";
 import { ComposerPage } from "./pages/ComposerPage";
 
 // The editor drags in CodeMirror, which nothing else uses. Keeping it out of
@@ -23,6 +22,9 @@ const DashboardPage = lazy(() =>
 );
 const GamesPage = lazy(() =>
   import("./pages/GamesPage").then((m) => ({ default: m.GamesPage })),
+);
+const PlaygroundPage = lazy(() =>
+  import("./pages/PlaygroundPage").then((m) => ({ default: m.PlaygroundPage })),
 );
 
 function NotFound() {
@@ -56,20 +58,7 @@ export default function App() {
 <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/codelab" element={<CodeLabPage />} />
 <Route path="/games" element={<GamesPage />} />
-            <Route
-              path="/playground"
-              element={
-                <PlaceholderPage
-                  title="Playground"
-                  phase="P6"
-                  intro="Free-form experiments: gate table, parameter sliders, instant state previews. Preview math ports to TypeScript with golden tests; real circuits run through /jobs."
-                  bullets={[
-                    "Gate preview table with exact amplitudes (fixture-pinned)",
-                    "Parameter sliders wired to the same state views as Composer",
-                  ]}
-                />
-              }
-            />
+<Route path="/playground" element={<PlaygroundPage />} />
             <Route path="*" element={<NotFound />} />
           </Route>
         </Route>
