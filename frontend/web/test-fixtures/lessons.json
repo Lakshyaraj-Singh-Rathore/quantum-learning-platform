@@ -1,0 +1,203 @@
+{
+  "lessons": [
+    {
+      "slug": "01_qubits",
+      "title": "Qubits and Superposition",
+      "tags": [
+        "dynamic",
+        "gates",
+        "measurement",
+        "qubit"
+      ],
+      "order_index": 0,
+      "track": "theory"
+    },
+    {
+      "slug": "02_gates",
+      "title": "Quantum Gates",
+      "tags": [
+        "gates",
+        "measurement",
+        "qubit"
+      ],
+      "order_index": 1,
+      "track": "theory"
+    },
+    {
+      "slug": "03_entanglement",
+      "title": "Entanglement",
+      "tags": [
+        "entanglement",
+        "measurement",
+        "qubit"
+      ],
+      "order_index": 2,
+      "track": "theory"
+    },
+    {
+      "slug": "04_measurement",
+      "title": "Measurement and Dynamic Circuits",
+      "tags": [
+        "algorithms",
+        "dynamic",
+        "measurement",
+        "qubit"
+      ],
+      "order_index": 3,
+      "track": "theory"
+    },
+    {
+      "slug": "05_deutsch_jozsa",
+      "title": "Deutsch-Jozsa and Quantum Parallelism",
+      "tags": [
+        "algorithms",
+        "gates",
+        "grover",
+        "measurement",
+        "qubit"
+      ],
+      "order_index": 4,
+      "track": "theory"
+    },
+    {
+      "slug": "06_grover",
+      "title": "Grover's Search Algorithm",
+      "tags": [
+        "algorithms",
+        "gates",
+        "grover",
+        "measurement",
+        "qubit"
+      ],
+      "order_index": 5,
+      "track": "theory"
+    },
+    {
+      "slug": "07_vqe_qaoa",
+      "title": "Variational Algorithms: VQE and QAOA",
+      "tags": [
+        "algorithms",
+        "entanglement",
+        "gates",
+        "measurement",
+        "qubit",
+        "variational"
+      ],
+      "order_index": 6,
+      "track": "theory"
+    },
+    {
+      "slug": "08_dynamic_circuits",
+      "title": "Dynamic Circuits and Classical Control Flow",
+      "tags": [
+        "dynamic",
+        "entanglement",
+        "gates",
+        "measurement",
+        "qubit"
+      ],
+      "order_index": 7,
+      "track": "theory"
+    },
+    {
+      "slug": "09_quantum_noise",
+      "title": "Quantum Noise and Decoherence",
+      "tags": [
+        "algorithms",
+        "dynamic",
+        "entanglement",
+        "gates",
+        "measurement",
+        "qubit"
+      ],
+      "order_index": 8,
+      "track": "theory"
+    },
+    {
+      "slug": "10_gates_bootcamp",
+      "title": "Gates Bootcamp: Every Gate, Step by Step",
+      "tags": [
+        "algorithms",
+        "entanglement",
+        "gates",
+        "grover",
+        "measurement",
+        "qubit"
+      ],
+      "order_index": 9,
+      "track": "circuit"
+    },
+    {
+      "slug": "11_bell_states",
+      "title": "The Four Bell States",
+      "tags": [
+        "entanglement",
+        "gates",
+        "measurement",
+        "qubit"
+      ],
+      "order_index": 10,
+      "track": "circuit"
+    },
+    {
+      "slug": "12_control_flow",
+      "title": "Control Flow: if, for, while and Box",
+      "tags": [
+        "dynamic",
+        "entanglement",
+        "gates",
+        "measurement",
+        "qubit"
+      ],
+      "order_index": 11,
+      "track": "circuit"
+    },
+    {
+      "slug": "13_classical_bit_vs_qubit",
+      "title": "A Classical Switch vs a Qubit",
+      "tags": [
+        "dynamic",
+        "entanglement",
+        "gates",
+        "measurement",
+        "qubit"
+      ],
+      "order_index": 12,
+      "track": "theory"
+    }
+  ],
+  "bodies": {
+    "01_qubits": {
+      "slug": "01_qubits",
+      "title": "Qubits and Superposition",
+      "tags": [
+        "dynamic",
+        "gates",
+        "measurement",
+        "qubit"
+      ],
+      "content": "# Qubits and Superposition\n\nA **classical bit** is either 0 or 1. A **qubit** can be in any *superposition* of the\ntwo computational basis states $|0\\rangle$ and $|1\\rangle$:\n\n$$|\\psi\\rangle = \\alpha|0\\rangle + \\beta|1\\rangle, \\qquad |\\alpha|^2 + |\\beta|^2 = 1$$\n\nThe complex numbers $\\alpha$ and $\\beta$ are **amplitudes**. They are not probabilities:\nprobabilities are obtained by squaring their magnitudes. This is the Born rule, and it is\nwhy $|\\alpha|^2 + |\\beta|^2$ must equal 1 - the qubit has to be found *somewhere*.\n\n## Why amplitudes matter more than probabilities\n\nBecause amplitudes are complex, they can be **negative or imaginary**, and therefore they\ncan *cancel*. Two paths leading to the same outcome with amplitudes $+\\tfrac{1}{\\sqrt2}$\nand $-\\tfrac{1}{\\sqrt2}$ sum to zero: that outcome never happens. This cancellation is\ncalled **destructive interference**, and every quantum speed-up relies on arranging for\nwrong answers to interfere destructively while right answers interfere constructively.\n\n## The Bloch sphere\n\nA single-qubit pure state can be written with two angles:\n\n$$|\\psi\\rangle = \\cos\\frac{\\theta}{2}|0\\rangle + e^{i\\varphi}\\sin\\frac{\\theta}{2}|1\\rangle$$\n\n- $\\theta$ is the polar angle: the north pole is $|0\\rangle$, the south pole is $|1\\rangle$.\n- $\\varphi$ is the **relative phase**, the rotation around the equator.\n\nPoints on the equator are equal superpositions that differ only by phase, e.g.\n$|+\\rangle = (|0\\rangle+|1\\rangle)/\\sqrt2$ and $|-\\rangle = (|0\\rangle-|1\\rangle)/\\sqrt2$.\nThey give *identical* measurement statistics in the computational basis, yet they behave\ncompletely differently once another gate is applied. Phase is real, physical information.\n\nA **global** phase, however, is unobservable: $|\\psi\\rangle$ and $e^{i\\gamma}|\\psi\\rangle$\nare the same physical state. Only *relative* phases between basis states matter.\n\n## Multiple qubits\n\nAn $n$-qubit register lives in a $2^n$-dimensional space and needs $2^n$ complex\namplitudes to describe it. Three qubits need 8 numbers; fifty qubits need more numbers\nthan there are atoms in a small planet. That exponential growth is the reason classical\nsimulation of quantum systems is hard - and the reason this platform caps simulations at\na modest number of qubits.\n\n## Bit ordering convention\n\nThis platform follows the **Qiskit convention**: in a bitstring like `011`, qubit 0 is the\n**rightmost** character. So `001` means qubit 0 is excited and qubits 1 and 2 are in\n$|0\\rangle$. Every backend in the platform (Aer, Cirq, PennyLane, qBraid) normalizes its\noutput to this convention so histograms are directly comparable.\n\n## Try it\n\nIn the Composer, place a single **H** gate on q0 and press **Measure All (Append)**.\nRun it with 1024 shots: you should see roughly 512 counts of `0` and 512 of `1`. Then look\nat the phase disk - the amplitudes are equal in magnitude and both real and positive.\n"
+    },
+    "04_measurement": {
+      "slug": "04_measurement",
+      "title": "Measurement and Dynamic Circuits",
+      "tags": [
+        "algorithms",
+        "dynamic",
+        "measurement",
+        "qubit"
+      ],
+      "content": "# Measurement and Dynamic Circuits\n\nMeasurement is the bridge from quantum to classical. It is **probabilistic** and\n**irreversible**: the state collapses onto the observed outcome.\n\nFor $|\\psi\\rangle = \\alpha|0\\rangle + \\beta|1\\rangle$ you get 0 with probability\n$|\\alpha|^2$ and 1 with probability $|\\beta|^2$, and afterwards the qubit *is* that\noutcome. All phase information in the measured qubit is destroyed.\n\n## Shots\n\nBecause each run yields one sample, we repeat the circuit many times. The number of\nrepetitions is the **shot count**. Counts are estimates: with $N$ shots the statistical\nerror on a probability is roughly $1/\\sqrt{N}$. With 100 shots a true 50/50 split will\nroutinely look like 45/55; with 4096 shots it will look much closer to even.\n\n## Terminal vs mid-circuit measurement\n\nA **terminal** measurement is the last thing that touches a qubit. A **mid-circuit**\nmeasurement happens while the circuit continues, and it is the enabling ingredient for\ndynamic circuits: the classical outcome can steer later operations.\n\n## The two measurement buttons\n\nThis platform deliberately offers two distinct actions, because dynamic circuits are\nsupported:\n\n- **Measure All (Append)** - *dynamic-safe*. Adds terminal measurements for every qubit\n  at the end of the top-level timeline and **deletes nothing**. Existing mid-circuit\n  measurements that your `if`/`while` logic depends on are preserved. Use this by default.\n- **Normalize Terminal Measurement** - *static convenience*. Removes every `measure` in\n  the **top-level** timeline and inserts one clean terminal measure-all layer. It never\n  touches measurements nested inside blocks or boxes. It will warn you, because removing\n  a mid-circuit measurement can silently change the meaning of a dynamic circuit.\n\n## Dynamic circuits: classical feedback\n\nA **dynamic circuit** uses runtime classical information to decide what to do next:\n\n- `if (c[0] == 1) { x q[1]; } else { z q[1]; }`\n- `if (c[0:2] == \"101\") { ... }` - compare a slice of the classical register\n- `for i in [0..N)` - N must be a **compile-time constant**, so the loop can be unrolled\n- `while (c[0] == 1) { ... }` - a genuine runtime loop\n\n### The while cap\n\nA `while` loop whose condition never becomes false would run forever. Every `while` in\nthis platform is therefore capped at **32 iterations**. If a shot hits the cap it is\ntruncated and the result metadata reports `while_cap_hits`, so you can tell the difference\nbetween \"my algorithm converged\" and \"my loop was cut off\".\n\n### Execution policy\n\nStatic circuits run on any backend: Qiskit Aer, Cirq, PennyLane or qBraid.\nCircuits with runtime control flow are automatically routed to the **Qiskit dynamic\nengine**, which steps through operations shot by shot, samples and collapses on each\nmeasurement, and evaluates the control flow against live classical bits. Limits: at most\n**15 qubits** and **4096 shots**.\n\n## Worked example: forcing a qubit to |0>\n\n```\nh q[0];                      // random 0 or 1\nc[0] = measure q[0];\nwhile (c[0] == 1) {          // if we got 1, flip and re-check\n  x q[0];\n  c[0] = measure q[0];\n}\n```\nEvery shot ends with `c[0] == 0`, even though the first measurement was random. This is\nmeasurement-based feedback - the core idea behind quantum error correction, where syndrome\nmeasurements decide which correction to apply.\n"
+    },
+    "02_gates": {
+      "slug": "02_gates",
+      "title": "Quantum Gates",
+      "tags": [
+        "gates",
+        "measurement",
+        "qubit"
+      ],
+      "content": "# Quantum Gates\n\nQuantum gates are **unitary** matrices: they are reversible and they preserve total\nprobability. Unitarity ($U^\\dagger U = I$) is why every gate in the palette (except\nmeasure and reset) has an inverse.\n\n## Single-qubit gates\n\n| Gate | Effect | Matrix intuition |\n|------|--------|------------------|\n| **X** | Bit flip, the quantum NOT | swaps $|0\\rangle \\leftrightarrow |1\\rangle$ |\n| **Y** | Bit + phase flip | $X$ and $Z$ combined, with an $i$ |\n| **Z** | Phase flip | leaves $|0\\rangle$, sends $|1\\rangle \\to -|1\\rangle$ |\n| **H** | Hadamard | creates superposition; maps Z-basis to X-basis |\n| **S**, **Sdg** | Quarter turn | phase of $\\pm i$ on $|1\\rangle$ |\n| **T**, **Tdg** | Eighth turn | phase of $e^{\\pm i\\pi/4}$ on $|1\\rangle$ |\n| **SX** | Square root of X | half a bit flip |\n| **I** | Identity | does nothing (useful as a placeholder/delay) |\n\nThe Hadamard is the workhorse:\n\n$$H|0\\rangle = \\frac{|0\\rangle + |1\\rangle}{\\sqrt2}, \\qquad H|1\\rangle = \\frac{|0\\rangle - |1\\rangle}{\\sqrt2}$$\n\nNote that $H|1\\rangle$ carries a **minus sign**. Applying $H$ twice returns the original\nstate ($H^2 = I$) precisely because of that sign - the two paths interfere.\n\n## Rotation and phase gates\n\n**RX($\\theta$)**, **RY($\\theta$)** and **RZ($\\theta$)** rotate the Bloch vector by\n$\\theta$ radians about the X, Y and Z axes. **P($\\lambda$)** applies a relative phase\n$e^{i\\lambda}$ to $|1\\rangle$ only.\n\nUseful special cases: $Z = P(\\pi)$, $S = P(\\pi/2)$, $T = P(\\pi/4)$.\n\n### Parameter entry in this platform\n\nParameters accept numeric radians or symbolic expressions built **only** from `pi`,\nnumbers and `+ - * / ( )`. Examples: `pi/2`, `3*pi/4`, `-0.5*pi`, `1.234`.\nFree variables such as `theta` are rejected, because every circuit must be numerically\nexecutable the moment you press Run.\n\n## Multi-qubit gates\n\n- **CNOT / CX**: flips the target iff the control is $|1\\rangle$. This is the standard\n  entangling gate.\n- **CZ**: applies a phase of $-1$ only to $|11\\rangle$. Symmetric in its two qubits.\n- **SWAP**: exchanges two qubits.\n- **Toffoli / CCX**: flips the target iff *both* controls are $|1\\rangle$. Universal for\n  classical reversible computation.\n- **MCX**: the general multi-controlled X with any number of controls.\n\n### How controls work in the composer\n\nDrop the gate on its **target** qubit, then click the qubits in the same column that\nshould act as **controls**. The editor draws the control dots and the vertical connector.\nInternally every controlled gate is stored as a base gate plus a list of control qubits,\nso `cx`, `ccx` and a 5-controlled X are all the same structure.\n\nMulti-controlled gates are convenient but expensive: after transpilation to a hardware\nbasis, an MCX with many controls becomes a long sequence of two-qubit gates.\n\n## Universality and transpilation\n\nA small set of gates - for example $\\{H, T, \\text{CNOT}\\}$ - is **universal**: it can\napproximate any unitary to arbitrary accuracy. Real hardware exposes only its own native\nset, so a compiler must rewrite your circuit.\n\nThis platform transpiles every static circuit to the portable basis\n**`rx, ry, rz, cx`** before handing it to Cirq, PennyLane or qBraid. That guarantees all\nbackends execute the *same* normalized program, which is why their histograms agree.\n"
+    }
+  }
+}

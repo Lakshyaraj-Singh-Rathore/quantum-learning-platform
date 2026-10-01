@@ -13,18 +13,25 @@
     "smoke:composer": "tsx scripts/smoke-composer.mts",
     "render:results": "tsx scripts/render-results.mts",
     "render:codelab": "tsx scripts/render-codelab.mts",
+    "render:learn": "tsx scripts/render-learn.mts",
     "fixtures:engine": "python3 scripts/engine-fixtures.py",
-    "golden:quantum": "tsx scripts/golden-quantum.mts"
+    "golden:quantum": "tsx scripts/golden-quantum.mts",
+    "fixtures:lessons": "python3 scripts/lesson-fixtures.py"
   },
   "dependencies": {
     "@codemirror/lang-python": "^6.2.1",
     "@tanstack/react-query": "^5.62.0",
     "@uiw/react-codemirror": "^4.25.12",
     "clsx": "^2.1.1",
+    "katex": "^0.18.10",
     "lucide-react": "^0.468.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "react-markdown": "^10.1.0",
     "react-router-dom": "^6.28.0",
+    "rehype-katex": "^7.0.1",
+    "remark-gfm": "^4.0.1",
+    "remark-math": "^6.0.0",
     "zustand": "^5.0.2"
   },
   "devDependencies": {

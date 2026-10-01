@@ -11,6 +11,9 @@ import { ComposerPage } from "./pages/ComposerPage";
 const CodeLabPage = lazy(() =>
   import("./pages/CodeLabPage").then((m) => ({ default: m.CodeLabPage })),
 );
+// Same reason: the reader pulls in react-markdown and KaTeX, which nothing
+// else on the platform needs.
+const LearnPage = lazy(() => import("./pages/LearnPage").then((m) => ({ default: m.LearnPage })));
 
 function NotFound() {
   return (
@@ -37,23 +40,7 @@ export default function App() {
         <Route element={<RequireAuth />}>
           <Route element={<AppShell />}>
             <Route index element={<Navigate to="/learn" replace />} />
-            <Route
-              path="/learn"
-              element={
-                <PlaceholderPage
-                  title="Learn"
-                  phase="P4"
-                  intro="13 lessons with the interactive demos embedded beside the text — the same widgets that live in the Streamlit app today, rebuilt as React components with golden-number parity."
-                  bullets={[
-                    "Lesson reader with TOC and quizzes via GET /lessons and /quizzes",
-                    "Live Bloch demo (the existing React island, mounted directly)",
-                    "Grover amplitude lab — the 1/64 → 99.66% over-rotation story, ported with golden tests",
-                    "Every demo number pinned to fixtures recorded from today's build",
-                  ]}
-                  proof
-                />
-              }
-            />
+            <Route path="/learn" element={<LearnPage />} />
             <Route path="/composer" element={<ComposerPage />} />
             <Route
               path="/challenges"
