@@ -51,3 +51,26 @@ export const useCircuit = create<CircuitState>()((set) => ({
   setIr: (ir) => set({ ir }),
   reset: (ir) => set((state) => ({ ir: ir ?? emptyCircuit(state.ir.n_qubits), epoch: state.epoch + 1 })),
 }));
+
+/**
+ * Identity of a circuit, ignoring op ids.
+ *
+ * Op ids are regenerated every time the IR is rebuilt, so comparing raw
+ * dictionaries would report a change on every keystroke and throw away results
+ * that are still valid.
+ */
+function stripIds(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(stripIds);
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>)
+        .filter(([key]) => key !== "id")
+        .map(([key, nested]) => [key, stripIds(nested)]),
+    );
+  }
+  return value;
+}
+
+export function circuitStamp(ir: CircuitIR): string {
+  return JSON.stringify(stripIds(ir));
+}

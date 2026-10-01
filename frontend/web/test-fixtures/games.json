@@ -1,0 +1,442 @@
+{
+  "games": [
+    {
+      "title": "Bell Builder",
+      "blurb": "Build all four Bell states and learn why phase is invisible on a histogram.",
+      "icon": "\ud83d\udd17",
+      "concepts": [
+        "entanglement",
+        "phase",
+        "superposition"
+      ],
+      "game_id": "bell_builder",
+      "levels": [
+        {
+          "slug": "game-bell-phi-plus",
+          "title": "Bell Builder 1: |\u03a6+\u27e9",
+          "prompt": "Build the Bell state (|00\u27e9 + |11\u27e9)/\u221a2.\n\nPut qubit 0 into superposition, then entangle it with qubit 1. Measuring should give only 00 and 11, each about half the time.",
+          "level": 1,
+          "grader": null,
+          "allowed_gates": [
+            "h",
+            "x",
+            "cx"
+          ],
+          "constraints": {
+            "max_qubits": 2,
+            "max_depth": 4,
+            "required_gates": [
+              "h"
+            ]
+          },
+          "tags": [
+            "entanglement",
+            "bell-states",
+            "superposition"
+          ],
+          "starter_ir": null,
+          "epsilon": null,
+          "max_edits": null,
+          "n_controls": null,
+          "best_score": 0.0,
+          "passed": false,
+          "attempts": 0
+        },
+        {
+          "slug": "game-bell-phi-minus",
+          "title": "Bell Builder 2: |\u03a6\u2212\u27e9",
+          "prompt": "Build (|00\u27e9 \u2212 |11\u27e9)/\u221a2.\n\nThe histogram is identical to level 1: still only 00 and 11. The difference is a relative phase, so this level is graded on state fidelity. A Z somewhere will do it.",
+          "level": 2,
+          "grader": null,
+          "allowed_gates": [
+            "h",
+            "x",
+            "z",
+            "cx"
+          ],
+          "constraints": {
+            "max_qubits": 2,
+            "max_depth": 5,
+            "required_gates": [
+              "h"
+            ]
+          },
+          "tags": [
+            "entanglement",
+            "bell-states",
+            "phase"
+          ],
+          "starter_ir": null,
+          "epsilon": null,
+          "max_edits": null,
+          "n_controls": null,
+          "best_score": 0.0,
+          "passed": false,
+          "attempts": 0
+        },
+        {
+          "slug": "game-bell-psi-plus",
+          "title": "Bell Builder 3: |\u03a8+\u27e9",
+          "prompt": "Build (|01\u27e9 + |10\u27e9)/\u221a2.\n\nThis time the qubits always disagree. Start from level 1 and flip one of them.",
+          "level": 3,
+          "grader": null,
+          "allowed_gates": [
+            "h",
+            "x",
+            "cx"
+          ],
+          "constraints": {
+            "max_qubits": 2,
+            "max_depth": 5,
+            "required_gates": [
+              "h",
+              "x"
+            ]
+          },
+          "tags": [
+            "entanglement",
+            "bell-states"
+          ],
+          "starter_ir": null,
+          "epsilon": null,
+          "max_edits": null,
+          "n_controls": null,
+          "best_score": 0.0,
+          "passed": false,
+          "attempts": 0
+        },
+        {
+          "slug": "game-bell-psi-minus",
+          "title": "Bell Builder 4: |\u03a8\u2212\u27e9",
+          "prompt": "Build (|01\u27e9 \u2212 |10\u27e9)/\u221a2, the singlet state.\n\nAnti-correlated like level 3, with a relative phase like level 2. Graded on fidelity.",
+          "level": 4,
+          "grader": null,
+          "allowed_gates": [
+            "h",
+            "x",
+            "z",
+            "cx"
+          ],
+          "constraints": {
+            "max_qubits": 2,
+            "max_depth": 6,
+            "required_gates": [
+              "h",
+              "x"
+            ]
+          },
+          "tags": [
+            "entanglement",
+            "bell-states",
+            "phase"
+          ],
+          "starter_ir": null,
+          "epsilon": null,
+          "max_edits": null,
+          "n_controls": null,
+          "best_score": 0.0,
+          "passed": false,
+          "attempts": 0
+        }
+      ],
+      "completed": 0,
+      "total": 4
+    },
+    {
+      "title": "Find the Bug",
+      "blurb": "Repair a broken circuit in as few edits as possible.",
+      "icon": "\ud83d\udc1b",
+      "concepts": [
+        "debugging",
+        "phase",
+        "interference"
+      ],
+      "game_id": "find_bug",
+      "levels": [
+        {
+          "slug": "game-bug-bell",
+          "title": "Find the Bug 1: the Bell pair that never entangles",
+          "prompt": "This circuit is supposed to produce (|00\u27e9 + |11\u27e9)/\u221a2, but it always gives 11.\n\nLoad the starter circuit, find the single wrong gate, and fix it. Budget: 1 edit.",
+          "level": 1,
+          "grader": "find_bug",
+          "allowed_gates": [
+            "h",
+            "x",
+            "z",
+            "cx"
+          ],
+          "constraints": {
+            "max_qubits": 2,
+            "max_depth": 4
+          },
+          "tags": [
+            "debugging",
+            "entanglement",
+            "bell-states"
+          ],
+          "starter_ir": {
+            "name": "broken-bell",
+            "n_qubits": 2,
+            "n_clbits": 2,
+            "ops": [
+              {
+                "kind": "gate",
+                "gate": "x",
+                "qubits": [
+                  0
+                ],
+                "layer": 0
+              },
+              {
+                "kind": "gate",
+                "gate": "x",
+                "qubits": [
+                  1
+                ],
+                "controls": [
+                  0
+                ],
+                "layer": 1
+              },
+              {
+                "kind": "measure",
+                "qubits": [
+                  0
+                ],
+                "clbits": [
+                  0
+                ],
+                "layer": 2
+              },
+              {
+                "kind": "measure",
+                "qubits": [
+                  1
+                ],
+                "clbits": [
+                  1
+                ],
+                "layer": 2
+              }
+            ]
+          },
+          "epsilon": null,
+          "max_edits": 1,
+          "n_controls": null,
+          "best_score": 0.0,
+          "passed": false,
+          "attempts": 0
+        },
+        {
+          "slug": "game-bug-phase",
+          "title": "Find the Bug 2: the phase that does nothing",
+          "prompt": "This circuit should always measure 1, but it gives a 50/50 split.\n\nThe Z gate is correct. Something after it is missing: a phase is invisible until you interfere it back. Budget: 1 edit.",
+          "level": 2,
+          "grader": "find_bug",
+          "allowed_gates": [
+            "h",
+            "x",
+            "z",
+            "s",
+            "t"
+          ],
+          "constraints": {
+            "max_qubits": 1,
+            "max_depth": 5
+          },
+          "tags": [
+            "debugging",
+            "phase",
+            "interference"
+          ],
+          "starter_ir": {
+            "name": "broken-phase",
+            "n_qubits": 1,
+            "n_clbits": 1,
+            "ops": [
+              {
+                "kind": "gate",
+                "gate": "h",
+                "qubits": [
+                  0
+                ],
+                "layer": 0
+              },
+              {
+                "kind": "gate",
+                "gate": "z",
+                "qubits": [
+                  0
+                ],
+                "layer": 1
+              },
+              {
+                "kind": "measure",
+                "qubits": [
+                  0
+                ],
+                "clbits": [
+                  0
+                ],
+                "layer": 2
+              }
+            ]
+          },
+          "epsilon": null,
+          "max_edits": 1,
+          "n_controls": null,
+          "best_score": 0.0,
+          "passed": false,
+          "attempts": 0
+        }
+      ],
+      "completed": 0,
+      "total": 2
+    },
+    {
+      "title": "Open the Vault",
+      "blurb": "Multi-controlled gates, graded over the full truth table.",
+      "icon": "\ud83d\udd10",
+      "concepts": [
+        "cnot",
+        "toffoli",
+        "mcx"
+      ],
+      "game_id": "multi_control",
+      "levels": [
+        {
+          "slug": "game-vault-1",
+          "title": "Open the Vault 1: one control",
+          "prompt": "Flip the target qubit (q1) exactly when the control qubit (q0) is 1, and leave the control unchanged.\n\nEvery one of the 4 basis inputs is checked, so this must work as logic, not just for one case.",
+          "level": 1,
+          "grader": "truth_table",
+          "allowed_gates": [
+            "x",
+            "cx"
+          ],
+          "constraints": {
+            "max_qubits": 2,
+            "max_depth": 3
+          },
+          "tags": [
+            "multi-control",
+            "cnot",
+            "logic"
+          ],
+          "starter_ir": null,
+          "epsilon": null,
+          "max_edits": null,
+          "n_controls": 1,
+          "best_score": 0.0,
+          "passed": false,
+          "attempts": 0
+        },
+        {
+          "slug": "game-vault-2",
+          "title": "Open the Vault 2: two controls (Toffoli)",
+          "prompt": "Flip q2 only when BOTH q0 and q1 are 1. All 8 basis inputs are checked.\n\nThis is the quantum AND gate. A single CNOT will not pass.",
+          "level": 2,
+          "grader": "truth_table",
+          "allowed_gates": [
+            "x",
+            "cx",
+            "ccx",
+            "mcx"
+          ],
+          "constraints": {
+            "max_qubits": 3,
+            "max_depth": 4
+          },
+          "tags": [
+            "multi-control",
+            "toffoli",
+            "logic"
+          ],
+          "starter_ir": null,
+          "epsilon": null,
+          "max_edits": null,
+          "n_controls": 2,
+          "best_score": 0.0,
+          "passed": false,
+          "attempts": 0
+        },
+        {
+          "slug": "game-vault-3",
+          "title": "Open the Vault 3: three controls (MCX)",
+          "prompt": "Flip q3 only when q0, q1 and q2 are all 1. All 16 basis inputs are checked.\n\nDrop the gate on the target, then click each control in the same column.",
+          "level": 3,
+          "grader": "truth_table",
+          "allowed_gates": [
+            "x",
+            "cx",
+            "ccx",
+            "mcx"
+          ],
+          "constraints": {
+            "max_qubits": 4,
+            "max_depth": 5
+          },
+          "tags": [
+            "multi-control",
+            "mcx",
+            "logic"
+          ],
+          "starter_ir": null,
+          "epsilon": null,
+          "max_edits": null,
+          "n_controls": 3,
+          "best_score": 0.0,
+          "passed": false,
+          "attempts": 0
+        }
+      ],
+      "completed": 0,
+      "total": 3
+    },
+    {
+      "title": "Shot Detective",
+      "blurb": "Discover how many shots a distribution actually needs.",
+      "icon": "\ud83c\udfb2",
+      "concepts": [
+        "sampling",
+        "statistics"
+      ],
+      "game_id": "shot_detective",
+      "levels": [
+        {
+          "slug": "game-shots-bell",
+          "title": "Shot Detective 1: how many shots for a Bell pair?",
+          "prompt": "Build a Bell pair, then find the SMALLEST shot count whose histogram lands within 0.05 of the true 50/50 distribution.\n\nFewer shots scores higher, but miss the tolerance and you score nothing. Run, read the convergence curve, then try again lower.",
+          "level": 1,
+          "grader": "shot_detective",
+          "allowed_gates": [
+            "h",
+            "x",
+            "cx"
+          ],
+          "constraints": {
+            "max_qubits": 2,
+            "max_depth": 4,
+            "required_gates": [
+              "h"
+            ]
+          },
+          "tags": [
+            "sampling",
+            "statistics",
+            "measurement"
+          ],
+          "starter_ir": null,
+          "epsilon": 0.05,
+          "max_edits": null,
+          "n_controls": null,
+          "best_score": 0.0,
+          "passed": false,
+          "attempts": 0
+        }
+      ],
+      "completed": 0,
+      "total": 1
+    }
+  ]
+}

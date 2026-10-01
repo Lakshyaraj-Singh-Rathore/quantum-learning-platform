@@ -21,6 +21,9 @@ const ChallengesPage = lazy(() =>
 const DashboardPage = lazy(() =>
   import("./pages/DashboardPage").then((m) => ({ default: m.DashboardPage })),
 );
+const GamesPage = lazy(() =>
+  import("./pages/GamesPage").then((m) => ({ default: m.GamesPage })),
+);
 
 function NotFound() {
   return (
@@ -52,20 +55,7 @@ export default function App() {
 <Route path="/challenges" element={<ChallengesPage />} />
 <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/codelab" element={<CodeLabPage />} />
-            <Route
-              path="/games"
-              element={
-                <PlaceholderPage
-                  title="Games"
-                  phase="P6"
-                  intro="Gate golf, circuit reversal and the rest — scoring semantics untouched, validation ratified by POST /inspect like the Composer."
-                  bullets={[
-                    "Level cards and play field with the same scoring rules",
-                    "GET /games catalogue, server-side grading",
-                  ]}
-                />
-              }
-            />
+<Route path="/games" element={<GamesPage />} />
             <Route
               path="/playground"
               element={

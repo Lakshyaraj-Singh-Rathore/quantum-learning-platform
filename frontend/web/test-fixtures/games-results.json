@@ -1,0 +1,90 @@
+{
+  "truth_table": {
+    "score": 1.0,
+    "note": "Truth table: 4/4 inputs behave correctly.",
+    "details": {
+      "testcases_total": 4,
+      "testcases_passed": 4,
+      "superposed": 0,
+      "table": [
+        {
+          "input": "00",
+          "output": "00",
+          "expected_target": 0,
+          "got_target": 0,
+          "controls_intact": true,
+          "certainty": 1.0,
+          "definite": true,
+          "passed": true
+        },
+        {
+          "input": "01",
+          "output": "11",
+          "expected_target": 1,
+          "got_target": 1,
+          "controls_intact": true,
+          "certainty": 1.0,
+          "definite": true,
+          "passed": true
+        },
+        {
+          "input": "10",
+          "output": "10",
+          "expected_target": 1,
+          "got_target": 1,
+          "controls_intact": true,
+          "certainty": 1.0,
+          "definite": true,
+          "passed": true
+        },
+        {
+          "input": "11",
+          "output": "01",
+          "expected_target": 0,
+          "got_target": 0,
+          "controls_intact": true,
+          "certainty": 1.0,
+          "definite": true,
+          "passed": true
+        }
+      ],
+      "failures": []
+    }
+  },
+  "shot_detective": {
+    "counts": {
+      "00": 2057,
+      "11": 2039
+    },
+    "curve": [
+      {
+        "shots": 128,
+        "tvd": 0.03125
+      },
+      {
+        "shots": 256,
+        "tvd": 0.01172
+      },
+      {
+        "shots": 512,
+        "tvd": 0.01758
+      },
+      {
+        "shots": 1024,
+        "tvd": 0.00586
+      },
+      {
+        "shots": 2048,
+        "tvd": 0.00146
+      },
+      {
+        "shots": 4096,
+        "tvd": 0.0022
+      }
+    ],
+    "ideal": {
+      "00": 0.5,
+      "11": 0.5
+    }
+  }
+}
