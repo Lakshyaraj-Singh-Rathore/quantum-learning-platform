@@ -1,0 +1,959 @@
+{
+  "quizzes": [
+    {
+      "id": 1,
+      "slug": "basics",
+      "title": "Qubits, Gates and Superposition",
+      "tags": [
+        "qubit",
+        "gates"
+      ],
+      "questions": [
+        {
+          "id": 1,
+          "prompt": "Applying H to |0> produces which state?",
+          "qtype": "mcq",
+          "options": [
+            "|0>",
+            "|1>",
+            "(|0> + |1>)/sqrt(2)",
+            "(|0> - |1>)/sqrt(2)"
+          ],
+          "tags": [
+            "gates",
+            "qubit"
+          ]
+        },
+        {
+          "id": 2,
+          "prompt": "Which gate flips |0> to |1>?",
+          "qtype": "mcq",
+          "options": [
+            "X",
+            "Z",
+            "S",
+            "T"
+          ],
+          "tags": [
+            "gates"
+          ]
+        },
+        {
+          "id": 3,
+          "prompt": "How many amplitudes describe an n-qubit pure state? (expression in n)",
+          "qtype": "short",
+          "options": [],
+          "tags": [
+            "qubit"
+          ]
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "slug": "entanglement-measurement",
+      "title": "Entanglement and Measurement",
+      "tags": [
+        "entanglement",
+        "measurement"
+      ],
+      "questions": [
+        {
+          "id": 4,
+          "prompt": "Measuring the Bell state (|00> + |11>)/sqrt(2) can yield which outcomes?",
+          "qtype": "mcq",
+          "options": [
+            "00 or 11",
+            "01 or 10",
+            "00 only",
+            "any of the four"
+          ],
+          "tags": [
+            "entanglement",
+            "measurement"
+          ]
+        },
+        {
+          "id": 5,
+          "prompt": "Which gate pair creates a Bell state from |00>?",
+          "qtype": "mcq",
+          "options": [
+            "H then CNOT",
+            "X then Z",
+            "CNOT then H",
+            "two Hadamards"
+          ],
+          "tags": [
+            "entanglement"
+          ]
+        },
+        {
+          "id": 6,
+          "prompt": "What does a mid-circuit measurement enable?",
+          "qtype": "mcq",
+          "options": [
+            "Classical feedback / dynamic circuits",
+            "Faster gates",
+            "More qubits",
+            "Removal of noise"
+          ],
+          "tags": [
+            "measurement",
+            "dynamic"
+          ]
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "slug": "quantum-noise",
+      "title": "Quantum Noise and Decoherence",
+      "tags": [
+        "noise",
+        "decoherence"
+      ],
+      "questions": [
+        {
+          "id": 7,
+          "prompt": "T1 describes which process?",
+          "qtype": "mcq",
+          "options": [
+            "Energy relaxation: |1> decaying to |0>",
+            "Loss of phase coherence only",
+            "Misreporting a measured bit",
+            "Crosstalk between neighbouring qubits"
+          ],
+          "tags": [
+            "noise"
+          ]
+        },
+        {
+          "id": 8,
+          "prompt": "Why can T2 never exceed 2*T1?",
+          "qtype": "mcq",
+          "options": [
+            "Because energy relaxation also destroys phase information",
+            "Because T2 is measured in different units",
+            "It is only a convention, not a physical limit",
+            "Because readout error dominates at long times"
+          ],
+          "tags": [
+            "noise"
+          ]
+        },
+        {
+          "id": 9,
+          "prompt": "You set T1 and T2 extremely high and readout error to 20%. What happens to state fidelity?",
+          "qtype": "mcq",
+          "options": [
+            "It stays near 1.000; only the counts are corrupted",
+            "It drops to about 0.80",
+            "It drops to 0.50",
+            "Fidelity cannot be computed with readout error"
+          ],
+          "tags": [
+            "noise",
+            "measurement"
+          ]
+        },
+        {
+          "id": 10,
+          "prompt": "Purity Tr(rho^2) falls below 1. What does that mean?",
+          "qtype": "mcq",
+          "options": [
+            "The state has become a statistical mixture (decohered)",
+            "The circuit used too many shots",
+            "The state is entangled",
+            "A gate was applied incorrectly"
+          ],
+          "tags": [
+            "noise"
+          ]
+        },
+        {
+          "id": 11,
+          "prompt": "Why do Z, S, T and RZ pick up no thermal error in this simulation?",
+          "qtype": "mcq",
+          "options": [
+            "They are virtual gates: a phase-frame change taking zero time",
+            "They are too small to matter",
+            "It is a simplification with no hardware basis",
+            "They are applied after the noise model runs"
+          ],
+          "tags": [
+            "noise",
+            "gates"
+          ]
+        },
+        {
+          "id": 12,
+          "prompt": "Name the noise channel that models |1> decaying to |0>. (two words)",
+          "qtype": "short",
+          "options": [],
+          "tags": [
+            "noise"
+          ]
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "slug": "bell-states-quiz",
+      "title": "The Four Bell States",
+      "tags": [
+        "entanglement"
+      ],
+      "questions": [
+        {
+          "id": 13,
+          "prompt": "Phi+ and Phi- give identical histograms. What distinguishes them?",
+          "qtype": "mcq",
+          "options": [
+            "The relative phase on the |11> term",
+            "The number of shots required",
+            "Phi- is not physically realisable",
+            "Nothing; they are the same state"
+          ],
+          "tags": [
+            "entanglement"
+          ]
+        },
+        {
+          "id": 14,
+          "prompt": "Measuring Psi+ = (|01> + |10>)/sqrt(2) can give:",
+          "qtype": "mcq",
+          "options": [
+            "01 or 10 only",
+            "00 or 11 only",
+            "any of the four outcomes",
+            "always 01"
+          ],
+          "tags": [
+            "entanglement"
+          ]
+        },
+        {
+          "id": 15,
+          "prompt": "Why is each qubit of a Bell pair shown with a zero-length Bloch vector?",
+          "qtype": "mcq",
+          "options": [
+            "Its reduced state is maximally mixed, so it has no state of its own",
+            "The visualisation is broken",
+            "The qubit was measured",
+            "Bloch vectors are undefined for two qubits"
+          ],
+          "tags": [
+            "entanglement"
+          ]
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "slug": "grover",
+      "title": "Grover Search",
+      "tags": [
+        "grover",
+        "algorithms"
+      ],
+      "questions": [
+        {
+          "id": 16,
+          "prompt": "Grover search on N items needs roughly how many iterations?",
+          "qtype": "mcq",
+          "options": [
+            "O(N)",
+            "O(sqrt(N))",
+            "O(log N)",
+            "O(1)"
+          ],
+          "tags": [
+            "grover"
+          ]
+        },
+        {
+          "id": 17,
+          "prompt": "What does the Grover oracle do to the marked state?",
+          "qtype": "mcq",
+          "options": [
+            "Flips its phase",
+            "Measures it",
+            "Deletes it",
+            "Doubles its amplitude"
+          ],
+          "tags": [
+            "grover"
+          ]
+        }
+      ]
+    }
+  ],
+  "challenges": [
+    {
+      "id": 1,
+      "slug": "bell-state",
+      "title": "Build a Bell State",
+      "prompt": "Create the entangled state (|00> + |11>)/sqrt(2) on two qubits, then measure both qubits. You should see roughly 50% `00` and 50% `11` and nothing else.",
+      "allowed_gates": [
+        "h",
+        "x",
+        "cx",
+        "measure"
+      ],
+      "constraints": {
+        "max_qubits": 2,
+        "max_depth": 6,
+        "required_gates": [
+          "h"
+        ]
+      },
+      "tags": [
+        "entanglement",
+        "gates"
+      ],
+      "is_dynamic": false
+    },
+    {
+      "id": 2,
+      "slug": "grover-2qubit",
+      "title": "Grover Search for |11>",
+      "prompt": "Implement one Grover iteration on two qubits so the marked state |11> is found with near-certainty. Hint: uniform superposition, phase oracle (CZ), then the diffuser. A controlled-Z can be built from H, CX, H on the target.",
+      "allowed_gates": [
+        "h",
+        "x",
+        "z",
+        "cx",
+        "cz",
+        "measure"
+      ],
+      "constraints": {
+        "max_qubits": 2,
+        "max_depth": 20,
+        "required_gates": [
+          "h"
+        ]
+      },
+      "tags": [
+        "grover",
+        "algorithms"
+      ],
+      "is_dynamic": false
+    },
+    {
+      "id": 3,
+      "slug": "dynamic-reset-loop",
+      "title": "Dynamic Feedback: Force Qubit 0 to |0>",
+      "prompt": "Use a mid-circuit measurement plus runtime control flow to guarantee qubit 0 ends in |0>. Put q0 in superposition, measure it into c[0], and use a while loop (capped at 32 iterations) with an if/else block so that whenever c[0] is 1 you flip and re-measure. Every shot should end with c[0] = 0.",
+      "allowed_gates": [
+        "h",
+        "x",
+        "id",
+        "measure"
+      ],
+      "constraints": {
+        "max_qubits": 2,
+        "must_be_dynamic": true,
+        "required_gates": [
+          "h"
+        ]
+      },
+      "tags": [
+        "dynamic",
+        "measurement"
+      ],
+      "is_dynamic": true
+    },
+    {
+      "id": 4,
+      "slug": "game-bell-phi-plus",
+      "title": "Bell Builder 1: |\u03a6+\u27e9",
+      "prompt": "Build the Bell state (|00\u27e9 + |11\u27e9)/\u221a2.\n\nPut qubit 0 into superposition, then entangle it with qubit 1. Measuring should give only 00 and 11, each about half the time.",
+      "allowed_gates": [
+        "h",
+        "x",
+        "cx"
+      ],
+      "constraints": {
+        "max_qubits": 2,
+        "max_depth": 4,
+        "required_gates": [
+          "h"
+        ]
+      },
+      "tags": [
+        "entanglement",
+        "bell-states",
+        "superposition"
+      ],
+      "is_dynamic": false
+    },
+    {
+      "id": 5,
+      "slug": "game-bell-phi-minus",
+      "title": "Bell Builder 2: |\u03a6\u2212\u27e9",
+      "prompt": "Build (|00\u27e9 \u2212 |11\u27e9)/\u221a2.\n\nThe histogram is identical to level 1: still only 00 and 11. The difference is a relative phase, so this level is graded on state fidelity. A Z somewhere will do it.",
+      "allowed_gates": [
+        "h",
+        "x",
+        "z",
+        "cx"
+      ],
+      "constraints": {
+        "max_qubits": 2,
+        "max_depth": 5,
+        "required_gates": [
+          "h"
+        ]
+      },
+      "tags": [
+        "entanglement",
+        "bell-states",
+        "phase"
+      ],
+      "is_dynamic": false
+    },
+    {
+      "id": 6,
+      "slug": "game-bell-psi-plus",
+      "title": "Bell Builder 3: |\u03a8+\u27e9",
+      "prompt": "Build (|01\u27e9 + |10\u27e9)/\u221a2.\n\nThis time the qubits always disagree. Start from level 1 and flip one of them.",
+      "allowed_gates": [
+        "h",
+        "x",
+        "cx"
+      ],
+      "constraints": {
+        "max_qubits": 2,
+        "max_depth": 5,
+        "required_gates": [
+          "h",
+          "x"
+        ]
+      },
+      "tags": [
+        "entanglement",
+        "bell-states"
+      ],
+      "is_dynamic": false
+    },
+    {
+      "id": 7,
+      "slug": "game-bell-psi-minus",
+      "title": "Bell Builder 4: |\u03a8\u2212\u27e9",
+      "prompt": "Build (|01\u27e9 \u2212 |10\u27e9)/\u221a2, the singlet state.\n\nAnti-correlated like level 3, with a relative phase like level 2. Graded on fidelity.",
+      "allowed_gates": [
+        "h",
+        "x",
+        "z",
+        "cx"
+      ],
+      "constraints": {
+        "max_qubits": 2,
+        "max_depth": 6,
+        "required_gates": [
+          "h",
+          "x"
+        ]
+      },
+      "tags": [
+        "entanglement",
+        "bell-states",
+        "phase"
+      ],
+      "is_dynamic": false
+    },
+    {
+      "id": 8,
+      "slug": "game-vault-1",
+      "title": "Open the Vault 1: one control",
+      "prompt": "Flip the target qubit (q1) exactly when the control qubit (q0) is 1, and leave the control unchanged.\n\nEvery one of the 4 basis inputs is checked, so this must work as logic, not just for one case.",
+      "allowed_gates": [
+        "x",
+        "cx"
+      ],
+      "constraints": {
+        "max_qubits": 2,
+        "max_depth": 3
+      },
+      "tags": [
+        "multi-control",
+        "cnot",
+        "logic"
+      ],
+      "is_dynamic": false
+    },
+    {
+      "id": 9,
+      "slug": "game-vault-2",
+      "title": "Open the Vault 2: two controls (Toffoli)",
+      "prompt": "Flip q2 only when BOTH q0 and q1 are 1. All 8 basis inputs are checked.\n\nThis is the quantum AND gate. A single CNOT will not pass.",
+      "allowed_gates": [
+        "x",
+        "cx",
+        "ccx",
+        "mcx"
+      ],
+      "constraints": {
+        "max_qubits": 3,
+        "max_depth": 4
+      },
+      "tags": [
+        "multi-control",
+        "toffoli",
+        "logic"
+      ],
+      "is_dynamic": false
+    },
+    {
+      "id": 10,
+      "slug": "game-vault-3",
+      "title": "Open the Vault 3: three controls (MCX)",
+      "prompt": "Flip q3 only when q0, q1 and q2 are all 1. All 16 basis inputs are checked.\n\nDrop the gate on the target, then click each control in the same column.",
+      "allowed_gates": [
+        "x",
+        "cx",
+        "ccx",
+        "mcx"
+      ],
+      "constraints": {
+        "max_qubits": 4,
+        "max_depth": 5
+      },
+      "tags": [
+        "multi-control",
+        "mcx",
+        "logic"
+      ],
+      "is_dynamic": false
+    },
+    {
+      "id": 11,
+      "slug": "game-bug-bell",
+      "title": "Find the Bug 1: the Bell pair that never entangles",
+      "prompt": "This circuit is supposed to produce (|00\u27e9 + |11\u27e9)/\u221a2, but it always gives 11.\n\nLoad the starter circuit, find the single wrong gate, and fix it. Budget: 1 edit.",
+      "allowed_gates": [
+        "h",
+        "x",
+        "z",
+        "cx"
+      ],
+      "constraints": {
+        "max_qubits": 2,
+        "max_depth": 4
+      },
+      "tags": [
+        "debugging",
+        "entanglement",
+        "bell-states"
+      ],
+      "is_dynamic": false
+    },
+    {
+      "id": 12,
+      "slug": "game-bug-phase",
+      "title": "Find the Bug 2: the phase that does nothing",
+      "prompt": "This circuit should always measure 1, but it gives a 50/50 split.\n\nThe Z gate is correct. Something after it is missing: a phase is invisible until you interfere it back. Budget: 1 edit.",
+      "allowed_gates": [
+        "h",
+        "x",
+        "z",
+        "s",
+        "t"
+      ],
+      "constraints": {
+        "max_qubits": 1,
+        "max_depth": 5
+      },
+      "tags": [
+        "debugging",
+        "phase",
+        "interference"
+      ],
+      "is_dynamic": false
+    },
+    {
+      "id": 13,
+      "slug": "game-shots-bell",
+      "title": "Shot Detective 1: how many shots for a Bell pair?",
+      "prompt": "Build a Bell pair, then find the SMALLEST shot count whose histogram lands within 0.05 of the true 50/50 distribution.\n\nFewer shots scores higher, but miss the tolerance and you score nothing. Run, read the convergence curve, then try again lower.",
+      "allowed_gates": [
+        "h",
+        "x",
+        "cx"
+      ],
+      "constraints": {
+        "max_qubits": 2,
+        "max_depth": 4,
+        "required_gates": [
+          "h"
+        ]
+      },
+      "tags": [
+        "sampling",
+        "statistics",
+        "measurement"
+      ],
+      "is_dynamic": false
+    }
+  ],
+  "progress": {
+    "user_id": 3,
+    "quizzes_taken": 1,
+    "challenges_attempted": 1,
+    "challenges_passed": 0,
+    "average_quiz_percentage": 33.3,
+    "mastery": [
+      {
+        "tag": "entanglement",
+        "score": 0.0,
+        "attempts": 1
+      },
+      {
+        "tag": "gates",
+        "score": 0.253,
+        "attempts": 3
+      },
+      {
+        "tag": "qubit",
+        "score": 0.333,
+        "attempts": 2
+      }
+    ],
+    "recommendations": [
+      {
+        "kind": "lesson",
+        "slug": "01_qubits",
+        "title": "Qubits and Superposition",
+        "reason": "Strengthen: gates, qubit"
+      },
+      {
+        "kind": "lesson",
+        "slug": "02_gates",
+        "title": "Quantum Gates",
+        "reason": "Strengthen: gates, qubit"
+      },
+      {
+        "kind": "lesson",
+        "slug": "03_entanglement",
+        "title": "Entanglement",
+        "reason": "Strengthen: entanglement, qubit"
+      },
+      {
+        "kind": "lesson",
+        "slug": "04_measurement",
+        "title": "Measurement and Dynamic Circuits",
+        "reason": "Strengthen: qubit"
+      }
+    ]
+  },
+  "quiz_result": {
+    "score": 1.0,
+    "max_score": 3.0,
+    "percentage": 33.3,
+    "feedback": [
+      {
+        "question_id": 1,
+        "prompt": "Applying H to |0> produces which state?",
+        "your_answer": "|0>",
+        "correct_answer": "(|0> + |1>)/sqrt(2)",
+        "correct": false,
+        "explanation": "H maps |0> to the equal superposition with a positive phase."
+      },
+      {
+        "question_id": 2,
+        "prompt": "Which gate flips |0> to |1>?",
+        "your_answer": "X",
+        "correct_answer": "X",
+        "correct": true,
+        "explanation": "X is the quantum NOT gate."
+      },
+      {
+        "question_id": 3,
+        "prompt": "How many amplitudes describe an n-qubit pure state? (expression in n)",
+        "your_answer": "test",
+        "correct_answer": "2^n|2**n|two to the n",
+        "correct": false,
+        "explanation": "The state vector has 2^n complex amplitudes."
+      }
+    ]
+  },
+  "overview": {
+    "total_students": 1,
+    "total_jobs": 1,
+    "quiz_completion": [
+      {
+        "slug": "basics",
+        "title": "Qubits, Gates and Superposition",
+        "attempts": 2,
+        "unique_students": 1,
+        "completion_rate": 100.0,
+        "average_percentage": 33.3
+      },
+      {
+        "slug": "entanglement-measurement",
+        "title": "Entanglement and Measurement",
+        "attempts": 0,
+        "unique_students": 0,
+        "completion_rate": 0.0,
+        "average_percentage": 0.0
+      },
+      {
+        "slug": "quantum-noise",
+        "title": "Quantum Noise and Decoherence",
+        "attempts": 0,
+        "unique_students": 0,
+        "completion_rate": 0.0,
+        "average_percentage": 0.0
+      },
+      {
+        "slug": "bell-states-quiz",
+        "title": "The Four Bell States",
+        "attempts": 0,
+        "unique_students": 0,
+        "completion_rate": 0.0,
+        "average_percentage": 0.0
+      },
+      {
+        "slug": "grover",
+        "title": "Grover Search",
+        "attempts": 0,
+        "unique_students": 0,
+        "completion_rate": 0.0,
+        "average_percentage": 0.0
+      }
+    ],
+    "challenge_completion": [
+      {
+        "slug": "bell-state",
+        "title": "Build a Bell State",
+        "attempts": 1,
+        "unique_students": 1,
+        "passed": 0,
+        "pass_rate": 0.0,
+        "completion_rate": 100.0
+      },
+      {
+        "slug": "grover-2qubit",
+        "title": "Grover Search for |11>",
+        "attempts": 0,
+        "unique_students": 0,
+        "passed": 0,
+        "pass_rate": 0.0,
+        "completion_rate": 0.0
+      },
+      {
+        "slug": "dynamic-reset-loop",
+        "title": "Dynamic Feedback: Force Qubit 0 to |0>",
+        "attempts": 0,
+        "unique_students": 0,
+        "passed": 0,
+        "pass_rate": 0.0,
+        "completion_rate": 0.0
+      },
+      {
+        "slug": "game-bell-phi-plus",
+        "title": "Bell Builder 1: |\u03a6+\u27e9",
+        "attempts": 0,
+        "unique_students": 0,
+        "passed": 0,
+        "pass_rate": 0.0,
+        "completion_rate": 0.0
+      },
+      {
+        "slug": "game-bell-phi-minus",
+        "title": "Bell Builder 2: |\u03a6\u2212\u27e9",
+        "attempts": 0,
+        "unique_students": 0,
+        "passed": 0,
+        "pass_rate": 0.0,
+        "completion_rate": 0.0
+      },
+      {
+        "slug": "game-bell-psi-plus",
+        "title": "Bell Builder 3: |\u03a8+\u27e9",
+        "attempts": 0,
+        "unique_students": 0,
+        "passed": 0,
+        "pass_rate": 0.0,
+        "completion_rate": 0.0
+      },
+      {
+        "slug": "game-bell-psi-minus",
+        "title": "Bell Builder 4: |\u03a8\u2212\u27e9",
+        "attempts": 0,
+        "unique_students": 0,
+        "passed": 0,
+        "pass_rate": 0.0,
+        "completion_rate": 0.0
+      },
+      {
+        "slug": "game-vault-1",
+        "title": "Open the Vault 1: one control",
+        "attempts": 0,
+        "unique_students": 0,
+        "passed": 0,
+        "pass_rate": 0.0,
+        "completion_rate": 0.0
+      },
+      {
+        "slug": "game-vault-2",
+        "title": "Open the Vault 2: two controls (Toffoli)",
+        "attempts": 0,
+        "unique_students": 0,
+        "passed": 0,
+        "pass_rate": 0.0,
+        "completion_rate": 0.0
+      },
+      {
+        "slug": "game-vault-3",
+        "title": "Open the Vault 3: three controls (MCX)",
+        "attempts": 0,
+        "unique_students": 0,
+        "passed": 0,
+        "pass_rate": 0.0,
+        "completion_rate": 0.0
+      },
+      {
+        "slug": "game-bug-bell",
+        "title": "Find the Bug 1: the Bell pair that never entangles",
+        "attempts": 0,
+        "unique_students": 0,
+        "passed": 0,
+        "pass_rate": 0.0,
+        "completion_rate": 0.0
+      },
+      {
+        "slug": "game-bug-phase",
+        "title": "Find the Bug 2: the phase that does nothing",
+        "attempts": 0,
+        "unique_students": 0,
+        "passed": 0,
+        "pass_rate": 0.0,
+        "completion_rate": 0.0
+      },
+      {
+        "slug": "game-shots-bell",
+        "title": "Shot Detective 1: how many shots for a Bell pair?",
+        "attempts": 0,
+        "unique_students": 0,
+        "passed": 0,
+        "pass_rate": 0.0,
+        "completion_rate": 0.0
+      }
+    ],
+    "common_errors": [
+      {
+        "error": "Could not enqueue job: Error -2 connecting to redis:6379. Name or service not known.",
+        "count": 1
+      }
+    ],
+    "weakest_tags": [
+      {
+        "tag": "entanglement",
+        "average_score": 0.0,
+        "learners": 1
+      },
+      {
+        "tag": "gates",
+        "average_score": 0.253,
+        "learners": 1
+      },
+      {
+        "tag": "qubit",
+        "average_score": 0.333,
+        "learners": 1
+      }
+    ],
+    "leaderboard": [
+      {
+        "user": "p5",
+        "challenges_passed": 0
+      }
+    ]
+  },
+  "students": [
+    {
+      "id": 3,
+      "email": "p5@example.com",
+      "display_name": "p5",
+      "role": "student",
+      "quizzes_taken": 1,
+      "challenges_attempted": 1,
+      "challenges_passed": 0,
+      "average_quiz_percentage": 33.3,
+      "simulations_run": 1
+    },
+    {
+      "id": 1,
+      "email": "admin@local.dev",
+      "display_name": "Platform Admin",
+      "role": "admin",
+      "quizzes_taken": 0,
+      "challenges_attempted": 0,
+      "challenges_passed": 0,
+      "average_quiz_percentage": 0.0,
+      "simulations_run": 0
+    },
+    {
+      "id": 2,
+      "email": "instructor@local.dev",
+      "display_name": "Course Instructor",
+      "role": "instructor",
+      "quizzes_taken": 0,
+      "challenges_attempted": 0,
+      "challenges_passed": 0,
+      "average_quiz_percentage": 0.0,
+      "simulations_run": 0
+    }
+  ],
+  "student_detail": {
+    "user_id": 3,
+    "quizzes_taken": 1,
+    "challenges_attempted": 1,
+    "challenges_passed": 0,
+    "average_quiz_percentage": 33.3,
+    "mastery": [
+      {
+        "tag": "entanglement",
+        "score": 0.0,
+        "attempts": 1
+      },
+      {
+        "tag": "gates",
+        "score": 0.253,
+        "attempts": 3
+      },
+      {
+        "tag": "qubit",
+        "score": 0.333,
+        "attempts": 2
+      }
+    ],
+    "recommendations": [
+      {
+        "kind": "lesson",
+        "slug": "01_qubits",
+        "title": "Qubits and Superposition",
+        "reason": "Strengthen: gates, qubit"
+      },
+      {
+        "kind": "lesson",
+        "slug": "02_gates",
+        "title": "Quantum Gates",
+        "reason": "Strengthen: gates, qubit"
+      },
+      {
+        "kind": "lesson",
+        "slug": "03_entanglement",
+        "title": "Entanglement",
+        "reason": "Strengthen: entanglement, qubit"
+      },
+      {
+        "kind": "lesson",
+        "slug": "04_measurement",
+        "title": "Measurement and Dynamic Circuits",
+        "reason": "Strengthen: qubit"
+      }
+    ]
+  }
+}

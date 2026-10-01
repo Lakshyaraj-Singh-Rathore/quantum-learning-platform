@@ -2,9 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Play, RotateCcw, Sparkles } from "lucide-react";
 import { ComposerInner } from "@composer/Composer";
-import { circuitIsDynamic, makeOp, maxLayer } from "@composer/ir";
-import type { CircuitIR } from "@composer/types";
+import { circuitIsDynamic, maxLayer } from "@composer/ir";
 import { useTheme } from "../state/theme";
+import { bell, emptyCircuit, useCircuit } from "../state/circuit";
 import { backends } from "../api/backends";
 import { inspectCircuit, submitJob } from "../api/jobs";
 import type { NoiseIn } from "../api/jobs";
@@ -14,24 +14,6 @@ import { ResultsPanel } from "../components/results/ResultsPanel";
 const SHOT_CHOICES = [128, 256, 512, 1024, 2048, 4096, 8192];
 
 const NOISE_BACKENDS = new Set(["qiskit_aer", "cudaq"]);
-
-function bell(): CircuitIR {
-  return {
-    name: "bell",
-    n_qubits: 2,
-    n_clbits: 2,
-    ops: [
-      makeOp("gate", { gate: "h", qubits: [0], layer: 0 }),
-      makeOp("gate", { gate: "x", qubits: [1], controls: [0], layer: 1 }),
-      makeOp("measure", { qubits: [0], clbits: [0], layer: 2 }),
-      makeOp("measure", { qubits: [1], clbits: [1], layer: 2 }),
-    ],
-  };
-}
-
-function empty(n = 2): CircuitIR {
-  return { name: "circuit", n_qubits: n, n_clbits: n, ops: [] };
-}
 
 const DEFAULT_NOISE: NoiseIn = {
   enabled: false,
@@ -44,10 +26,12 @@ const DEFAULT_NOISE: NoiseIn = {
 };
 
 export function ComposerPage() {
-  const [ir, setIr] = useState<CircuitIR>(bell);
-  // The grid is uncontrolled once mounted (it owns its own edit state), so a
-  // programmatic reset remounts it rather than fighting it.
-  const [epoch, setEpoch] = useState(0);
+  // Shared with the lesson demos and the Challenges page, exactly as
+  // st.session_state shared one circuit across the Streamlit pages.
+  const ir = useCircuit((state) => state.ir);
+  const epoch = useCircuit((state) => state.epoch);
+  const setIr = useCircuit((state) => state.setIr);
+  const resetCircuit = useCircuit((state) => state.reset);
   const [shots, setShots] = useState(1024);
   const [backendId, setBackendId] = useState<string>("qiskit_aer");
   const [noise, setNoise] = useState<NoiseIn>(DEFAULT_NOISE);
@@ -121,10 +105,10 @@ export function ComposerPage() {
           {ir.n_qubits} qubits · depth {depth} · {ir.ops.length} ops
         </span>
         <div className="ml-auto flex gap-2">
-          <Button size="sm" onClick={() => { setIr(bell()); setEpoch((e) => e + 1); }}>
+          <Button size="sm" onClick={() => resetCircuit(bell())}>
             <Sparkles className="h-3.5 w-3.5" /> Bell state
           </Button>
-          <Button size="sm" onClick={() => { setIr(empty(ir.n_qubits)); setEpoch((e) => e + 1); }}>
+          <Button size="sm" onClick={() => resetCircuit(emptyCircuit(ir.n_qubits))}>
             <RotateCcw className="h-3.5 w-3.5" /> Clear
           </Button>
         </div>

@@ -79,3 +79,8 @@ export function jobStatus(id: number): Promise<JobOut> {
 export function jobResult(id: number): Promise<JobResultOut> {
   return api.get<JobResultOut>(`/jobs/${id}/result`);
 }
+
+/** Recent simulations, newest first. Mirrors GET /jobs?limit=. */
+export function listJobs(limit = 20): Promise<JobOut[]> {
+  return api.get<JobOut[]>(`/jobs?limit=${limit}`);
+}

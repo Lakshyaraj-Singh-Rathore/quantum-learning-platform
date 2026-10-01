@@ -10,6 +10,8 @@
 import { useState } from "react";
 import { ExternalLink } from "lucide-react";
 import { Link } from "react-router-dom";
+import { ComposerInner } from "@composer/Composer";
+import { maxLayer } from "@composer/ir";
 import { ketExpression } from "../../lib/quantum";
 import {
   GATES,
@@ -31,6 +33,8 @@ import {
 } from "../../lib/demos";
 import { BlochCircle } from "../results/ResultsViews";
 import { Button, cn } from "../ui";
+import { emptyCircuit, useCircuit } from "../../state/circuit";
+import { useTheme } from "../../state/theme";
 
 /* -------------------------------------------------------------------------- */
 /* small shared pieces                                                        */
@@ -106,7 +110,7 @@ function Ket({ state }: { state: Statevector }) {
   );
 }
 
-function Bar({ counts }: { counts: Record<string, number> }) {
+export function CountsBar({ counts }: { counts: Record<string, number> }) {
   const total = Object.values(counts).reduce((a, b) => a + b, 0) || 1;
   return (
     <div className="flex flex-col gap-2">
@@ -595,7 +599,7 @@ function MeasurementLab() {
         />
         <Metric label="Shots" value={String(shots)} />
       </div>
-      <Bar counts={counts} />
+      <CountsBar counts={counts} />
       <p className="text-[12px] text-ink-3">
         The gap between theory and observation is sampling error. Try 1 shot, then 4096, and
         watch it shrink.
@@ -771,31 +775,52 @@ function BitOrdering() {
 /* -------------------------------------------------------------------------- */
 
 /**
- * Streamlit embeds the real drag-and-drop grid here, sharing the Composer's
- * session circuit. In this app the Composer's circuit is page-local state, so
- * there is nothing to share yet. Rather than draw a grid that looks like the
- * composer but is not, this points at the real one and says so — lifting the
- * circuit into a shared store is the follow-up that turns this back into an
- * embedded editor.
+ * The real drag-and-drop grid, in the lesson — the same component the Composer
+ * uses, reading and writing the same session circuit, so a circuit built here
+ * is still there when the learner opens the Composer to run it. This is the
+ * Streamlit behaviour, and it is why the circuit moved into a shared store.
+ *
+ * It deliberately does not mount the whole Composer page: the page owns run
+ * settings and results, and this is a lesson.
  */
 function CircuitLab() {
+  const ir = useCircuit((state) => state.ir);
+  const epoch = useCircuit((state) => state.epoch);
+  const setIr = useCircuit((state) => state.setIr);
+  const resetCircuit = useCircuit((state) => state.reset);
+  const { theme } = useTheme();
+  const depth = maxLayer(ir.ops) + 1;
+
   return (
     <div className="flex flex-col gap-3">
       <p className="text-[13px] text-ink-3">
-        Build a circuit here, then run it: the Composer has the grid, the simulators and the
-        exports.
+        The real composer, right here. Drag a gate onto the grid, or click a gate then a cell.
+        This shares the same circuit as the Composer page, so you can carry your work over to
+        run and export it.
       </p>
-      <Note>
-        The drag-and-drop grid lives on the <strong>Composer</strong> page — open it to build
-        circuits. Bringing the grid into the lesson needs the Composer&apos;s circuit lifted out
-        of page-local state, which is queued.
-      </Note>
-      <Link to="/composer">
-        <Button variant="primary" size="sm">
-          <ExternalLink className="h-3.5 w-3.5" />
-          Open the Composer
+      <div className={cn("composer-host", theme === "dark" && "dark")}>
+        <ComposerInner key={epoch} value={ir} nQubits={ir.n_qubits} onChange={setIr} />
+      </div>
+      <div className="grid grid-cols-3 gap-2">
+        <Metric label="Qubits" value={String(ir.n_qubits)} />
+        <Metric label="Operations" value={String(ir.ops.length)} />
+        <Metric label="Depth" value={String(depth)} />
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <Button size="sm" onClick={() => resetCircuit(emptyCircuit(ir.n_qubits))}>
+          ↺ Clear this circuit
         </Button>
-      </Link>
+        <Link to="/composer">
+          <Button size="sm" variant="primary">
+            <ExternalLink className="h-3.5 w-3.5" />
+            Run it on a simulator
+          </Button>
+        </Link>
+      </div>
+      <p className="text-[12px] text-ink-3">
+        Open the <strong>Composer</strong> page to run this on a simulator, inspect the state,
+        or export it as Qiskit, Cirq, PennyLane or OpenQASM.
+      </p>
     </div>
   );
 }

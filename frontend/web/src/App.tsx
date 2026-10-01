@@ -14,6 +14,13 @@ const CodeLabPage = lazy(() =>
 // Same reason: the reader pulls in react-markdown and KaTeX, which nothing
 // else on the platform needs.
 const LearnPage = lazy(() => import("./pages/LearnPage").then((m) => ({ default: m.LearnPage })));
+// Same reason again: both of these pull in the shared composer grid.
+const ChallengesPage = lazy(() =>
+  import("./pages/ChallengesPage").then((m) => ({ default: m.ChallengesPage })),
+);
+const DashboardPage = lazy(() =>
+  import("./pages/DashboardPage").then((m) => ({ default: m.DashboardPage })),
+);
 
 function NotFound() {
   return (
@@ -42,37 +49,8 @@ export default function App() {
             <Route index element={<Navigate to="/learn" replace />} />
             <Route path="/learn" element={<LearnPage />} />
             <Route path="/composer" element={<ComposerPage />} />
-            <Route
-              path="/challenges"
-              element={
-                <PlaceholderPage
-                  title="Challenges"
-                  phase="P5"
-                  intro="Graded circuits against target distributions. Grading stays exactly where it is — server-side — with the shot-noise tolerance notes carried over verbatim."
-                  bullets={[
-                    "Challenge cards with difficulty and personal best",
-                    "Target distribution plot + 'open in Composer with this circuit'",
-                    "Submission history and the pass/fail explanation copy, unchanged",
-                  ]}
-                />
-              }
-            />
-            <Route
-              path="/dashboard"
-              element={
-                <PlaceholderPage
-                  title="Dashboard"
-                  phase="P5"
-                  intro="Learner progress and the instructor overview, same data and role gating as today."
-                  bullets={[
-                    "Stat row, recent runs with backend badges, lesson progress",
-                    "Instructor table with per-student drill-in drawer",
-                    "Recommendations chip from GET /recommendations",
-                  ]}
-                  proof
-                />
-              }
-            />
+<Route path="/challenges" element={<ChallengesPage />} />
+<Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/codelab" element={<CodeLabPage />} />
             <Route
               path="/games"

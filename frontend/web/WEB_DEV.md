@@ -258,3 +258,52 @@ embedded editor.
 
 Real-browser interaction (no Chromium): dragging a slider, measuring the qubit,
 switching lesson or track, and sending a question. Docker is also unavailable.
+
+## P5 — Challenges and Dashboard
+
+Both placeholders are now the real pages.
+
+### The circuit moved into a shared store
+
+Streamlit kept one circuit in `st.session_state`, so a circuit built inside a
+lesson was still there when the learner opened the Composer, and Challenges
+could submit "your current circuit". Reproducing that meant lifting the
+Composer's circuit out of page-local `useState` into `src/state/circuit.ts`.
+
+That closed the one gap left in P4: `circuit_lab` is now the **real**
+drag-and-drop grid inside the lesson (`ComposerInner`, the same component the
+Composer uses), not the pointer it had to be when the circuit was private. The
+coding-challenge tab shows the same shared circuit and submits it.
+
+### Grading is polled, and a failed job says so
+
+Submitting a challenge enqueues a Celery job, so the attempt is polled every
+500 ms until it settles — the same loop Streamlit ran. A job that never ran
+(no worker, or an invalid circuit) settles as failed or as graded-with-a-
+failure-message; either way the page shows that message instead of sitting on
+"Grading…" forever.
+
+### Verified here
+
+* `npm run build` — clean; main chunk 301.91 kB / 95.29 kB gzipped. All four
+  new routes are lazily loaded, and Challenges/Dashboard are tiny (2.8 kB and
+  2.3 kB gzipped) because the composer grid is already in the main chunk via
+  the Composer.
+* `npm run render:p5` 31/31 against a fixture captured from a live API:
+  5 quizzes, 13 challenges, learner progress and the instructor overview. It
+  asserts both the populated state *and* the fresh-cohort state, where every
+  section must say it has no data rather than render an empty box.
+* `render:check` 54/54, `render:learn`, `render:codelab`, `render:results`,
+  `golden:quantum` 190/190, `golden:demos` 804/804.
+* Backend `511 passed, 5 skipped`; frontend `418 passed, 77 skipped`.
+* Live API smoke: a quiz submit scored 1.0/3.0 with per-question feedback; a
+  challenge submit graded with its feedback string; the instructor overview,
+  student list and student detail all returned; and a **student gets 403** on
+  `/dashboard/instructor`, so the role gate is real.
+
+### Not verified here
+
+Two things behind a click, which renderToString cannot reach: the scored quiz
+view and the graded-attempt result. Both were exercised against a live API
+instead (above). Slider/select interaction, Docker and real-browser behaviour
+remain unverified, as before.

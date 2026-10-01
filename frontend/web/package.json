@@ -14,10 +14,12 @@
     "render:results": "tsx scripts/render-results.mts",
     "render:codelab": "tsx scripts/render-codelab.mts",
     "render:learn": "tsx scripts/render-learn.mts",
+    "render:p5": "tsx scripts/render-p5.mts",
     "fixtures:engine": "python3 scripts/engine-fixtures.py",
     "golden:quantum": "tsx scripts/golden-quantum.mts",
     "golden:demos": "tsx scripts/golden-demos.mts",
-    "fixtures:lessons": "python3 scripts/lesson-fixtures.py"
+    "fixtures:lessons": "python3 scripts/lesson-fixtures.py",
+    "fixtures:challenges": "python3 scripts/challenge-fixtures.py"
   },
   "dependencies": {
     "@codemirror/lang-python": "^6.2.1",
