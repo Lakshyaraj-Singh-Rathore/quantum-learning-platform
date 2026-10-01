@@ -1,22 +1,30 @@
+/* The reference interface is dark charcoal. These are the dark values; the
+   light block below is a readable inversion for hosts that ask for one.
+   Geometry (row pitch, tile size, gutter) lives in theme.ts, not here. */
 .composer-host {
   --bg: #ffffff;
   --fg: #0f172a;
-  --muted: #64748b;
-  --line: #cbd5e1;
-  --wire: #94a3b8;
-  --panel: #f8fafc;
-  --accent: #6366f1;
-  --cell: 46px;
-  --gutter: 62px;
+  --muted: #6b7478;
+  --line: #d3d9dc;
+  --wire: #737c80;
+  --panel: #f4f6f7;
+  --accent: #4385f5;
+  --divider: #d5dbdf;
+  --editor-bg: #eef1f2;
+  --endpoint-border: #5b6468;
 }
 
 .composer-host.dark {
-  --bg: #0e1117;
-  --fg: #e2e8f0;
-  --muted: #94a3b8;
-  --line: #334155;
-  --wire: #475569;
-  --panel: #161b25;
+  --bg: #202629;
+  --fg: #f5f5f5;
+  --muted: #a0a7aa;
+  --line: #3b4246;
+  --wire: #737c80;
+  --panel: #202629;
+  --accent: #4385f5;
+  --divider: #3b4246;
+  --editor-bg: #1d2326;
+  --endpoint-border: #f2f2f2;
 }
 
 * {
@@ -579,5 +587,443 @@ button.tb:disabled {
 
   .palette-group {
     flex: 1 1 160px;
+  }
+}
+
+/* ------------------------------------------------- three-column shell */
+
+.composer-columns {
+  display: flex;
+  align-items: stretch;
+  min-height: 340px;
+  border: 1px solid var(--divider);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--bg);
+}
+
+/* ----------------------------------------------------- left: operations */
+
+.ops-sidebar {
+  width: 335px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+  border-right: 1px solid var(--divider);
+  background: var(--bg);
+  overflow-y: auto;
+}
+
+.ops-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.ops-title {
+  font-size: 16px;
+  color: var(--fg);
+}
+
+.ops-header-icons {
+  display: flex;
+  gap: 8px;
+}
+
+.ops-icon {
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 2px 4px;
+  line-height: 1;
+}
+
+.ops-icon:hover {
+  color: var(--fg);
+}
+
+.ops-search {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--fg);
+  font-size: 13px;
+}
+
+/* Six columns of 40px buttons, 10px apart. */
+.gate-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 40px);
+  gap: 10px;
+}
+
+.gate-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: grab;
+  user-select: none;
+  text-align: center;
+  line-height: 1.1;
+  overflow: hidden;
+}
+
+.gate-btn:hover {
+  filter: brightness(1.08);
+}
+
+.gate-btn.selected {
+  box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent);
+}
+
+.palette-param {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: auto;
+  padding-top: 8px;
+  border-top: 1px solid var(--divider);
+}
+
+.palette-param .field {
+  width: 100%;
+  padding: 5px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--fg);
+}
+
+/* ------------------------------------------------------ centre: workspace */
+
+.workspace {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.circuit-toolbar {
+  height: 48px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--divider);
+}
+
+.circuit-toolbar .spacer {
+  flex: 1;
+}
+
+.tb.icon {
+  font-size: 17px;
+  line-height: 1;
+  padding: 4px 7px;
+  color: var(--muted);
+}
+
+.tb.ghost {
+  border-color: transparent;
+  background: transparent;
+  color: var(--muted);
+}
+
+.align-select {
+  background: transparent;
+  border: none;
+  color: var(--fg);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 2px 2px 2px 0;
+}
+
+.align-select:focus {
+  outline: 1px solid var(--accent);
+}
+
+.inspect-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: none;
+  color: var(--fg);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.inspect-toggle .switch {
+  width: 34px;
+  height: 18px;
+  border-radius: 9px;
+  background: #5b6468;
+  position: relative;
+  transition: background 120ms ease;
+}
+
+.inspect-toggle.on .switch {
+  background: var(--accent);
+}
+
+.inspect-toggle .knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 120ms ease;
+}
+
+.inspect-toggle.on .knob {
+  transform: translateX(16px);
+}
+
+.circuit-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--divider);
+}
+
+.circuit-actions .spacer {
+  flex: 1;
+}
+
+.canvas-col {
+  padding: 12px 16px;
+  overflow-x: auto;
+}
+
+.inspect-panel {
+  margin-top: 10px;
+  border: 1px solid var(--divider);
+  border-radius: 6px;
+  padding: 8px 10px;
+  background: var(--panel);
+}
+
+.inspect-panel table {
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.inspect-panel th {
+  text-align: left;
+  color: var(--muted);
+  font-weight: 500;
+  padding: 2px 14px 2px 0;
+}
+
+.inspect-panel td {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--fg);
+  padding: 2px 0;
+}
+
+/* --------------------------------------------------------- right: code */
+
+.code-panel {
+  width: 230px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid var(--divider);
+  background: var(--editor-bg);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  overflow: hidden;
+}
+
+.code-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  font-size: 12px;
+  color: var(--muted);
+  border-bottom: 1px solid var(--divider);
+}
+
+.code-count {
+  font-size: 11px;
+}
+
+.code-body {
+  flex: 1;
+  overflow: auto;
+  padding: 6px 0;
+  font-size: 12px;
+}
+
+.code-line {
+  display: flex;
+  gap: 8px;
+  padding: 1px 10px;
+  white-space: nowrap;
+}
+
+.code-line .ln {
+  color: var(--muted);
+  min-width: 18px;
+  text-align: right;
+  opacity: 0.75;
+}
+
+.code-line .src {
+  color: var(--fg);
+}
+
+.code-empty {
+  padding: 4px 10px;
+  color: var(--muted);
+}
+
+/* -------------------------------------------------------- canvas details */
+
+.qlabel {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 15px;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  padding-left: 32px;
+}
+
+.reg-label {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 15px;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  padding-left: 32px;
+}
+
+.clbit {
+  background: var(--wire);
+}
+
+.m-wire {
+  background: var(--wire);
+}
+
+.barrier {
+  border-left: 2px dashed var(--muted);
+}
+
+.ctrl-dot {
+  background: var(--fg);
+}
+
+.ctrl-line {
+  background: var(--fg);
+}
+
+.ctrl-line.swap-line {
+  background: var(--fg);
+}
+
+/* The ⊕ target of a controlled gate. */
+.gate.target {
+  border-radius: 50%;
+  border: 2.5px solid var(--fg);
+  background: var(--bg);
+  color: var(--fg);
+  box-shadow: none;
+}
+
+.gate.target::before,
+.gate.target::after {
+  content: "";
+  position: absolute;
+  background: currentColor;
+}
+
+.gate.target::before {
+  left: 18%;
+  right: 18%;
+  height: 2px;
+  top: calc(50% - 1px);
+}
+
+.gate.target::after {
+  top: 18%;
+  bottom: 18%;
+  width: 2px;
+  left: calc(50% - 1px);
+}
+
+.gate.swap {
+  font-size: 18px;
+  line-height: 1;
+}
+
+/* Circular control at the right end of each wire. */
+.endpoint {
+  position: absolute;
+  border-radius: 50%;
+  border: 2px solid var(--endpoint-border);
+  background: transparent;
+  color: var(--endpoint-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  z-index: 2;
+  opacity: 0.55;
+  transition: opacity 120ms ease;
+}
+
+.endpoint:hover {
+  opacity: 1;
+}
+
+.endpoint.blocked {
+  cursor: not-allowed;
+  opacity: 0.25;
+}
+
+/* Narrow hosts: the code panel is the first thing to go, then the rail
+   stacks above the canvas. The breakpoint is deliberately low -- a wider one
+   made ordinary laptop windows feel cramped. */
+@media (max-width: 1100px) {
+  .code-panel {
+    width: 150px;
+  }
+}
+
+@media (max-width: 900px) {
+  .code-panel {
+    display: none;
+  }
+}
+
+@media (max-width: 520px) {
+  .composer-columns {
+    flex-direction: column;
+  }
+
+  .ops-sidebar {
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid var(--divider);
   }
 }

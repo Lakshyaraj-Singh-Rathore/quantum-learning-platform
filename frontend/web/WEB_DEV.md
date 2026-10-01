@@ -470,3 +470,48 @@ Build clean; `render:composer` 25/25; every earlier harness still green
 `render:p5`, `render:games`, `render:playground`, `render:grover`,
 `golden:quantum` 190/190, `golden:demos` 804/804, `golden:grover` 3306/3306);
 backend `511 passed, 5 skipped`; frontend `418 passed, 77 skipped`.
+
+## Composer rebuilt to the reference interface
+
+The composer now follows the supplied layout specification rather than the
+earlier approximation: a three-column shell (operations | workspace | code),
+a dark charcoal canvas (`#202629`), and a six-column gate palette.
+
+**Colours come straight from the spec** and live in `theme.ts`:
+H `#F84D63` (the one red gate), X / CX / CY / SWAP / I `#4385F5`, the standard
+single-qubit gates `#B5E1F6`, rotations and Y `#F66DB8`, and everything that is
+not an operation on amplitudes — reset, barrier, measurement, if/for/while/box —
+`#A2A9AE`.
+
+What is new on the canvas:
+
+* **Circular ⊖ endpoints** at the right end of each wire. Clicking one removes
+  that wire, but only while nothing sits on it — otherwise it is disabled with a
+  tooltip. Removing a wire that still has gates would be a destructive misclick.
+* **Undo / redo**, recorded in an effect rather than inside the state updater so
+  React's development double-invocation cannot push the same entry twice.
+* **Alignment** offers *Preserve spacing* and *Left alignment* (which compacts).
+  Centre and right alignment are deliberately absent: they have no meaning for a
+  circuit, and a control that does nothing is worse than no control.
+* **Inspect** toggle shows the selected gate's kind, qubits, controls, clbits,
+  params and column.
+* **Code panel** on the right, showing the circuit's own text form with line
+  numbers, from the existing `describeOp`.
+
+Two deliberate deviations, both recorded because they are judgement calls:
+
+1. **The code panel shows the IR's text form, not OpenQASM.** The reference
+   shows a clipped `OPENQASM` header. Emitting QASM here would mean a second
+   exporter that could silently disagree with the backend's — two different
+   texts for one circuit is worse than one honest one. Wire it to the backend
+   exporter if real QASM is wanted there.
+2. **Controlled-Y did not exist** in the palette; the spec's grid asks for it,
+   so it was added modelled on `cx`.
+
+`npm run render:composer` grew to 36 checks, now asserting the palette colours,
+the 25-button grid, the toolbar controls, the endpoints, and the register.
+
+### Verified here
+
+Build clean; `render:composer` 36/36; every earlier harness green;
+backend `511 passed, 5 skipped`; frontend `418 passed, 77 skipped`.

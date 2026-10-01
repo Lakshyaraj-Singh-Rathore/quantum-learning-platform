@@ -2,25 +2,28 @@
  * The circuit canvas: qubit wires, gate tiles, and the classical register that
  * measurement collapses into.
  *
- * Layout follows the convention every quantum composer shares and that IBM's
- * made familiar: time runs left to right, one horizontal wire per qubit, gates
- * are tiles on a wire, and multi-qubit gates are joined by a vertical line with
- * a filled dot on each control.
+ * Time runs left to right, one horizontal wire per qubit, gates are tiles on a
+ * wire, and multi-qubit gates are joined by a vertical line with a filled dot
+ * on each control.
  *
- * Measurement is drawn the way IBM draws it, because the square "M" tile this
- * used to render was actively misleading: a measurement is not a unitary gate,
- * it is the point where a qubit's amplitude collapses into a classical bit.
- * So it gets a meter glyph, and a line running down to the register below. That
- * register is drawn as a double line -- the usual notation for "this carries
- * bits, not amplitudes".
+ * Two things are drawn differently from an ordinary "letter in a box" diagram,
+ * and both because the ordinary version teaches the wrong thing:
  *
- * Every colour and size here comes from ./theme, so the look can be retuned
- * without touching this file.
+ * - A controlled X is a ⊕ on the target, not a tile saying "X". As a plain tile
+ *   it is indistinguishable whichever way round the control and target are.
+ * - Measurement is a meter dial, not a grey tile. A measurement is not a
+ *   unitary gate; it is where amplitude collapses into a bit, and it is wired
+ *   down to the classical register to show that.
+ *
+ * The register itself is a double line, which is the usual notation for "this
+ * carries bits, not amplitudes".
+ *
+ * Every colour and size comes from ./theme.
  */
 import { useMemo } from "react";
 import type { CircuitIR, Op, PaletteItem } from "./types";
-import { describeCondition, involvedQubits, range, rowSpan } from "./ir";
-import { COLOURS, GEOMETRY, gateColour, gateShape, gateText, qubitAccent } from "./theme";
+import { involvedQubits, range, rowSpan } from "./ir";
+import { GEOMETRY, gateColour, gateForeground, gateShape, gateText } from "./theme";
 
 export interface PendingSelection {
   op: Op;
@@ -40,6 +43,8 @@ interface Props {
   onDelete: (id: string) => void;
   onOpenBlock: (id: string) => void;
   onMoveOp: (id: string, qubit: number, layer: number) => void;
+  /** Remove the given qubit wire. Refused (with a notice) if gates sit on it. */
+  onRemoveWire?: (qubit: number) => void;
 }
 
 /** A measurement meter: a dial in a rounded box. Not a letter in a square. */
@@ -55,21 +60,24 @@ function MeterDial() {
 export default function Grid(props: Props) {
   const { ir, nCols, selectedId, pending, dragging } = props;
   const rows = ir.n_qubits;
-  // The register is always at least one bit wide: a zero-width register would
-  // make the canvas jump as circuits are edited.
   const nClbits = Math.max(1, ir.n_clbits ?? 0);
 
-  const { cell: CELL, gutter: GUTTER, header: TOP, clbitCell: CL_CELL, registerGap: REG_GAP } =
-    GEOMETRY;
+  const {
+    cell: CELL,
+    gutter: GUTTER,
+    header: TOP,
+    tile: TILE,
+    registerGap: REG_GAP,
+    endpoint: ENDPOINT,
+  } = GEOMETRY;
 
-  const width = GUTTER + nCols * CELL + 20;
-  const regTop = TOP + rows * CELL + REG_GAP;
-  const height = regTop + nClbits * CL_CELL + 6;
+  const pad = (CELL - TILE) / 2;
+  const width = GUTTER + nCols * CELL + ENDPOINT + 18;
+  const regY = TOP + rows * CELL + REG_GAP;
+  const height = regY + 26;
 
   /** Vertical centre of qubit row `q`. */
   const wireY = (q: number) => TOP + q * CELL + CELL / 2;
-  /** Vertical centre of classical bit `c`. */
-  const clbitY = (c: number) => regTop + c * CL_CELL + CL_CELL / 2;
   /** Left edge of column `layer`. */
   const colX = (layer: number) => GUTTER + layer * CELL;
 
@@ -81,6 +89,9 @@ export default function Grid(props: Props) {
     const used = new Set(involvedQubits(pending.op));
     return new Set(range(0, rows - 1).filter((q) => !used.has(q)));
   }, [pending, rows]);
+
+  /** True when nothing has been placed on this wire, so it can be removed. */
+  const wireEmpty = (q: number) => !ir.ops.some((o) => [...o.qubits, ...o.controls].includes(q));
 
   return (
     <div className="grid-scroll">
@@ -103,14 +114,13 @@ export default function Grid(props: Props) {
               className="qlabel"
               style={{ position: "absolute", left: 0, top: TOP + q * CELL, width: GUTTER, height: CELL }}
             >
-              <span className="qchip" style={{ background: qubitAccent(q) }} />
-              q{q}
+              q[{q}]
             </div>
             <div className="wire" style={{ left: GUTTER, top: wireY(q) - 1, width: nCols * CELL }} />
           </div>
         ))}
 
-        {/* drop / pick cells — qubit rows only; classical bits are not targets */}
+        {/* drop / pick cells — qubit rows only; the register is not a target */}
         {range(0, rows - 1).map((q) =>
           range(0, nCols - 1).map((c) => {
             const canPick = pending != null && pickable.has(q);
@@ -137,27 +147,20 @@ export default function Grid(props: Props) {
           }),
         )}
 
-        {/* the classical register, below the last wire */}
-        {range(0, nClbits - 1).map((c) => (
-          <div key={`cl${c}`}>
-            {/* Two strokes, three pixels apart: the standard notation for a wire
-                that carries classical bits rather than amplitudes. */}
-            <div className="clbit" style={{ left: GUTTER, top: clbitY(c) - 2, width: nCols * CELL }} />
-            <div className="clbit" style={{ left: GUTTER, top: clbitY(c) + 1, width: nCols * CELL }} />
-            <div
-              className="clabel"
-              style={{ position: "absolute", left: 0, top: regTop + c * CL_CELL, width: GUTTER, height: CL_CELL }}
-            >
-              c{c}
-            </div>
-          </div>
-        ))}
+        {/* the classical register: one double line, labelled with its width */}
+        <div
+          className="reg-label"
+          style={{ position: "absolute", left: 0, top: regY - CELL / 2, width: GUTTER, height: CELL }}
+        >
+          c{nClbits}
+        </div>
+        <div className="clbit" style={{ left: GUTTER, top: regY - 2, width: nCols * CELL }} />
+        <div className="clbit" style={{ left: GUTTER, top: regY + 1, width: nCols * CELL }} />
 
-        {/* measurement: the wire from the meter down to its classical bit */}
+        {/* measurement: the wire from the meter down to the register */}
         {ir.ops.map((op) => {
           if (op.kind !== "measure") return null;
           const q = op.qubits[0];
-          const c = op.clbits[0] ?? q;
           if (q == null) return null;
           return (
             <div
@@ -166,8 +169,7 @@ export default function Grid(props: Props) {
               style={{
                 left: colX(op.layer) + CELL / 2 - 1,
                 top: wireY(q),
-                height: Math.max(0, clbitY(c) - wireY(q)),
-                background: COLOURS.measure,
+                height: Math.max(0, regY - wireY(q)),
               }}
             />
           );
@@ -183,23 +185,14 @@ export default function Grid(props: Props) {
             <div key={`ctl${op.id}`}>
               <div
                 className="ctrl-line"
-                style={{
-                  left: colX(op.layer) + CELL / 2 - 1,
-                  top: wireY(lo),
-                  height: (hi - lo) * CELL,
-                  background: COLOURS.control,
-                }}
+                style={{ left: colX(op.layer) + CELL / 2 - 1, top: wireY(lo), height: (hi - lo) * CELL }}
               />
               {op.controls.map((q) => (
                 <div
                   key={`d${op.id}-${q}`}
                   className="ctrl-dot"
-                  style={{
-                    left: colX(op.layer) + CELL / 2 - 6.5,
-                    top: wireY(q) - 6.5,
-                    background: COLOURS.control,
-                  }}
-                  title={`control q${q}`}
+                  style={{ left: colX(op.layer) + CELL / 2 - 6.5, top: wireY(q) - 6.5 }}
+                  title={`control q[${q}]`}
                 />
               ))}
             </div>
@@ -210,6 +203,7 @@ export default function Grid(props: Props) {
         {ir.ops.map((op) => {
           const shape = gateShape(op);
           const colour = gateColour(op);
+          const ink = gateForeground(op);
           const text = gateText(op);
 
           // Classical flow control spans rows and opens an editor on click.
@@ -234,7 +228,7 @@ export default function Grid(props: Props) {
                   props.onOpenBlock(op.id);
                 }}
               >
-                <span className="block-label" style={{ background: colour }}>
+                <span className="block-label" style={{ background: colour, color: ink }}>
                   {op.kind}
                 </span>
               </div>
@@ -252,7 +246,6 @@ export default function Grid(props: Props) {
                   left: colX(op.layer) + CELL / 2 - 1,
                   top: TOP + 2,
                   height: rows * CELL - 4,
-                  borderColor: COLOURS.barrier,
                 }}
                 title="Barrier — the compiler may not reorder across this line"
                 onClick={(e) => {
@@ -272,12 +265,11 @@ export default function Grid(props: Props) {
             return (
               <div key={op.id}>
                 <div
-                  className="ctrl-line"
+                  className="ctrl-line swap-line"
                   style={{
                     left: colX(op.layer) + CELL / 2 - 1,
                     top: wireY(Math.min(...op.qubits)),
                     height: Math.abs(op.qubits[0] - op.qubits[1]) * CELL,
-                    background: COLOURS.swap,
                   }}
                 />
                 {op.qubits.map((q, i) => (
@@ -287,11 +279,12 @@ export default function Grid(props: Props) {
                     draggable
                     onDragStart={(e) => e.dataTransfer.setData("op-id", op.id)}
                     style={{
-                      left: colX(op.layer) + 8,
-                      top: TOP + q * CELL + 8,
-                      width: CELL - 16,
-                      height: CELL - 16,
-                      color: COLOURS.swap,
+                      left: colX(op.layer) + pad,
+                      top: TOP + q * CELL + pad,
+                      width: TILE,
+                      height: TILE,
+                      background: colour,
+                      color: ink,
                     }}
                     onClick={(e) => {
                       e.stopPropagation();
@@ -313,8 +306,8 @@ export default function Grid(props: Props) {
 
           const q = op.qubits[0] ?? 0;
 
-          // The ⊕ target of a controlled-X. A circle, not a tile: the shape is
-          // what tells you which end of a CNOT is which.
+          // The circled target of a controlled gate: the shape is what tells
+          // you which end of a CNOT is which.
           if (shape === "target") {
             return (
               <div
@@ -323,18 +316,18 @@ export default function Grid(props: Props) {
                 draggable
                 onDragStart={(e) => e.dataTransfer.setData("op-id", op.id)}
                 style={{
-                  left: colX(op.layer) + 6,
-                  top: TOP + q * CELL + 6,
-                  width: CELL - 12,
-                  height: CELL - 12,
-                  borderColor: COLOURS.control,
-                  color: COLOURS.control,
+                  left: colX(op.layer) + pad,
+                  top: TOP + q * CELL + pad,
+                  width: TILE,
+                  height: TILE,
+                  background: colour,
+                  color: ink,
                 }}
                 onClick={(e) => {
                   e.stopPropagation();
                   props.onSelect(op.id);
                 }}
-                title="CNOT target"
+                title={`controlled ${(op.gate ?? "").toUpperCase()} target`}
               >
                 <span className="del" onClick={(e) => { e.stopPropagation(); props.onDelete(op.id); }}>
                   ×
@@ -352,17 +345,18 @@ export default function Grid(props: Props) {
                 draggable
                 onDragStart={(e) => e.dataTransfer.setData("op-id", op.id)}
                 style={{
-                  left: colX(op.layer) + 3,
-                  top: TOP + q * CELL + 5,
-                  width: CELL - 6,
-                  height: CELL - 10,
-                  background: COLOURS.measure,
+                  left: colX(op.layer) + pad,
+                  top: TOP + q * CELL + pad,
+                  width: TILE,
+                  height: TILE,
+                  background: colour,
+                  color: ink,
                 }}
                 onClick={(e) => {
                   e.stopPropagation();
                   props.onSelect(op.id);
                 }}
-                title={`measure q${q} → c${op.clbits[0] ?? q}`}
+                title={`measure q[${q}] → c${op.clbits[0] ?? q}`}
               >
                 <MeterDial />
                 <span className="del" onClick={(e) => { e.stopPropagation(); props.onDelete(op.id); }}>
@@ -380,14 +374,15 @@ export default function Grid(props: Props) {
               draggable
               onDragStart={(e) => e.dataTransfer.setData("op-id", op.id)}
               style={{
-                left: colX(op.layer) + 3,
-                top: TOP + q * CELL + 5,
-                width: CELL - 6,
-                height: CELL - 10,
+                left: colX(op.layer) + pad,
+                top: TOP + q * CELL + pad,
+                width: TILE,
+                height: TILE,
                 background: colour,
-                fontSize: text.length > 4 ? 9 : text.length > 2 ? 10 : 13,
+                color: ink,
+                fontSize: text.length > 4 ? 9 : text.length > 2 ? 11 : 15,
               }}
-              title={op.kind === "if" || op.kind === "while" ? `if ${describeCondition(op.condition)}` : text}
+              title={text}
               onClick={(e) => {
                 e.stopPropagation();
                 props.onSelect(op.id);
@@ -397,6 +392,31 @@ export default function Grid(props: Props) {
               <span className="del" onClick={(e) => { e.stopPropagation(); props.onDelete(op.id); }}>
                 ×
               </span>
+            </div>
+          );
+        })}
+
+        {/* circular endpoint controls at the right end of each wire */}
+        {range(0, rows - 1).map((q) => {
+          const empty = wireEmpty(q);
+          return (
+            <div
+              key={`e${q}`}
+              className={`endpoint${empty ? "" : " blocked"}`}
+              style={{
+                left: GUTTER + nCols * CELL + 8,
+                top: wireY(q) - ENDPOINT / 2,
+                width: ENDPOINT,
+                height: ENDPOINT,
+              }}
+              title={
+                empty
+                  ? `Remove q[${q}]`
+                  : `q[${q}] still has gates on it — remove them first`
+              }
+              onClick={() => props.onRemoveWire?.(q)}
+            >
+              −
             </div>
           );
         })}

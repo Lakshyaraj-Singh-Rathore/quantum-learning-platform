@@ -1,16 +1,17 @@
-/* Renders the REAL composer and checks the IBM-style canvas is actually drawn.
+/* Renders the REAL composer and checks the reference interface is drawn.
  *
  *   npx tsx scripts/render-composer.mts
  *   npm run render:composer
  *
- * This is not a screenshot diff -- it cannot tell you whether the result is
- * beautiful. What it can tell you is that the parts are present and correctly
- * wired: qubit chips, the ⊕ target marker, the measurement meter, the wire
- * from that meter down to a classical bit, and the double-line register.
+ * This cannot tell you whether the result is beautiful. What it can tell you
+ * is that the parts are present, correctly coloured, and correctly wired: the
+ * six-column palette, the gate colours, the ⊕ target, the measurement meter,
+ * the double-line register, the circular wire endpoints, the toolbar, and the
+ * code panel.
  *
- * Those are the things that silently break. A restyle that drops the classical
- * register still renders a plausible-looking circuit, which is exactly the
- * kind of regression worth catching.
+ * A restyle that silently dropped the classical register, or turned a ⊕ back
+ * into a plain tile, would still render a plausible-looking circuit. That is
+ * exactly the regression this exists to catch.
  */
 
 const store = new Map<string, string>();
@@ -74,60 +75,73 @@ const html = renderToString(
   ),
 );
 
-// React splits an interpolated label into two text nodes and separates them
-// with an empty comment, so `q{q}` reaches the DOM as `q<!-- -->0`. Strip the
-// markers before asserting on label text; class names are unaffected.
+// React splits an interpolated label into two text nodes separated by an empty
+// comment, so `q[{q}]` reaches the DOM as `q[<!-- -->0]`. Strip them before
+// asserting on label text; class names are unaffected.
 const plain = html.replace(/<!--.*?-->/g, "");
 const count = (needle: string) => html.split(needle).length - 1;
 
-/* ---------- the canvas is drawn at all ---------- */
+/* ---------- shell ---------- */
 
-check("the composer renders", html.length > 4000, `${html.length} chars`);
+check("the composer renders", html.length > 6000, `${html.length} chars`);
+check("it is a three-column shell", html.includes("composer-columns"));
+check("the operations sidebar is present", html.includes("ops-sidebar"));
+check("the workspace is present", html.includes('class="workspace"'));
+check("the code panel is present", html.includes("code-panel"));
 
-/* ---------- qubit wires ---------- */
+/* ---------- palette ---------- */
 
-check("qubits are labelled IBM-style (q0, q1, q2)", plain.includes(">q0<") && plain.includes(">q1<") && plain.includes(">q2<"));
-check("each qubit carries a colour chip", count('class="qchip"') === 3, `${count('class="qchip"')} chips`);
-check("there is one wire per qubit", count('class="wire"') === 3, `${count('class="wire"')} wires`);
-
-/* ---------- gate shapes ---------- */
-
-check("Hadamard is a filled tile", html.includes(">H<"));
-check("a CNOT target is drawn as ⊕, not as a tile", count("gate target") === 1);
-check("a CNOT control is a dot on the control wire", count("ctrl-dot") === 1);
-check("the control and target are joined", count("ctrl-line") >= 1);
-check("SWAP is drawn as two ✕ joined by a line", count("gate swap") === 2 && html.includes("✕"));
-
-/* ---------- measurement collapses into the register ---------- */
-
-check("measurement is a meter dial, not the letter M", count("meter-dial") === 2, `${count("meter-dial")} meters`);
+check("the palette is a grid of gate buttons", count("gate-btn") === 25, `${count("gate-btn")} buttons`);
+check("Hadamard is red, per the reference", html.includes("#F84D63"));
+check("the X family is blue", html.includes("#4385F5"));
+check("standard single-qubit gates are pale blue", html.includes("#B5E1F6"));
+check("rotations are pink", html.includes("#F66DB8"));
+check("structural ops are grey", html.includes("#A2A9AE"));
+check("CNOT is offered by name", html.includes("CNOT"));
+check("Controlled-Y is offered", html.includes(">CY<"));
+check("SWAP is offered", html.includes("SWAP"));
 check(
-  "each meter is wired down to a classical bit",
-  count("m-wire") === 2,
-  `${count("m-wire")} meter wires`,
+  "control flow is offered",
+  html.includes("If / Else") && html.includes(">For<") && html.includes(">While<"),
 );
 
-/* ---------- the classical register ---------- */
+/* ---------- toolbar ---------- */
 
-check("the classical register is drawn", count('class="clbit"') === 6, `${count('class="clbit"')} strokes`);
-check("each register line is a double stroke", count('class="clbit"') === ir.n_clbits * 2);
-check("register bits are labelled", plain.includes(">c0<") && plain.includes(">c1<"));
+check("undo and redo are present", plain.includes("↶") && plain.includes("↷"));
+check("undo starts disabled with no history", count("disabled") >= 2);
+check("an alignment control is present", html.includes("align-select"));
+check("an Inspect toggle is present", html.includes("inspect-toggle") && html.includes("Inspect"));
+check("the qubit and measurement actions survived", html.includes("Qubit") && html.includes("Measure All"));
+
+/* ---------- canvas ---------- */
+
+check("qubits are labelled q[0], q[1], q[2]", plain.includes(">q[0]<") && plain.includes(">q[1]<") && plain.includes(">q[2]<"));
+check("there is one wire per qubit", count('class="wire"') === 3);
+check("each wire ends in a circular control", count('endpoint') === 3, `${count("endpoint")} endpoints`);
+check("Hadamard is a tile", plain.includes(">H<"));
+check("a CNOT target is a ⊕, not a tile", count("gate target") === 1);
+check("a CNOT control is a dot", count("ctrl-dot") === 1);
+check("control and target are joined", count("ctrl-line") >= 1);
+check("SWAP draws two ✕ joined by a line", count("gate swap") === 2 && html.includes("✕"));
+
+/* ---------- measurement and the classical register ---------- */
+
+check("measurement is a meter dial, not the letter M", count("meter-dial") === 2, `${count("meter-dial")} meters`);
+check("each meter is wired down to the register", count("m-wire") === 2);
+check("the register is a double line", count('class="clbit"') === 2, `${count('class="clbit"')} strokes`);
+check("the register is labelled with its width", plain.includes(">c3<"));
 
 /* ---------- barriers ---------- */
 
 check("a barrier is a dashed rule across the wires", count('class="barrier"') === 1);
 
-/* ---------- the palette rail ---------- */
+/* ---------- code panel ---------- */
 
-check("the palette sits in its own rail", html.includes('class="palette"'));
-check("the circuit sits beside it", html.includes('class="canvas-col"'));
-check("gates and ops are both offered", html.includes("Multi-qubit") && html.includes("Ops"));
-check("CNOT is offered by name", html.includes("CNOT"));
+check("the code panel shows line numbers", count('class="ln"') === 7, `${count('class="ln"')} lines`);
+check("the code panel shows the circuit text", plain.includes("measure q0"));
 
 /* ---------- nothing regressed ---------- */
 
-check("the qubit controls are still there", html.includes("Qubit"));
-check("Measure All is still offered", html.includes("Measure All"));
 check("no React error markup leaked", !html.includes("Element type is invalid"));
 
 console.log(

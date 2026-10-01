@@ -121,6 +121,15 @@ export const MULTI_PALETTE: PaletteItem[] = [
     color: "#14b8a6",
   },
   {
+    id: "cy",
+    label: "CY",
+    gate: "y",
+    kind: "gate",
+    controls: 1,
+    hint: "Drop on the TARGET, then click its control",
+    color: "#14b8a6",
+  },
+  {
     id: "ccx",
     label: "Toffoli",
     gate: "x",
