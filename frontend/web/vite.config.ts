@@ -60,6 +60,11 @@ export default defineConfig({
   preview: {
     host: "0.0.0.0",
     port: 3001,
+    // `preview` does not inherit `server.allowedHosts`. Without this the built
+    // bundle 403s every hosted preview URL while the dev server serves the same
+    // host happily, which is a confusing way to discover the two are separate.
+    allowedHosts,
+    strictPort: true,
     proxy: {
       "/api": {
         target: process.env.VITE_PROXY_TARGET ?? "http://localhost:8000",
