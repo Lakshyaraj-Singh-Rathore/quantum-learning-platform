@@ -193,3 +193,68 @@ result is claimed before a build. Picking a language, typing, Build and Run are
 Real-browser interaction (no Chromium in the sandbox): typing in the editor, the
 debounced diagnostics firing, Build → Run producing results, and the AI draft
 box. Docker is also unavailable, so the built image is untested.
+
+## P4 — Learn
+
+The Learn placeholder is now the real page: a lesson list split into the Theory
+and Circuit tracks, the lesson body, the ten interactive demos, and the
+curriculum-grounded AI tutor.
+
+### The reader had to carry real markdown
+
+The lessons are LaTeX-heavy (`$|0\rangle$` inline, `$$…$$` display) and use GFM
+tables and fenced code. Streamlit's `st.markdown` renders all of it today, so
+the reader uses `react-markdown` + `remark-gfm` + `remark-math` + `rehype-katex`
+rather than a hand-rolled subset that would quietly delete half the curriculum.
+`render:learn` asserts the maths is *typeset* (21 KaTeX spans on 01_qubits) and
+that no raw `$$` survives, plus that tables come out as `<table>`.
+
+KaTeX's stylesheet is imported in `main.tsx`, not in `Markdown.tsx`: a CSS
+import in that module breaks every Node render harness, which loads the real
+components outside a bundler.
+
+The selected lesson is derived, not stored in an effect — a selection outside
+the visible track falls back to the first one. That is simpler React, and it is
+what lets the SSR harness see the lesson body at all.
+
+### Every demo number is pinned to numpy
+
+`src/lib/demos.ts` is the maths behind the demos, ported from
+`frontend/lib/playground.py`. `scripts/golden-demos.py` regenerates
+`test-fixtures/demo-golden.json` by calling the **same** `playground.py` the
+Streamlit demos call, and `npm run golden:demos` checks the port agrees:
+**804 values at 1e-9**.
+
+That caught a real bug: `blochAngles` in `src/lib/quantum.ts` already returns
+degrees, and the port converted again, so the gate sandbox reported θ as
+15469°. Four further mismatches were all at the poles, where φ is genuinely
+arbitrary — numpy and the port wrap it differently and neither is wrong, so the
+harness skips φ there rather than papering over it with a tolerance.
+
+`sample` is deliberately **not** pinned: it draws from numpy's PCG64, which
+JavaScript cannot reproduce. The lesson it teaches is the distribution, not the
+draw.
+
+### `circuit_lab` is a pointer, not the grid
+
+Streamlit embeds the real drag-and-drop composer in the lesson, sharing the
+Composer's session circuit. Here the Composer's circuit is page-local state, so
+there is nothing to share yet. Rather than draw a grid that looks like the
+composer but is not, that demo explains and links to the real one. Lifting the
+circuit into a shared store is the follow-up that turns it back into an
+embedded editor.
+
+### Verified here
+
+* `npm run build` — clean; main 301.96 kB / 95.33 kB gzipped, LearnPage
+  467.49 kB / 140.24 kB and CodeLabPage 485.59 kB / 162.64 kB in their own
+  chunks. Both routes are lazily loaded.
+* `npm run golden:quantum` 190/190; `npm run golden:demos` 804/804.
+* `npm run render:learn` 29/29, `npm run render:codelab` 16/16,
+  `npm run render:check` 54/54, `npm run render:results` passed.
+* Backend `511 passed, 5 skipped`; frontend `418 passed, 77 skipped`.
+
+### Not verified here
+
+Real-browser interaction (no Chromium): dragging a slider, measuring the qubit,
+switching lesson or track, and sending a question. Docker is also unavailable.

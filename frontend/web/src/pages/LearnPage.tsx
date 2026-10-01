@@ -4,6 +4,7 @@ import { Send } from "lucide-react";
 import { getLesson, listLessons, aiChat, type ChatTurn } from "../api/lessons";
 import { Badge, Button, Card, ErrorNote, Spinner, cn } from "../components/ui";
 import { Markdown } from "../components/Markdown";
+import { DEMOS } from "../components/demos/Demos";
 
 type Track = "Theory" | "Circuit" | "All";
 
@@ -28,6 +29,7 @@ export function LearnPage() {
   const [slug, setSlug] = useState<string | null>(null);
   const [histories, setHistories] = useState<Record<string, ChatTurn[]>>({});
   const [question, setQuestion] = useState("");
+  const [demoKey, setDemoKey] = useState<string | null>(null);
 
   const lessons = useQuery({ queryKey: ["lessons"], queryFn: listLessons, staleTime: 5 * 60_000 });
 
@@ -51,6 +53,9 @@ export function LearnPage() {
   });
 
   const chosen = (lessons.data ?? []).find((l) => l.slug === current) ?? null;
+  const demoKeys = (current ? DEMOS_FOR_LESSON[current] : undefined) ?? [];
+  const demoKeyNow = demoKey && demoKeys.includes(demoKey) ? demoKey : demoKeys[0];
+  const activeDemo = demoKeyNow ? DEMOS[demoKeyNow] : undefined;
   const trackLabel = ((chosen?.track as string) || "theory").toLowerCase();
   const history = current ? (histories[current] ?? []) : [];
 
@@ -194,18 +199,35 @@ export function LearnPage() {
           </Card>
         )}
 
-        {current && DEMOS_FOR_LESSON[current] && (
+        {demoKeys.length > 0 && (
           <Card>
             <h3 className="text-sm font-semibold">🧪 Try it yourself</h3>
             <p className="mt-1 text-[13px] text-ink-3">
               These are live: every control computes a real quantum state, and the
               visualisations are the same ones the Composer uses.
             </p>
-            <p className="mt-3 rounded-lg border border-dashed border-line px-3 py-2 text-[13px] text-ink-3">
-              The {DEMOS_FOR_LESSON[current].length} interactive demo
-              {DEMOS_FOR_LESSON[current].length === 1 ? "" : "s"} attached to this lesson are being
-              ported next.
-            </p>
+            <div className="mt-3 flex flex-wrap gap-1">
+              {demoKeys.map((key) => (
+                <button
+                  key={key}
+                  onClick={() => setDemoKey(key)}
+                  className={cn(
+                    "rounded-md border px-2.5 py-1 text-[13px] transition-colors",
+                    demoKey === key
+                      ? "border-accent bg-accent/10 text-ink"
+                      : "border-line text-ink-2 hover:bg-hover",
+                  )}
+                >
+                  {DEMOS[key].title}
+                </button>
+              ))}
+            </div>
+            {activeDemo && (
+              <div className="mt-4">
+                <p className="mb-2 text-[12px] text-ink-3">{activeDemo.blurb}</p>
+                <activeDemo.Component />
+              </div>
+            )}
           </Card>
         )}
 

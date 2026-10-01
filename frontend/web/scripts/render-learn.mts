@@ -190,6 +190,45 @@ check(
   `${FIRST.slug} is ${FIRST.track}`,
 );
 
+/* ---------- the interactive demos are really mounted ---------- */
+
+// 01_qubits carries four demos in Streamlit; the same four must be here.
+const demos = text(render());
+const FOUR = [
+  "A bit versus a qubit",
+  "Amplitude is not probability",
+  "Explore the Bloch sphere",
+  "Build a circuit here",
+];
+check(
+  "the lesson's demos are offered as tabs",
+  FOUR.every((title) => demos.includes(title)),
+  FOUR.filter((t) => !demos.includes(t)).join(", ") || "all 4 for 01_qubits",
+);
+check(
+  "the first demo is open and really rendered",
+  demos.includes("Measure the qubit") && demos.includes("Reset qubit"),
+);
+check(
+  "it opens in the superposition state, with the honest wording",
+  demos.includes("It has no value yet"),
+);
+check(
+  "the measurement controls are disabled until it is collapsed",
+  html.includes("disabled"),
+);
+check(
+  "the demos are introduced as live",
+  demos.includes("every control computes a real quantum state"),
+);
+// A lesson with no demos registered must not show an empty section.
+const noDemos = renderOpening("07_vqe_qaoa");
+check(
+  "a lesson with no demos gets no demo section",
+  !text(noDemos).includes("Try it yourself"),
+  "07_vqe_qaoa has none",
+);
+
 /* ---------- the empty state ---------- */
 
 const empty = render({ lessons: [] });

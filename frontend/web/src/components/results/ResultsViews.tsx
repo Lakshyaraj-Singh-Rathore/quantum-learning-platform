@@ -620,7 +620,8 @@ export function BlochView({ result }: { result: RunResult }) {
 }
 
 /** A single sphere drawn as an orthographic disk with the state vector on it. */
-function BlochCircle({ q, x, y, z }: { q: number; x: number; y: number; z: number }) {
+/** Exported so the lesson demos can draw the same verified sphere. */
+export function BlochCircle({ q, x, y, z }: { q: number; x: number; y: number; z: number }) {
   // Screen projection: x right, z up, y towards the viewer (drawn as depth).
   const size = 120;
   const centre = size / 2;
