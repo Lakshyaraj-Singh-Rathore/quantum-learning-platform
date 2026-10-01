@@ -414,3 +414,59 @@ distribution, not the draw.
 The predict-and-reveal button and the over-rotation toggle are local state, so
 renderToString cannot reach them. The over-rotation property itself is asserted
 in the golden check instead, where it belongs.
+
+## IBM-style composer canvas
+
+The circuit canvas now follows the visual language IBM's Quantum Composer
+made familiar. The change is in `frontend/circuit_composer/frontend/src`,
+which is the single source both hosts build from, so the React app and the
+Streamlit component cannot drift.
+
+**`theme.ts` is new and is the only file with colours or sizes in it.** Gate
+colours, row pitch, corner radii, the qubit accent chips — all of it. Matching
+a reference image is an edit there, not a hunt through `Grid.tsx`.
+
+The gate palette is not arbitrary. It splits on the Clifford / non-Clifford
+boundary: H, X, Y, Z, S, SX, CX and SWAP are teal and blue, while T, P, RX, RY,
+RZ and U are violet. That is the same boundary that decides whether a circuit
+is simulable in polynomial time on a classical machine (Gottesman–Knill), so a
+learner who notices "my circuit went purple" has noticed something true.
+
+What changed on the canvas:
+
+* **Measurement is a meter, not a letter.** It was a grey tile with "M". A
+  measurement is not a unitary gate — it is where amplitude collapses into a
+  bit — so it now draws a dial and runs a wire down to the register.
+* **The classical register is drawn at last.** The IR has carried `clbits` all
+  along and `ir.ts` already emitted `measure q0 → c1`; the canvas just never
+  showed it. Each bit is a double line below the last wire, three pixels apart,
+  which is the usual notation for "bits, not amplitudes".
+* **A CNOT target is ⊕, not a tile saying X.** This was already true and is
+  preserved: rendering it as an ordinary box makes a reversed control and
+  target impossible to spot.
+* **Barriers are a dashed rule across every wire**, not a tile on one, since a
+  barrier is a scheduling hint to the compiler rather than an operation on a
+  qubit.
+* **Qubits are labelled `q0`, `q1`** with a colour chip, and **the palette is a
+  rail down the left** with the circuit beside it.
+
+`npm run render:composer` (25 checks) renders the real component and asserts
+these parts are present and wired — the ⊕, the meter, the wire from meter to
+bit, two strokes per register line. A restyle that quietly dropped the
+classical register would still produce a plausible-looking circuit, which is
+exactly why that is tested rather than eyeballed.
+
+### A regression the existing suite caught
+
+The new responsive rule reintroduced `max-width: 720px`, and
+`test_desktop_layout_is_not_shrunk` failed it. That test exists because a
+720px breakpoint made ordinary laptop windows feel cramped. Lowered to 520px,
+which catches phones and slim Streamlit columns without touching laptops.
+
+### Verified here
+
+Build clean; `render:composer` 25/25; every earlier harness still green
+(`render:check`, `render:learn`, `render:codelab`, `render:results`,
+`render:p5`, `render:games`, `render:playground`, `render:grover`,
+`golden:quantum` 190/190, `golden:demos` 804/804, `golden:grover` 3306/3306);
+backend `511 passed, 5 skipped`; frontend `418 passed, 77 skipped`.

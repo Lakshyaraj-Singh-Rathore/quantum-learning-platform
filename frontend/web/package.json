@@ -18,6 +18,7 @@
     "render:games": "tsx scripts/render-games.mts",
     "render:playground": "tsx scripts/render-playground.mts",
     "render:grover": "tsx scripts/render-grover.mts",
+    "render:composer": "tsx scripts/render-composer.mts",
     "fixtures:engine": "python3 scripts/engine-fixtures.py",
     "golden:quantum": "tsx scripts/golden-quantum.mts",
     "golden:demos": "tsx scripts/golden-demos.mts",

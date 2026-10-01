@@ -403,43 +403,47 @@ export function ComposerInner({ value, nQubits, onChange, onHeight, theme }: Com
         </button>
       </div>
 
-      {/* palette */}
-      <div>
-        <div className="palette-group">
-          <span className="palette-label">Gates</span>
-          {PALETTE.map(paletteChip)}
-        </div>
-        <div className="palette-group">
-          <span className="palette-label">Multi-qubit</span>
-          {MULTI_PALETTE.map(paletteChip)}
-        </div>
-        <div className="palette-group">
-          <span className="palette-label">Ops</span>
-          {STRUCTURAL.map(paletteChip)}
-          {BLOCKS.map(paletteChip)}
-        </div>
-        <div className="palette-group">
-          <span className="palette-label">Param</span>
-          <input
-            className="field"
-            style={{
-              padding: "5px 8px",
-              border: "1px solid var(--line)",
-              borderRadius: 6,
-              background: "var(--bg)",
-              color: "var(--fg)",
-              width: 160,
-            }}
-            value={paramExpr}
-            onChange={(e) => setParamExpr(e.target.value)}
-            title="Used for P/RX/RY/RZ. Only pi, numbers and + - * / ( )"
-          />
-          <span className="hint">
-            used by P/RX/RY/RZ — only <code>pi</code>, numbers and <code>+ - * / ( )</code>
-          </span>
-        </div>
+      {/* palette rail down the left, circuit canvas to its right */}
+      <div className="composer-body">
+        <div className="palette">
+          <div className="palette-group">
+            <span className="palette-label">Gates</span>
+            <div className="palette-chips">{PALETTE.map(paletteChip)}</div>
+          </div>
+          <div className="palette-group">
+            <span className="palette-label">Multi-qubit</span>
+            <div className="palette-chips">{MULTI_PALETTE.map(paletteChip)}</div>
+          </div>
+          <div className="palette-group">
+            <span className="palette-label">Ops</span>
+            <div className="palette-chips">
+              {STRUCTURAL.map(paletteChip)}
+              {BLOCKS.map(paletteChip)}
+            </div>
+          </div>
+          <div className="palette-group">
+            <span className="palette-label">Param</span>
+            <input
+              className="field"
+              style={{
+                padding: "5px 8px",
+                border: "1px solid var(--line)",
+                borderRadius: 6,
+                background: "var(--bg)",
+                color: "var(--fg)",
+                width: "100%",
+              }}
+              value={paramExpr}
+              onChange={(e) => setParamExpr(e.target.value)}
+              title="Used for P/RX/RY/RZ. Only pi, numbers and + - * / ( )"
+            />
+            <span className="hint">
+              used by P/RX/RY/RZ — only <code>pi</code>, numbers and <code>+ - * / ( )</code>
+            </span>
+          </div>
       </div>
 
+        <div className="canvas-col">
       {pending && (
         <div className="banner info">
           {notice}{" "}
@@ -480,10 +484,12 @@ export function ComposerInner({ value, nQubits, onChange, onHeight, theme }: Com
         }}
       />
 
-      <div className="hint">
-        Drag a gate onto the grid (or click it, then click a cell). Dropping onto an occupied
-        column inserts a new column globally, shifting everything to the right. Drag a placed
-        gate to move it. Click a block to edit its contents.
+          <div className="hint">
+            Drag a gate onto the grid (or click it, then click a cell). Dropping onto an
+            occupied column inserts a new column globally, shifting everything to the right.
+            Drag a placed gate to move it. Click a block to edit its contents.
+          </div>
+        </div>
       </div>
 
       {editing && editingOp && (

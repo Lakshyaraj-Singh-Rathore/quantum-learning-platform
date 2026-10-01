@@ -190,17 +190,19 @@ button.tb:disabled {
 /* ------------------------------------------------------------- gates */
 .gate {
   position: absolute;
-  border-radius: 6px;
+  border-radius: 7px;
   color: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: 700;
   font-size: 12px;
+  letter-spacing: 0.02em;
   cursor: grab;
   user-select: none;
   z-index: 3;
-  border: 1px solid rgba(0, 0, 0, 0.18);
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.18);
 }
 
 .gate:hover {
@@ -406,4 +408,176 @@ button.tb:disabled {
 .error,
 .notice {
   overflow-wrap: anywhere;
+}
+
+
+/* ------------------------------------------------- IBM-style canvas details */
+
+/* The ⊕ target of a CNOT. An open circle with a cross, not a filled tile: the
+   shape is the only thing that distinguishes the two ends of a CNOT once it is
+   on the canvas, so it must not look like an ordinary gate. */
+.gate.target {
+  background: var(--bg);
+  border: 2.5px solid;
+  border-radius: 50%;
+  box-shadow: none;
+}
+
+.gate.target::before,
+.gate.target::after {
+  content: "";
+  position: absolute;
+  background: currentColor;
+}
+
+.gate.target::before {
+  left: 16%;
+  right: 16%;
+  height: 2px;
+  top: calc(50% - 1px);
+}
+
+.gate.target::after {
+  top: 16%;
+  bottom: 16%;
+  width: 2px;
+  left: calc(50% - 1px);
+}
+
+/* SWAP halves: ink on the canvas, not a filled tile. */
+.gate.swap {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  font-size: 17px;
+  line-height: 1;
+}
+
+/* Measurement renders a dial rather than the letter M -- see Grid.tsx. */
+.gate.meter {
+  padding: 0;
+}
+
+.meter-dial {
+  width: 24px;
+  height: 16px;
+  color: #fff;
+}
+
+/* The vertical line from a meter down to its classical bit. */
+.m-wire {
+  position: absolute;
+  width: 2px;
+  z-index: 2;
+  pointer-events: none;
+  opacity: 0.7;
+}
+
+/* Per-qubit accent chip beside the q0 label. */
+.qchip {
+  width: 4px;
+  height: 16px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+/* Classical register: two hairlines three pixels apart, the usual notation for
+   "this carries bits, not amplitudes". */
+.clbit {
+  position: absolute;
+  height: 1px;
+  background: var(--wire);
+  pointer-events: none;
+}
+
+.clabel,
+.reg-label {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 10px;
+}
+
+/* A barrier is a scheduling hint to the compiler, so it is drawn as a dashed
+   rule across every wire rather than as a tile on one. */
+.barrier {
+  position: absolute;
+  width: 0;
+  border-left: 2px dashed;
+  z-index: 2;
+  cursor: pointer;
+}
+
+/* ------------------------------------------------------------- palette rail */
+
+/* Palette down the left, circuit to its right: the arrangement IBM made
+   familiar, and it keeps the palette in view on a wide circuit. */
+.composer-body {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.palette {
+  width: 160px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding: 9px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.palette-group {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 5px;
+  margin-bottom: 0;
+}
+
+.palette-label {
+  width: auto;
+}
+
+.palette-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.palette .field {
+  width: 100% !important;
+}
+
+.canvas-col {
+  flex: 1;
+  min-width: 0;
+}
+
+/* On a genuinely narrow host (a phone, or a very slim Streamlit column) the
+   rail would squeeze the circuit to nothing, so it stacks above instead.
+
+   The breakpoint is deliberately low. A wider one -- 720px was tried and
+   removed -- catches ordinary laptop windows and makes the whole editor feel
+   cramped, which is the opposite of what a breakpoint is for. */
+@media (max-width: 520px) {
+  .composer-body {
+    flex-direction: column;
+  }
+
+  .palette {
+    width: 100%;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+
+  .palette-group {
+    flex: 1 1 160px;
+  }
 }
