@@ -20,6 +20,7 @@
     "fixtures:engine": "python3 scripts/engine-fixtures.py",
     "golden:quantum": "tsx scripts/golden-quantum.mts",
     "golden:demos": "tsx scripts/golden-demos.mts",
+    "golden:grover": "tsx scripts/golden-grover.mts",
     "fixtures:lessons": "python3 scripts/lesson-fixtures.py",
     "fixtures:challenges": "python3 scripts/challenge-fixtures.py",
     "fixtures:games": "python3 scripts/game-fixtures.py",
