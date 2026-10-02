@@ -176,5 +176,15 @@ useTheme.getState().toggle();
 const persisted = JSON.parse(store.get("ql-theme") ?? "{}");
 check("theme preference is persisted", persisted?.state?.theme === "light", JSON.stringify(persisted?.state ?? {}));
 
+// The command palette's ranking is pure logic, so it can be checked properly
+// rather than by opening the palette and squinting.
+const { score } = await import("../src/components/shell/CommandPalette.tsx");
+check("an empty query matches everything", score("Dashboard", "") === 1);
+check("an exact match ranks highest", score("Dashboard", "dashboard") === 100);
+check("a prefix outranks a mid-word match", score("Dashboard", "dash") > score("Code Lab", "lab"));
+check("a subsequence still matches", score("Code Lab", "clab") > 0);
+check("a non-match is rejected", score("Dashboard", "xyz") === -1);
+check("ranking puts the intended page first", score("Dashboard", "dash") > score("Dashboard", "board"));
+
 console.log(failures === 0 ? `\nALL CHECKS PASSED (${mode})` : `\n${failures} CHECK(S) FAILED (${mode})`);
 process.exit(failures === 0 ? 0 : 1);

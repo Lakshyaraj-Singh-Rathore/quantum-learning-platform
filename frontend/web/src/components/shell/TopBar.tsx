@@ -1,12 +1,12 @@
 import { useLocation } from "react-router-dom";
-import { LogOut, Moon, Sun } from "lucide-react";
+import { LogOut, Moon, Search, Sun } from "lucide-react";
 import { useSession } from "../../state/session";
 import { useTheme } from "../../state/theme";
 import { BackendBadge } from "./BackendBadge";
 import { NAV_ITEMS } from "./nav";
 import { Button } from "../ui";
 
-export function TopBar() {
+export function TopBar({ onOpenPalette }: { onOpenPalette?: () => void }) {
   const location = useLocation();
   const item = NAV_ITEMS.find((n) => location.pathname.startsWith(n.to));
   const user = useSession((s) => s.user);
@@ -20,6 +20,19 @@ export function TopBar() {
       </h1>
       <div className="ml-auto flex items-center gap-3">
         <BackendBadge />
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onOpenPalette}
+          aria-label="Search commands"
+          title="Search commands (Ctrl-K)"
+          className="gap-2 text-ink-3"
+        >
+          <Search className="h-4 w-4" />
+          <kbd className="hidden rounded border border-line px-1 text-[10px] md:inline">
+            Ctrl-K
+          </kbd>
+        </Button>
         <Button
           variant="ghost"
           size="sm"

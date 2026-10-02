@@ -560,3 +560,26 @@ element content to its own closing tag.
 `<div>`s with no button role and no keyboard path. They are clickable but not
 Tab-reachable. Fixing it properly means a keyboard placement flow, so it is
 tracked for the cutover rather than papered over now.
+
+### Command palette (Ctrl-K / Cmd-K)
+
+Marked optional in the plan's P7 list. Built because a seven-page app with no
+keyboard route is tedious to move around, and "go to X" should not require
+hunting the sidebar.
+
+Every entry is a command with a consequence — jump to any page, switch theme,
+sign out. Matching is fuzzy and ranked: exact beats prefix, prefix beats
+mid-word, and a subsequence still finds it, so `dash` reaches Dashboard and
+`clab` reaches Code Lab. Fully keyboard-operable: arrows move, Enter runs,
+Escape closes, focus goes to the input on open, and the list carries listbox
+roles with `aria-activedescendant`.
+
+Open state lives in `AppShell`, not inside the palette, so the top bar's search
+button and the global shortcut drive the same thing. The button exists for
+discoverability — a shortcut nobody can find is not a feature.
+
+The ranking is pure logic, so `render:check` asserts it directly (6 checks in
+all three modes) rather than leaving it to be eyeballed.
+
+**Still not keyboard-operable:** the composer's palette tiles. Reported above,
+tracked for the cutover.
