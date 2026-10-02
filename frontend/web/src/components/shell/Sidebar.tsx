@@ -47,6 +47,17 @@ export function Sidebar() {
         UI migration in progress — pages land phase by phase
         (<span className="font-mono">docs/UI_REDESIGN_PLAN.md</span>).
       </p>
+
+      {/* The cutover gate. P0–P7 are built; P8 (making the web app the default
+          landing and marking Streamlit legacy) is deliberately NOT done. It
+          waits on the owner personally clicking through the UI, so this marker
+          stays until that sign-off happens. Remove it as part of P8. */}
+      <p
+        className="mx-4 mb-3 rounded-md border border-warn/40 bg-warn/10 px-2.5 py-2 text-[11px] font-semibold leading-relaxed text-ink max-[1100px]:hidden"
+        data-cutover-gate="pending-personal-ui-testing"
+      >
+        CUTOVER — AFTER PERSONAL UI TESTING
+      </p>
     </aside>
   );
 }

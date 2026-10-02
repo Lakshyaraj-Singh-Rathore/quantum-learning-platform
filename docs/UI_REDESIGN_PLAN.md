@@ -345,7 +345,19 @@ types still enforced.
 | **P5** | **Challenges + Dashboard** (learner & instructor) | grading copy, recommendations, role gating match current text exactly |
 | **P6** | **Games + Playground** | level flows + previews golden-tested |
 | **P7** | Polish: light mode + toggle, keyboard shortcuts (Ctrl-K style command palette optional), empty/error/loading states audit, mobile-width behavior (>=900px supported, below: read-only warning banner), Lighthouse/axe pass | a11y audit 0 criticals; theme switch re-templates charts |
-| **P8** | **Cutover**: web becomes default landing; docs (README screenshots, CUDAQ_SETUP wording) updated; Streamlit marked legacy in compose | owner sign-off on parity checklist |
+> ## CUTOVER — AFTER PERSONAL UI TESTING
+>
+> **P8 is on hold by owner's decision.** P0 through P7 are built and pushed.
+> The cutover — making the web app the default landing, updating the docs, and
+> marking Streamlit legacy in compose — is deliberately **not** started.
+>
+> It resumes only after the owner has personally clicked through the entire UI
+> and signed off on the parity checklist. Streamlit therefore stays live and
+> untouched in the meantime, and both stacks keep running side by side.
+>
+> Do not begin P9 (removal of Streamlit) until P8 has been signed off.
+
+| **P8** | **BLOCKED — see the gate above.** Cutover: web becomes default landing; docs (README screenshots, CUDAQ_SETUP wording) updated; Streamlit marked legacy in compose | **owner sign-off on parity checklist, after personal UI testing** |
 | **P9** | Removal: streamlit service, pages/lib code, its requirements & tests deleted; plan doc updated with final architecture | backend suite still 504 green; `make up` = 4 services |
 
 Dependency: P1→P2 is the spine; P3–P6 can interleave after P1 once the

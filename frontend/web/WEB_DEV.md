@@ -1,5 +1,13 @@
 # Working on the new web UI (phase P0)
 
+> ## CUTOVER — AFTER PERSONAL UI TESTING
+>
+> Phases P0–P7 are complete and pushed. **P8 (cutover) has not been started and
+> must not be started** until the owner has personally tested the whole UI and
+> signed off on parity. Until then Streamlit stays live and both stacks run in
+> parallel. P9 (removing Streamlit) waits on P8.
+
+
 The React SPA in this folder is the replacement front end described in
 `docs/UI_REDESIGN_PLAN.md`. **P0 delivered the shell** (routing, auth, design
 tokens), **P1 rebuilt the Composer** (grid, run settings, noise, job lifecycle)
