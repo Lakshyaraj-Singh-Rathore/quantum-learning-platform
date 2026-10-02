@@ -22,6 +22,9 @@
   --ink-muted: #8b8b95;
   --accent: #3dd6c6;
   --accent-ink: #06231f;
+  /* Second series in charts. Must invert with the theme like --accent does,
+     or a chart that is legible in dark mode becomes unreadable in light. */
+  --accent-2: #a78bfa;
   --danger: #ff5d5d;
   --warn: #ffd166;
   color-scheme: dark;
@@ -39,6 +42,7 @@ html.light {
   --ink-muted: #74747e;
   --accent: #0d9488;
   --accent-ink: #ffffff;
+  --accent-2: #7c3aed;
   --danger: #d43d3d;
   --warn: #a2740a;
   color-scheme: light;

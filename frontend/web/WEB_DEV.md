@@ -515,3 +515,28 @@ the 25-button grid, the toolbar controls, the endpoints, and the register.
 
 Build clean; `render:composer` 36/36; every earlier harness green;
 backend `511 passed, 5 skipped`; frontend `418 passed, 77 skipped`.
+
+## P7 — polish (part one)
+
+Three items from the plan's P7 list.
+
+**Charts re-template with the theme.** The acceptance criterion for P7 is that
+switching theme re-templates charts. One series colour was hard-coded
+(`#6C5CE7`), so a chart legible in dark mode became unreadable in light. It is
+now `--accent-2`, defined in both theme blocks. The gate colours in
+`CircuitDiagram` were already fine in both themes — they are saturated fills
+under white label text, which reads correctly either way.
+
+**A CSP, and two friends, in nginx.conf.** `style-src` has to keep
+`'unsafe-inline'`: React applies styles through the style attribute, which
+`style-src` governs, so a policy without it silently unstyles the whole app.
+Scripts get no such allowance — every one is a content-hashed bundle.
+`connect-src` is `'self'` because the SPA only ever talks to `/api`, which this
+server proxies.
+
+**A narrow-window notice below 900px.** The design system targets 900px and up;
+under that the composer's three columns stop being usable rather than merely
+getting tight. The notice is deliberately worded as "not supported at this
+width" rather than "read-only", because the app is not actually made read-only —
+disabling every editor from one place would be a wide-blast-radius change for
+little gain, and claiming read-only when it is not would be a lie.

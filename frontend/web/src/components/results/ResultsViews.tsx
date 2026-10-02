@@ -32,7 +32,7 @@ import type { RunResult } from "../../api/jobs";
 import { cn } from "../ui";
 
 /** Matches viz.py's palette; the accents are the app's own tokens. */
-const SERIES_ALT = "#6C5CE7";
+const SERIES_ALT = "var(--accent-2)";
 const MAX_HISTOGRAM_BARS = 32;
 const DENSITY_QUBIT_LIMIT = 5;
 
