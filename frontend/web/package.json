@@ -10,6 +10,7 @@
     "typecheck": "node scripts/link-shared.mjs && tsc --noEmit",
     "smoke:auth": "tsx scripts/smoke-auth.mts",
     "render:check": "tsx scripts/render-check.mts && tsx scripts/render-check.mts --anon && tsx scripts/render-check.mts --staff",
+    "a11y": "tsx scripts/a11y-check.mts",
     "smoke:composer": "tsx scripts/smoke-composer.mts",
     "render:results": "tsx scripts/render-results.mts",
     "render:codelab": "tsx scripts/render-codelab.mts",

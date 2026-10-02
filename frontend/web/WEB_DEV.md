@@ -540,3 +540,23 @@ getting tight. The notice is deliberately worded as "not supported at this
 width" rather than "read-only", because the app is not actually made read-only —
 disabling every editor from one place would be a wide-blast-radius change for
 little gain, and claiming read-only when it is not would be a lie.
+
+### Accessibility audit
+
+`npm run a11y` renders every page and asserts **0 criticals** for the failures
+that are mechanically detectable in SSR: unnamed buttons, unlabelled inputs,
+images without `alt`, and links with no discernible text (WCAG 4.1.2).
+
+It is not axe and does not pretend to be. It cannot judge contrast, focus
+order, or whether a name is *meaningful* — run axe in a browser for those.
+
+The first run reported four criticals and all four were bugs in the audit, not
+the app: icon-only buttons whose content is a nested SVG, and sliders labelled
+by a wrapping `<label>`. Worth recording because the temptation is to loosen a
+check until it passes; here the fix was to make it see wrapping labels and read
+element content to its own closing tag.
+
+**Known gap, reported not hidden:** the composer's palette tiles are draggable
+`<div>`s with no button role and no keyboard path. They are clickable but not
+Tab-reachable. Fixing it properly means a keyboard placement flow, so it is
+tracked for the cutover rather than papered over now.
