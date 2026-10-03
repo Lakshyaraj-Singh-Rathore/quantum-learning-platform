@@ -1,5 +1,81 @@
 # Changelog
 
+## M3 Verification & Finalization
+
+Status: **M3 verified and finalized.** No M4 content authoring was started.
+
+### The 6-sections vs 10-sections discrepancy — resolved
+
+The M3 live check reported "17 topics / 6 sections". Both numbers were correct
+and the discrepancy had a single cause: at `c759dd0`, `build_curriculum`
+contained `if not topics_out: continue`, which **dropped empty sections from the
+API response**.
+
+```text
+Canonical roadmap sections:  10   (the registry defines all 10, A-J)
+API-returned sections:       10   (after M1; was 6 at c759dd0)
+Populated sections:           6   (17 topics live here)
+Empty sections:               4   (mathematical-foundations, error-correction,
+                                  hardware-ecosystem, communication-simulation)
+```
+
+The 4 empty sections are **intentionally deferred**, not accidentally omitted.
+They are authored in M4. No topics or lessons were invented to inflate the
+count. A second contributor was also fixed: the superseded registry defined an
+`advanced-theory-circuits` section that the current registry drops, leaving an
+orphan row that rendered as a nameless, letterless entry colliding at position
+6. The migration now retires sections that are absent from the registry and
+have no topics referencing them.
+
+### Frontend Celery/Redis failure — classified and resolved
+
+`tests/test_games_levels_render.py::test_a_win_stays_visible_while_the_circuit_is_unchanged`
+was reported as a known pre-existing failure. It was reproduced at `c759dd0`
+(the M3 base) and the file contains zero curriculum references, so it is not an
+M3 regression.
+
+Root cause, confirmed by direct API probe:
+
+```text
+Simulation failed: Could not enqueue job: Error -2 connecting to redis:6379
+```
+
+The test posts a circuit to a live API and polls for the grade; with no Redis
+broker the job fails and the attempt grades `passed: False`. This is purely
+environmental. Setting the existing config flag `CELERY_TASK_ALWAYS_EAGER=true`
+runs the task in-process, and the same correct Bell circuit then grades
+`passed: True, score: 1.0`.
+
+With that flag the full frontend suite is **512 passed / 7 skipped / 0 failed**.
+No test was weakened, deleted, or silently skipped, and no application
+architecture was changed.
+
+### Verified
+
+- Curriculum integrity: 10 sections, 17 topics, 13 lessons, 24 lesson-topic
+  links, 18 prerequisite edges, 0 orphans, 0 circular or self-referential
+  prerequisites. Namespaced IDs unchanged.
+- Many-to-many mapping intact: 9 lessons belong to more than one topic; 5 topics
+  have more than one lesson. No reintroduced flat `topic_slug` assumption.
+- API contract: anonymous and authenticated `/curriculum`, topic detail (valid,
+  unknown, malformed -> 404), `/curriculum/next`, prerequisite-blocked topics,
+  and malformed `evidence` as a JSON string all behave correctly.
+- Prerequisites: required blocks; recommended is advisory only and never blocks.
+- `PrereqList` is rendered by `TopicCard` (was previously dead code).
+
+### Known limitations
+
+- **Browser-level visual verification was not performed.** No browser binary, no
+  Playwright or Puppeteer, and no way to install one (no root, `apt`
+  unavailable). Automated render/state/a11y verification was completed instead.
+  Desktop, narrow-screen and theme appearance remain unverified.
+- **`/curriculum/next` returns `slug`, not `topic_slug`.** Phase 4 of the
+  verification spec expected `topic_slug`. The API and frontend are internally
+  consistent and both use `slug`; renaming would be a breaking change and adding
+  a redundant alias was rejected as an unnecessary change. Flagged for a
+  decision rather than silently altered.
+
+
 ## M1 — Non-Destructive Curriculum Integration and UI Implementation
 
 Status: **complete except PostgreSQL staging validation, which is unavailable in

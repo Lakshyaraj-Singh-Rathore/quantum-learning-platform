@@ -56,6 +56,26 @@ and score intact.
 **Risk:** this is the one irreversible step. Get the migration right and test it
 against a copied database before running it on real data.
 
+## M3 Verification & Finalization
+
+Status: **verified and finalized.** M4 content authoring was NOT started.
+
+The headline question — why the API returned 6 sections when the roadmap has
+10 — is answered: at `c759dd0` the service dropped sections with no published
+topics. All 10 canonical sections exist; 6 are populated with the 17 topics and
+4 are deliberately empty pending M4. No content was invented to close the gap.
+
+A second contributor, an orphan `advanced-theory-circuits` section left behind
+by the superseded registry, was removed by the migration.
+
+The long-standing frontend Celery/Redis failure was reproduced at the M3 base
+commit (so not an M3 regression) and then resolved: with
+`CELERY_TASK_ALWAYS_EAGER=true` the full frontend suite reports
+**512 passed / 7 skipped / 0 failed**. No test was weakened or skipped.
+
+Unverifiable in this environment: browser-level desktop, narrow-screen and
+theme appearance.
+
 ## M1 — Curriculum hierarchy and resequencing
 
 - Model the ten sections as curriculum modules; place topics within them by

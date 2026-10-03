@@ -122,7 +122,39 @@ against commit `7ee6c01`. Locations are real paths in this repository.
 | Narrow viewport | Tailwind stack, no horizontal scroll | — | source review only | **Not visually verified** |
 | Keyboard + screen reader | real `<button aria-expanded>`, `sr-only` labels | — | `npm run a11y` (8 pages, 0 criticals) | **Verified** |
 
-### F3. M1 — Non-Destructive Curriculum Integration
+### F4. M3 Verification & Finalization
+
+| Verification area | Result | Evidence |
+|---|---|---|
+| Section architecture (10 vs 6) | Resolved | 10 canonical, 6 populated, 4 empty; M3 filtered empties |
+| Orphan retired section | Fixed | `advanced-theory-circuits` removed by migration |
+| Curriculum integrity | Pass | 10 sections / 17 topics / 13 lessons / 24 links / 18 edges / 0 orphans |
+| No circular prerequisites | Pass | 0 circular, 0 self-referential |
+| Many-to-many lesson/topic | Pass | 9 lessons multi-topic, 5 topics multi-lesson |
+| API: anonymous | Pass | 200, `unevaluated=17`, no fabricated progress |
+| API: authenticated (4 states) | Pass | 0/17, 3/17, 8/17 with correct ready/blocked counts |
+| API: unknown + malformed topic | Pass | 404 |
+| API: malformed `evidence` (JSON string) | Pass | coerced, no 500 |
+| Prerequisites block correctly | Pass | required blocks, recommended advisory-only |
+| `PrereqList` rendered | Pass | defined line 66, used line 182, 6 harness checks |
+| Deep links | Pass | `/curriculum`, `/curriculum/topic/:id`, `/learn?lesson=` |
+| Default `/learn` landing | Unchanged | index route still redirects to `/learn` |
+| Backend tests | Pass | 566 passed, 5 skipped |
+| Frontend tests | Pass | 512 passed, 7 skipped, 0 failed (with eager Celery) |
+| Curriculum harness | Pass | 29 checks x anonymous + auth |
+| a11y | Pass | 0 criticals across every page |
+| Render / golden / states | Pass | 3 render modes, 8 page scripts, 3 goldens, states |
+| Typecheck / build | Pass | clean, builds in ~5s |
+| Browser visual verification | **Not performed** | no browser, no Playwright, no root to install |
+
+### Documented discrepancies
+
+- **`/curriculum/next` returns `slug`, not `topic_slug`.** The verification spec
+  expected `topic_slug`. API and frontend are internally consistent on `slug`.
+  Not renamed (breaking) and no alias added (unnecessary). Flagged for decision.
+- **Browser verification unavailable.** See the fallback note above.
+
+## F3. M1 — Non-Destructive Curriculum Integration
 
 | Requirement | Where | Test | Status |
 |---|---|---|---|
