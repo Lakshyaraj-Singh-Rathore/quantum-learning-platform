@@ -56,6 +56,36 @@ and score intact.
 **Risk:** this is the one irreversible step. Get the migration right and test it
 against a copied database before running it on real data.
 
+## M1 PostgreSQL Staging Gate
+
+Status: **verified on a real PostgreSQL 16.2 server.** Production migration
+still requires separate explicit approval and has NOT been run.
+
+A real PostgreSQL server was obtained without root by installing the `pgserver`
+wheel, which bundles PostgreSQL binaries. It ran on loopback only against a
+timestamp-named disposable database.
+
+Two genuine cross-database defects were found and fixed, both invisible on
+SQLite:
+
+1. `INSERT OR IGNORE` in the downgrade — SQLite-only syntax that would have
+   failed outright on PostgreSQL.
+2. `AmbiguousParameter` on re-upgrade — a parameter used both in a typeless
+   `SELECT` list and in a `WHERE` comparison against a `varchar` column. Fixed
+   with explicit casts. One affected statement was pre-existing M0 code.
+
+Verification results: upgrade, downgrade and re-upgrade all pass; 13/13 lessons
+and 24/24 placements survive the round trip with an identical graph; 10 sections
+and 17 topics; legacy mastery preserved byte-identically with correct derived
+rows; all nine integrity checks return zero. The backend suite passes on both
+PostgreSQL and SQLite (568 passed / 5 skipped each), and the frontend suite
+passes against the PostgreSQL-backed API (512 passed / 7 skipped).
+
+Open decision: `13_classical_bit_vs_qubit` is primary for
+`core.quantum_interference`, which downgrades to a namespaced id rather than a
+legacy flat slug. The alternative fixes that but leaves the topic without a
+primary lesson. `is_primary` only affects ordering, so the cost is cosmetic.
+
 ## M3 Verification & Finalization
 
 Status: **verified and finalized.** M4 content authoring was NOT started.

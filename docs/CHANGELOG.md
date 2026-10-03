@@ -1,5 +1,87 @@
 # Changelog
 
+## M1 — PostgreSQL Staging Migration Gate
+
+Status: **PostgreSQL staging verified on a real PostgreSQL 16.2 server.**
+Production migration has NOT been run and still requires separate approval.
+
+### Environment
+
+A real PostgreSQL server was obtained without root by installing the `pgserver`
+wheel, which bundles PostgreSQL binaries. It was started on loopback only and a
+timestamp-named disposable database was created for the test. No production
+system was contacted.
+
+```text
+PostgreSQL version:  16.2 (x86_64-pc-linux-gnu)
+Host:                127.0.0.1:5433 (loopback, sandbox-local)
+Staging database:    timestamp-named, created empty for this run
+```
+
+### Two real cross-database defects found and fixed
+
+Both were invisible on SQLite and only surfaced against PostgreSQL. This is
+exactly what the staging gate was for.
+
+1. **`INSERT OR IGNORE` (SQLite-only) in the downgrade.** Would have failed
+   outright on PostgreSQL. Replaced with `ON CONFLICT ... DO NOTHING`.
+
+2. **`AmbiguousParameter` on re-upgrade.** A parameter used both in a typeless
+   `SELECT` list and in a `WHERE` comparison against a `varchar` column makes
+   PostgreSQL deduce `text` from one and `character varying` from the other:
+   `inconsistent types deduced for parameter $1`. SQLite never notices. Fixed
+   with explicit `CAST(:param AS VARCHAR)`. Two statements were affected; one
+   was pre-existing M0 code that would have failed on the first populated
+   downgrade/re-upgrade cycle.
+
+Both fixes were re-verified on SQLite so the change is dialect-neutral.
+
+### Results
+
+```text
+Upgrade:                    PASS
+Downgrade:                  PASS
+Re-upgrade:                 PASS
+13/13 lessons restored:     PASS
+24/24 placements preserved: PASS  (13 primary + 11 secondary, graph identical)
+10 sections (A-J):          PASS
+17 topics:                  PASS
+Legacy mastery preserved:   PASS  (7 legacy rows byte-identical, 4 derived)
+Primary/secondary invariants: PASS (each lesson exactly one primary; topics
+                                    may legitimately have several)
+Integrity:                  PASS  (0 orphans, 0 duplicates, 0 invalid or
+                                   circular prerequisites)
+API verification:           PASS  (anonymous + authenticated, topic detail,
+                                   /curriculum/next, 404 on unknown topic)
+```
+
+Backend suite: **568 passed / 5 skipped on PostgreSQL** and the same on SQLite.
+Frontend suite: **512 passed / 7 skipped**, run against the PostgreSQL-backed
+API.
+
+### Test infrastructure added
+
+- `QL_TEST_DATABASE_URL` env var in `backend/tests/conftest.py` points the whole
+  suite at a disposable PostgreSQL database. The default remains hermetic
+  SQLite, so ordinary runs are unchanged.
+- Static guards in `tests/test_curriculum.py`: no SQLite-only SQL in the
+  migration path, and every parametrised `SELECT` insert must carry an explicit
+  `CAST`. Both were verified to fail when a regression is deliberately injected.
+
+### Flagged, not resolved
+
+**`13_classical_bit_vs_qubit` is primary for `core.quantum_interference`, not
+`qc.qubits`.** The verification spec expected `qc.qubits`. PostgreSQL staging
+surfaced a concrete consequence of the current assignment: on downgrade, the
+lesson's `topic_slug` becomes `core.quantum_interference` — a *namespaced id*,
+not a legacy flat slug — because `FLAT_TO_STABLE` has no legacy ancestor for
+that topic. Every other lesson downgrades to a valid legacy slug. Switching the
+primary to `qc.qubits` (which has legacy ancestors `qubits` and
+`classical-vs-qubit`) would fix that, at the cost of `core.quantum_interference`
+losing its primary lesson. `is_primary` is only used for ordering, so the cost
+is cosmetic, but the decision is the owner's and is left open.
+
+
 ## M3 Verification & Finalization
 
 Status: **M3 verified and finalized.** No M4 content authoring was started.

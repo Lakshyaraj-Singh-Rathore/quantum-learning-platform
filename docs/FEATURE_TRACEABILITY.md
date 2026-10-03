@@ -122,7 +122,48 @@ against commit `7ee6c01`. Locations are real paths in this repository.
 | Narrow viewport | Tailwind stack, no horizontal scroll | — | source review only | **Not visually verified** |
 | Keyboard + screen reader | real `<button aria-expanded>`, `sr-only` labels | — | `npm run a11y` (8 pages, 0 criticals) | **Verified** |
 
-### F4. M3 Verification & Finalization
+### F5. M1 PostgreSQL Staging Gate
+
+Environment: **real PostgreSQL 16.2** (bundled binaries via the `pgserver`
+wheel), loopback only, timestamp-named disposable database. No production
+system touched.
+
+| Check | Result | Notes |
+|---|---|---|
+| Upgrade on PostgreSQL | PASS | `Context impl PostgresqlImpl`, no errors |
+| Downgrade on PostgreSQL | PASS | would have failed on `INSERT OR IGNORE` |
+| Re-upgrade on PostgreSQL | PASS | would have failed on `AmbiguousParameter` |
+| 13/13 lessons restored | PASS | none left with NULL `topic_slug` |
+| 24/24 placements preserved | PASS | 13 primary + 11 secondary; graph identical |
+| 10 sections A-J | PASS | `advanced-theory-circuits` absent |
+| 17 topics | PASS | namespaced ids unchanged |
+| Legacy mastery preserved | PASS | 7 legacy rows byte-identical, 4 derived |
+| Merge behaviour (noise+decoherence, grover+algorithms) | PASS | 0.5 and 0.8 means |
+| Obsolete tag creates nothing | PASS | 0 derived rows |
+| Primary/secondary invariants | PASS | one primary per lesson; topics may have several |
+| Integrity (9 checks) | PASS | all zero |
+| API anonymous + authenticated | PASS | 2/17 progress, correct threshold behaviour |
+| Backend suite on PostgreSQL | PASS | 568 passed, 5 skipped |
+| Backend suite on SQLite | PASS | 568 passed, 5 skipped |
+| Frontend suite vs PG-backed API | PASS | 512 passed, 7 skipped |
+
+### Cross-database defects found
+
+1. `INSERT OR IGNORE` — SQLite-only, fails outright on PostgreSQL. Fixed to
+   `ON CONFLICT ... DO NOTHING`.
+2. `AmbiguousParameter` — parameter reused in a typeless `SELECT` list and a
+   `WHERE` against `varchar`. Fixed with explicit `CAST(... AS VARCHAR)`. One
+   instance was pre-existing M0 code.
+
+Both guarded by static tests that were verified to fail on injected regressions.
+
+### Open decision
+
+`13_classical_bit_vs_qubit` is primary for `core.quantum_interference`, which
+downgrades to a namespaced id instead of a legacy flat slug. See the CHANGELOG
+entry for the tradeoff.
+
+## F4. M3 Verification & Finalization
 
 | Verification area | Result | Evidence |
 |---|---|---|

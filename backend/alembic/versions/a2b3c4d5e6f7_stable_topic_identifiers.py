@@ -269,6 +269,12 @@ def upgrade() -> None:
                 "p": 1 if is_primary else 0,
             },
         )
+    # PostgreSQL is strict about parameters used both in a typeless SELECT
+    # list and in a WHERE comparison against a varchar column: it deduces
+    # "text" from one and "character varying" from the other and raises
+    # AmbiguousParameter. SQLite never notices. The explicit CASTs pin the
+    # parameter types so the same statement works on both dialects.
+
     # Recover secondary placements preserved by an earlier downgrade. Without
     # this, downgrade -> upgrade would lose every non-primary mapping.
     if _has_column("lessons", "additional_topics"):
@@ -288,7 +294,8 @@ def upgrade() -> None:
                 bind.execute(
                     sa.text(
                         "INSERT INTO lesson_topics (lesson_slug, topic_id, confidence, is_primary)"
-                        " SELECT :l, :t, 'medium', 0"
+                        " SELECT CAST(:l AS VARCHAR), CAST(:t AS VARCHAR),"
+                        " CAST('medium' AS VARCHAR), 0"
                         " WHERE NOT EXISTS (SELECT 1 FROM lesson_topics"
                         "  WHERE lesson_slug = :l AND topic_id = :t)"
                     ),
@@ -302,7 +309,8 @@ def upgrade() -> None:
             bind.execute(
                 sa.text(
                     "INSERT INTO lesson_topics (lesson_slug, topic_id, confidence, is_primary)"
-                    " SELECT :l, :t, 'medium', 0"
+                    " SELECT CAST(:l AS VARCHAR), CAST(:t AS VARCHAR),"
+                    " CAST('medium' AS VARCHAR), 0"
                     " WHERE NOT EXISTS (SELECT 1 FROM lesson_topics"
                     "  WHERE lesson_slug = :l AND topic_id = :t)"
                 ),

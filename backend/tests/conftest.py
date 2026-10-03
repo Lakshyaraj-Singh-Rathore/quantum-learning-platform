@@ -12,13 +12,22 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-_DB_FILE = Path(tempfile.gettempdir()) / "quantumlearn_test.db"
-if _DB_FILE.exists():
-    _DB_FILE.unlink()
-
-# The test suite must be hermetic: override any developer .env / shell values so
-# tests never touch a real database or hit remote providers.
-os.environ["DATABASE_URL"] = f"sqlite:///{_DB_FILE}"
+# The test suite is hermetic by default: it uses a throwaway SQLite file and
+# overrides any developer .env / shell values so tests never touch a real
+# database or hit remote providers.
+#
+# Opt-in override for cross-database verification. Setting
+# QL_TEST_DATABASE_URL points the whole suite at a disposable PostgreSQL
+# staging database instead. The default stays SQLite, so ordinary runs are
+# unaffected -- and pointing this at anything production-like is never correct.
+_PG_OVERRIDE = os.environ.get("QL_TEST_DATABASE_URL", "").strip()
+if _PG_OVERRIDE:
+    os.environ["DATABASE_URL"] = _PG_OVERRIDE
+else:
+    _DB_FILE = Path(tempfile.gettempdir()) / "quantumlearn_test.db"
+    if _DB_FILE.exists():
+        _DB_FILE.unlink()
+    os.environ["DATABASE_URL"] = f"sqlite:///{_DB_FILE}"
 os.environ["JWT_SECRET"] = "test-secret-key-that-is-long-enough-123456"
 os.environ["GEMINI_API_KEY"] = ""
 os.environ["QBRAID_API_KEY"] = ""

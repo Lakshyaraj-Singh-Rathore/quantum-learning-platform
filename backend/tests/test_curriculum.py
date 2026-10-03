@@ -5,6 +5,7 @@ from __future__ import annotations
 import glob
 import os
 import pathlib
+import re
 
 import pytest
 from sqlalchemy import create_engine, inspect, select, text
@@ -538,3 +539,55 @@ def test_downgrade_places_every_lesson_and_preserves_secondary_placements(tmp_pa
         else:
             os.environ["DATABASE_URL"] = previous
         get_settings.cache_clear()
+
+
+def test_migrations_contain_no_sqlite_only_syntax():
+    """The migration must run on PostgreSQL, which is the production dialect.
+
+    `INSERT OR IGNORE` is SQLite-only and fails outright on PostgreSQL; it was
+    found here by static review and fixed. This guard keeps it from creeping
+    back in.
+    """
+    import pathlib
+    import re
+
+    versions = pathlib.Path(__file__).resolve().parents[1] / "alembic" / "versions"
+    banned = re.compile(r"INSERT\s+OR\s+(IGNORE|REPLACE)|REPLACE\s+INTO|AUTOINCREMENT", re.I)
+    offenders: list[str] = []
+    for path in sorted(versions.glob("*.py")):
+        text = path.read_text(encoding="utf-8")
+        for i, line in enumerate(text.splitlines(), start=1):
+            stripped = line.strip()
+            # Comments explaining why the syntax is banned are fine.
+            if stripped.startswith("#"):
+                continue
+            if banned.search(line):
+                offenders.append(f"{path.name}:{i}: {stripped}")
+    assert not offenders, "SQLite-only SQL in the migration path:\n" + "\n".join(offenders)
+
+
+def test_parameter_reuse_is_explicitly_cast_for_postgres():
+    """A parameter used both in a typeless SELECT list and in a WHERE
+    comparison against a varchar column makes PostgreSQL raise
+    AmbiguousParameter (text versus character varying). SQLite never notices.
+    The statements that do this must pin the parameter types with CAST.
+    """
+    import pathlib
+
+    migration = (
+        pathlib.Path(__file__).resolve().parents[1]
+        / "alembic" / "versions" / "a2b3c4d5e6f7_stable_topic_identifiers.py"
+    )
+    text = migration.read_text(encoding="utf-8")
+    # Every `SELECT <param>, <param>, ...` insert must carry an explicit CAST.
+    selects = [
+        line.strip()
+        for line in text.splitlines()
+        if re.search(r'"\s*SELECT\s+(CAST\s*\()?\s*:', line, re.I)
+    ]
+    assert selects, "no parametrised SELECT inserts found; test is stale"
+    for line in selects:
+        assert "CAST(" in line, (
+            f"parametrised SELECT without an explicit CAST is ambiguous on "
+            f"PostgreSQL: {line}"
+        )
