@@ -591,3 +591,31 @@ all three modes) rather than leaving it to be eyeballed.
 
 **Still not keyboard-operable:** the composer's palette tiles. Reported above,
 tracked for the cutover.
+
+### Empty / error / loading states audit
+
+The last item left on the plan's P7 list. `npm run states` renders every page
+with its queries pending and asserts it says so rather than rendering a silent
+blank, then checks each page has an error branch and an empty branch.
+
+The audit found one real gap, and it was not in any single page: **the app had
+no error boundary at all.** Any throw inside a page — a demo handed an odd
+value, an API response of an unexpected shape, a null where an object was
+assumed — unmounted the entire React tree. The user got a blank screen and
+could not navigate away, because the navigation unmounted with everything else.
+
+`ErrorBoundary` is mounted around page content rather than around the app, so a
+crash now costs the page and leaves the shell standing. The error message is
+shown rather than swallowed: for a self-hosted tool there is no reason to hide
+what went wrong from the person running it.
+
+**A note on what can and cannot be tested here.** Error boundaries do not run
+under `renderToString` — React's legacy server renderer propagates the throw
+instead of catching it, which was verified rather than assumed. That is
+acceptable, because the white-screen scenario being prevented is a client-side
+crash, which is where the boundary operates. The harness therefore asserts the
+machinery the client depends on: that a thrown error becomes state, that the
+component stack is logged, and that a fallback with the real message exists.
+
+Lighthouse is still not run in this environment; `npm run a11y` is a WCAG 4.1.2
+check, not a substitute for axe in a real browser.

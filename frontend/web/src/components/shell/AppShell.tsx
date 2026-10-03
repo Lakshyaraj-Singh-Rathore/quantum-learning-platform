@@ -4,6 +4,7 @@ import { Sidebar } from "./Sidebar";
 import { TopBar } from "./TopBar";
 import { NarrowViewportNotice } from "./NarrowViewportNotice";
 import { CommandPalette } from "./CommandPalette";
+import { ErrorBoundary } from "./ErrorBoundary";
 
 export function AppShell() {
   // Owned here, not inside the palette, so the top bar's search button and the
@@ -17,7 +18,11 @@ export function AppShell() {
         <TopBar onOpenPalette={() => setPaletteOpen(true)} />
         <NarrowViewportNotice />
         <main className="min-h-0 flex-1 overflow-y-auto">
-          <Outlet />
+          {/* Around the page, not the app: a crash should cost the page and
+              leave the shell standing, so you can navigate away. */}
+          <ErrorBoundary label="This page">
+            <Outlet />
+          </ErrorBoundary>
         </main>
       </div>
       <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
