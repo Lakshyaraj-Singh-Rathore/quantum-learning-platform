@@ -25,11 +25,9 @@ class Lesson(Base):
     # so that anything still reading the flat ordering keeps working until it
     # is migrated. ``order_index`` remains the filename-derived position.
 
-    #: Owning topic. Nullable: a lesson the curriculum has not claimed yet is
-    #: still a valid lesson, it just sits outside the hierarchy.
-    topic_slug: Mapped[str | None] = mapped_column(
-        ForeignKey("curriculum_topics.slug"), index=True, nullable=True
-    )
+    # NOTE: lesson -> topic is now many-to-many via ``lesson_topics``. The
+    # single ``topic_slug`` column was dropped in a2b3c4d5e6f7 because one
+    # lesson legitimately teaches several topics.
     #: Order within the owning topic. Distinct from ``order_index``, which is
     #: the global filename-derived sequence.
     position: Mapped[int] = mapped_column(Integer, default=0)

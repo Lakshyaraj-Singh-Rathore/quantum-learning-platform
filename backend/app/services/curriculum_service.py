@@ -10,39 +10,50 @@ from __future__ import annotations
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.curriculum import LEGACY_TAG_TO_TOPIC
 from app.models.content import Lesson
-from app.models.curriculum import CurriculumSection, CurriculumTopic, TopicPrerequisite
-from app.models.mastery import UserMastery
+from app.models.curriculum import (
+    CurriculumSection,
+    CurriculumTopic,
+    LessonTopic,
+    TopicMastery,
+    TopicPrerequisite,
+)
 
 #: Mastery at or above this counts as having covered a topic.
 MASTERY_THRESHOLD = 0.6
 
 
 def topic_mastery(db: Session, user_id: int) -> dict[str, dict[str, float]]:
-    """Return ``{topic_slug: {score, attempts}}`` for a learner.
+    """Return ``{topic_id: {score, attempts}}`` for a learner.
 
-    Reads the stable ``topic_slug`` column. Rows that were never stamped -- a
-    tag with no mapping -- are recovered through the legacy tag map so that
-    progress recorded before the restructuring is not silently dropped.
+    Reads the dedicated ``topic_mastery`` table, which the migration populated
+    from legacy tag rows. Only rows with status ``mapped`` or ``verified``
+    count; ``legacy_only`` rows are preserved for audit but never counted and
+    never satisfy a prerequisite.
+
+    Unmapped legacy tags remain in ``user_mastery`` and are readable there.
+    Nothing here derives mastery from lesson text.
     """
-    rows = db.scalars(select(UserMastery).where(UserMastery.user_id == user_id)).all()
+    rows = db.scalars(
+        select(TopicMastery).where(
+            TopicMastery.user_id == user_id,
+            TopicMastery.status.in_(("mapped", "verified")),
+        )
+    ).all()
 
     totals: dict[str, list[float]] = {}
     attempts: dict[str, int] = {}
-
     for row in rows:
-        topic = row.topic_slug or LEGACY_TAG_TO_TOPIC.get(row.tag)
-        if topic is None:
-            # Genuinely unmappable. Preserved in the table, just not counted.
-            continue
-        totals.setdefault(topic, []).append(float(row.score))
-        attempts[topic] = attempts.get(topic, 0) + int(row.attempts or 0)
+        totals.setdefault(row.topic_id, []).append(float(row.mastery_level))
+        evidence = row.evidence or {}
+        attempts[row.topic_id] = attempts.get(row.topic_id, 0) + int(
+            evidence.get("attempts") or 0
+        )
 
     return {
         topic: {
             "score": round(sum(scores) / len(scores), 3),
-            "attempts": attempts[topic],
+            "attempts": attempts.get(topic, 0),
         }
         for topic, scores in totals.items()
     }
@@ -53,8 +64,8 @@ def prerequisites_for(db: Session) -> dict[str, list[dict[str, str]]]:
     edges = db.scalars(select(TopicPrerequisite)).all()
     out: dict[str, list[dict[str, str]]] = {}
     for edge in edges:
-        out.setdefault(edge.topic_slug, []).append(
-            {"slug": edge.prerequisite_slug, "kind": edge.kind}
+        out.setdefault(edge.topic_id, []).append(
+            {"slug": edge.prerequisite_id, "kind": edge.kind}
         )
     return out
 
@@ -108,17 +119,25 @@ def build_curriculum(db: Session, user_id: int | None) -> dict[str, object]:
         select(CurriculumTopic).order_by(CurriculumTopic.position)
     ).all()
     lessons = db.scalars(select(Lesson).order_by(Lesson.position)).all()
+    lesson_meta = {lesson.slug: lesson for lesson in lessons}
+
+    links = db.scalars(
+        select(LessonTopic).order_by(LessonTopic.is_primary.desc(), LessonTopic.id)
+    ).all()
 
     lessons_by_topic: dict[str, list[dict[str, object]]] = {}
-    for lesson in lessons:
-        if not lesson.topic_slug:
+    for link in links:
+        lesson = lesson_meta.get(link.lesson_slug)
+        if lesson is None:
             continue
-        lessons_by_topic.setdefault(lesson.topic_slug, []).append(
+        lessons_by_topic.setdefault(link.topic_id, []).append(
             {
                 "slug": lesson.slug,
                 "title": lesson.title,
                 "track": lesson.track,
                 "position": lesson.position,
+                "is_primary": bool(link.is_primary),
+                "confidence": link.confidence,
             }
         )
 
@@ -143,22 +162,22 @@ def build_curriculum(db: Session, user_id: int | None) -> dict[str, object]:
                     "unevaluated": True,
                 }
             else:
-                status = evaluate_prerequisites(topic.slug, prereqs, mastery)
-            score = mastery.get(topic.slug, {}).get("score", 0.0)
+                status = evaluate_prerequisites(topic.id, prereqs, mastery)
+            score = mastery.get(topic.id, {}).get("score", 0.0)
             topics_out.append(
                 {
-                    "slug": topic.slug,
+                    "slug": topic.id,
                     "title": topic.title,
                     "position": topic.position,
                     "difficulty": topic.difficulty,
-                    "summary": topic.summary,
+                    "summary": topic.description,
                     "objectives": topic.learning_objectives or [],
                     "mastery": score,
-                    "attempts": mastery.get(topic.slug, {}).get("attempts", 0),
+                    "attempts": mastery.get(topic.id, {}).get("attempts", 0),
                     "completed": score >= MASTERY_THRESHOLD,
-                    "prerequisites": prereqs.get(topic.slug, []),
+                    "prerequisites": prereqs.get(topic.id, []),
                     "status": status,
-                    "lessons": lessons_by_topic.get(topic.slug, []),
+                    "lessons": lessons_by_topic.get(topic.id, []),
                 }
             )
         # A section with no topics yet is not rendered. The roadmap forbids

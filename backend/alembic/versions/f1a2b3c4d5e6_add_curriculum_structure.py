@@ -29,12 +29,251 @@ from typing import Sequence, Union
 import sqlalchemy as sa
 from alembic import op
 
-from app.curriculum import (
-    LEGACY_TAG_TO_TOPIC,
-    SECTIONS,
-    TOPICS,
-    all_prerequisites,
-)
+"""Frozen copy of the curriculum data as it stood when this migration
+was written.
+
+Migrations must not import from live application modules: this file was
+originally importing app.curriculum, and later changed the TOPICS key
+from "slug" to "id", which broke this migration for anyone running
+`alembic upgrade head` from scratch. The data is inlined here so the
+migration is self-contained and reproduces its original result.
+"""
+
+SECTIONS: list[dict[str, object]] = [
+    {"slug": "mathematical-foundations", "title": "Mathematical Foundations", "position": 1},
+    {"slug": "core-quantum-theory", "title": "Core Quantum Theory", "position": 2},
+    {"slug": "intro-quantum-computing", "title": "Introduction to Quantum Computing", "position": 3},
+    {"slug": "intro-qiskit", "title": "Introduction to Qiskit", "position": 4},
+    {"slug": "quantum-algorithms", "title": "Quantum Algorithms", "position": 5},
+    {"slug": "advanced-theory-circuits", "title": "Advanced Quantum Theory and Circuits", "position": 6},
+    {"slug": "variational-nisq", "title": "Variational and NISQ Algorithms", "position": 7},
+    {"slug": "error-correction", "title": "Quantum Error Correction and Fault Tolerance", "position": 8},
+    {"slug": "hardware-ecosystem", "title": "Quantum Hardware and Ecosystem", "position": 9},
+    {"slug": "communication-simulation", "title": "Quantum Communication and Simulation", "position": 10},
+]
+
+TOPICS: list[dict[str, object]] = [
+    # -- 2. Core Quantum Theory ------------------------------------------- #
+    {
+        "slug": "measurement",
+        "title": "Measurement",
+        "section": "core-quantum-theory",
+        "position": 1,
+        "difficulty": "beginner",
+        "summary": "How a quantum state becomes a classical outcome, and why the "
+                   "Born rule ties probabilities to squared amplitudes.",
+        "objectives": [
+            "State the measurement postulate",
+            "Compute outcome probabilities from amplitudes",
+            "Distinguish amplitude from probability",
+        ],
+        "lessons": ["04_measurement"],
+        "prerequisites": [("qubits", "required")],
+    },
+    {
+        "slug": "quantum-noise",
+        "title": "Quantum Noise and Decoherence",
+        "section": "core-quantum-theory",
+        "position": 2,
+        "difficulty": "intermediate",
+        "summary": "Decoherence, depolarizing and damping channels, T1/T2, readout "
+                   "error, and how noise degrades a result as circuits deepen.",
+        "objectives": [
+            "Describe decoherence, depolarizing, amplitude and phase damping",
+            "Relate T1 and T2 to circuit depth limits",
+            "Compare ideal and noisy measurement histograms",
+        ],
+        "lessons": ["09_quantum_noise"],
+        "prerequisites": [("measurement", "required")],
+    },
+    # -- 3. Introduction to Quantum Computing ------------------------------ #
+    {
+        "slug": "classical-vs-qubit",
+        "title": "Classical Bits versus Qubits",
+        "section": "intro-quantum-computing",
+        "position": 1,
+        "difficulty": "beginner",
+        "summary": "What a qubit is, how it differs from a bit, and how physical "
+                   "implementations realize one.",
+        "objectives": [
+            "Contrast a classical bit with a qubit",
+            "Name physical qubit implementations",
+        ],
+        "lessons": ["13_classical_bit_vs_qubit"],
+        "prerequisites": [],
+    },
+    {
+        "slug": "qubits",
+        "title": "Qubits and the Bloch Sphere",
+        "section": "intro-quantum-computing",
+        "position": 2,
+        "difficulty": "beginner",
+        "summary": "Basis states, general single-qubit states, normalization and "
+                   "the Bloch sphere picture.",
+        "objectives": [
+            "Write a general single-qubit state",
+            "Verify normalization",
+            "Locate a state on the Bloch sphere",
+        ],
+        "lessons": ["01_qubits"],
+        "prerequisites": [("classical-vs-qubit", "required")],
+    },
+    {
+        "slug": "quantum-gates",
+        "title": "Quantum Gates",
+        "section": "intro-quantum-computing",
+        "position": 3,
+        "difficulty": "beginner",
+        "summary": "Pauli, Hadamard, phase and rotation gates, controlled gates, "
+                   "unitarity and reversibility.",
+        "objectives": [
+            "Recall the matrix of the common single-qubit gates",
+            "Apply a gate to a state by matrix multiplication",
+            "Explain why quantum gates are unitary and reversible",
+        ],
+        # Concept first, then the hands-on bootcamp. Both lessons are kept: the
+        # bootcamp's exercises are the only practice material on this topic.
+        "lessons": ["02_gates", "10_gates_bootcamp"],
+        "prerequisites": [("qubits", "required")],
+    },
+    {
+        "slug": "bell-states",
+        "title": "Bell States",
+        "section": "intro-quantum-computing",
+        "position": 4,
+        "difficulty": "intermediate",
+        "summary": "Building the four Bell states with H and CNOT, and the "
+                   "correlations their measurements show.",
+        "objectives": [
+            "Derive each Bell state from a product state",
+            "Predict correlated measurement outcomes",
+            "Explain why entanglement does not permit faster-than-light signalling",
+        ],
+        "lessons": ["11_bell_states"],
+        "prerequisites": [("quantum-gates", "required")],
+    },
+    {
+        "slug": "entanglement",
+        "title": "Entanglement",
+        "section": "intro-quantum-computing",
+        "position": 5,
+        "difficulty": "intermediate",
+        "summary": "Entanglement as non-separability, why it cannot be created by "
+                   "local operations, and how it is detected.",
+        "objectives": [
+            "Test a two-qubit state for separability",
+            "Explain why local operations cannot create entanglement",
+        ],
+        # Taught after the concrete Bell-state example rather than eight lessons
+        # before it, which was the previous filename-derived order.
+        "lessons": ["03_entanglement"],
+        "prerequisites": [("bell-states", "required")],
+    },
+    # -- 5. Quantum Algorithms --------------------------------------------- #
+    {
+        "slug": "deutsch-jozsa",
+        "title": "Deutsch-Jozsa Algorithm",
+        "section": "quantum-algorithms",
+        "position": 1,
+        "difficulty": "intermediate",
+        "summary": "The constant-versus-balanced promise, phase kickback, and one "
+                   "query where a classical machine needs many.",
+        "objectives": [
+            "Explain the constant/balanced promise",
+            "Trace phase kickback through the oracle",
+            "State the algorithm's limitations",
+        ],
+        "lessons": ["05_deutsch_jozsa"],
+        "prerequisites": [("quantum-gates", "required")],
+    },
+    {
+        "slug": "grover",
+        "title": "Grover's Search",
+        "section": "quantum-algorithms",
+        "position": 2,
+        "difficulty": "intermediate",
+        "summary": "Amplitude amplification, the diffusion operator, the optimal "
+                   "iteration count and what happens when you overshoot.",
+        "objectives": [
+            "Construct an oracle and a diffusion operator",
+            "Compute the optimal iteration count",
+            "Describe the effect of over-rotating",
+        ],
+        "lessons": ["06_grover"],
+        "prerequisites": [("deutsch-jozsa", "required")],
+    },
+    # -- 6. Advanced Quantum Theory and Circuits --------------------------- #
+    {
+        "slug": "control-flow",
+        "title": "Classical Control Flow in Circuits",
+        "section": "advanced-theory-circuits",
+        "position": 1,
+        "difficulty": "intermediate",
+        "summary": "Conditioning quantum operations on measurement results, and "
+                   "the classical register conventions that make it work.",
+        "objectives": [
+            "Apply an operation conditioned on a measurement result",
+            "Account for classical bit ordering",
+        ],
+        "lessons": ["12_control_flow"],
+        "prerequisites": [("quantum-gates", "required"), ("measurement", "required")],
+    },
+    {
+        "slug": "dynamic-circuits",
+        "title": "Dynamic Circuits",
+        "section": "advanced-theory-circuits",
+        "position": 2,
+        "difficulty": "advanced",
+        "summary": "Mid-circuit measurement with feed-forward, loops and resets, "
+                   "and what dynamic circuits cost on real hardware.",
+        "objectives": [
+            "Build a circuit with mid-circuit measurement and feed-forward",
+            "Explain the latency cost of dynamic circuits",
+        ],
+        "lessons": ["08_dynamic_circuits"],
+        "prerequisites": [("control-flow", "required")],
+    },
+    # -- 7. Variational and NISQ Algorithms -------------------------------- #
+    {
+        "slug": "vqe-qaoa",
+        "title": "VQE and QAOA",
+        "section": "variational-nisq",
+        "position": 1,
+        "difficulty": "advanced",
+        "summary": "Parameterized circuits, the classical optimizer loop, and why "
+                   "these algorithms are built for noisy devices.",
+        "objectives": [
+            "Describe the variational loop",
+            "Explain why VQE suits NISQ hardware",
+        ],
+        "lessons": ["07_vqe_qaoa"],
+        # Noise first. VQE's entire motivation is device noise, so the previous
+        # filename order, which put it before the noise lesson, inverted the
+        # dependency.
+        "prerequisites": [("quantum-noise", "required"), ("grover", "recommended")],
+    },
+]
+
+LEGACY_TAG_TO_TOPIC: dict[str, str] = {
+    "qubit": "qubits",
+    "gates": "quantum-gates",
+    "measurement": "measurement",
+    "entanglement": "entanglement",
+    "noise": "quantum-noise",
+    "decoherence": "quantum-noise",
+    "grover": "grover",
+    "algorithms": "grover",
+    "dynamic": "dynamic-circuits",
+}
+
+
+def all_prerequisites() -> list[tuple[str, str, str]]:
+    out = []
+    for topic in TOPICS:
+        for prereq, kind in topic["prerequisites"]:
+            out.append((topic["slug"], prereq, kind))
+    return out
+
 
 revision: str = "f1a2b3c4d5e6"
 down_revision: Union[str, None] = "e9c4a7d31b22"

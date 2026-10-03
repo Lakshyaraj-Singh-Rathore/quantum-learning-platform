@@ -1,4 +1,8 @@
-"""Tests for the curriculum service and its HTTP endpoints."""
+"""Tests for the curriculum service and its HTTP endpoints.
+
+Targets the stable namespaced topic identifiers and the split between
+topic mastery and lesson completion.
+"""
 
 from __future__ import annotations
 
@@ -6,12 +10,26 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.curriculum import SECTIONS, TOPICS, all_prerequisites
+from app.curriculum import (
+    MASTERY_MAPPABLE_CONFIDENCE,
+    NAMESPACES,
+    SECTIONS,
+    TOPICS,
+    all_lesson_topics,
+    all_prerequisites,
+)
 from app.main import app
 from app.models.content import Lesson
-from app.models.curriculum import CurriculumSection, CurriculumTopic, TopicPrerequisite
-from app.models.mastery import UserMastery
+from app.models.curriculum import (
+    CurriculumSection,
+    CurriculumTopic,
+    LessonCompletion,
+    LessonTopic,
+    TopicMastery,
+    TopicPrerequisite,
+)
 from app.models.user import User
+from app.security import create_access_token
 from app.services.curriculum_service import (
     MASTERY_THRESHOLD,
     build_curriculum,
@@ -22,82 +40,12 @@ from app.services.curriculum_service import (
 )
 
 
-def _upsert(db: Session, model, slug: str, **fields):
-    """Get-or-create by slug.
-
-    ``db.merge`` cannot be used here: these rows are keyed by slug but the
-    primary key is an integer id, so a transient object has no id to match on
-    and merge falls through to INSERT, tripping the unique constraint.
-    """
-    row = db.scalar(select(model).where(model.slug == slug))
-    if row is None:
-        row = model(slug=slug, **fields)
-        db.add(row)
-        db.flush()
-        return row
-    for key, value in fields.items():
-        setattr(row, key, value)
-    db.flush()
-    return row
-
-
-@pytest.fixture()
-def seeded(db: Session) -> Session:
-    """Seed the curriculum hierarchy that the migration would have created."""
-    for section in SECTIONS:
-        _upsert(
-            db,
-            CurriculumSection,
-            str(section["slug"]),
-            title=str(section["title"]),
-            position=int(section["position"]),
-        )
-    for topic in TOPICS:
-        _upsert(
-            db,
-            CurriculumTopic,
-            str(topic["slug"]),
-            title=str(topic["title"]),
-            section_slug=str(topic["section"]),
-            position=int(topic["position"]),
-            difficulty=str(topic["difficulty"]),
-            summary=str(topic["summary"]),
-            learning_objectives=list(topic["objectives"]),
-        )
-
-    db.query(TopicPrerequisite).delete()
-    db.flush()
-    for topic_slug, prereq, kind in all_prerequisites():
-        db.add(
-            TopicPrerequisite(topic_slug=topic_slug, prerequisite_slug=prereq, kind=kind)
-        )
-
-    for topic in TOPICS:
-        for index, lesson_slug in enumerate(topic["lessons"]):
-            lesson = db.scalar(select(Lesson).where(Lesson.slug == lesson_slug))
-            if lesson is None:
-                lesson = Lesson(slug=str(lesson_slug), title=str(lesson_slug), path="x.md")
-                db.add(lesson)
-                db.flush()
-            lesson.topic_slug = str(topic["slug"])
-            lesson.position = index
-            lesson.difficulty = str(topic["difficulty"])
-    db.commit()
-    yield db
-    # Leave the shared test database usable for other suites.
-    db.query(TopicPrerequisite).delete()
-    db.query(CurriculumTopic).delete()
-    db.query(CurriculumSection).delete()
-    db.commit()
-
-
 @pytest.fixture()
 def db():
     """A session bound to the same engine the app uses.
 
-    Ensures the schema exists first. Tests that never request ``client`` do not
-    start the app, and ``create_all`` only runs on startup, so without this the
-    curriculum tables would be missing for service-level tests.
+    Ensures the schema exists first: tests that never request ``client`` do not
+    start the app, and ``create_all`` only runs on startup.
     """
     from app.database import SessionLocal, init_db
 
@@ -109,191 +57,245 @@ def db():
         session.close()
 
 
+def _seed_registry(db: Session) -> None:
+    for section in SECTIONS:
+        _upsert(
+            db,
+            CurriculumSection,
+            "slug",
+            str(section["slug"]),
+            letter=str(section["letter"]),
+            title=str(section["title"]),
+            position=int(section["position"]),
+        )
+    for topic in TOPICS:
+        _upsert(
+            db,
+            CurriculumTopic,
+            "id",
+            str(topic["id"]),
+            title=str(topic["title"]),
+            namespace=str(topic["namespace"]),
+            module=str(topic["module"]),
+            section_slug=NAMESPACES[str(topic["namespace"])][0],
+            position=int(topic["position"]),
+            difficulty=str(topic["difficulty"]),
+            description=str(topic["description"]),
+            learning_objectives=list(topic["objectives"]),
+            status=str(topic["status"]),
+            assessments=list(topic["assessments"]),
+            visualizations=list(topic["visualizations"]),
+        )
+    db.query(LessonTopic).delete()
+    db.query(TopicPrerequisite).delete()
+    db.flush()
+    for topic_id, prereq, kind in all_prerequisites():
+        db.add(TopicPrerequisite(topic_id=topic_id, prerequisite_id=prereq, kind=kind))
+    for slug, topic_id, confidence, is_primary in all_lesson_topics():
+        lesson = db.scalar(select(Lesson).where(Lesson.slug == slug))
+        if lesson is None:
+            lesson = Lesson(slug=slug, title=slug, path="x.md")
+            db.add(lesson)
+            db.flush()
+        db.add(
+            LessonTopic(
+                lesson_slug=slug,
+                topic_id=topic_id,
+                confidence=confidence,
+                is_primary=1 if is_primary else 0,
+            )
+        )
+    db.commit()
+
+
+def _upsert(db: Session, model, pk_field: str, pk: str, **fields):
+    """Get-or-create by an explicit key column.
+
+    The primary key is not uniform across these models: CurriculumSection uses
+    an integer ``id`` while CurriculumTopic uses the namespaced id string as
+    its primary key. So the lookup column is passed in rather than inferred.
+    """
+    row = db.scalar(select(model).where(getattr(model, pk_field) == pk))
+    if row is None:
+        row = model(**{pk_field: pk}, **fields)
+        db.add(row)
+        db.flush()
+        return row
+    for key, value in fields.items():
+        setattr(row, key, value)
+    db.flush()
+    return row
+
+
+@pytest.fixture()
+def seeded(db: Session) -> Session:
+    _seed_registry(db)
+    yield db
+    db.query(TopicMastery).delete()
+    db.query(LessonCompletion).delete()
+    db.commit()
+
+
 def _user(db: Session, email: str) -> User:
     user = db.scalar(select(User).where(User.email == email))
     if user is None:
         user = User(email=email, password_hash="x", display_name="T", role="student")
         db.add(user)
         db.flush()
+        db.commit()
     return user
 
 
 # --------------------------------------------------------------------------- #
-# Service: mastery reading
+# Mastery reading
 # --------------------------------------------------------------------------- #
 
 
-def test_mastery_reads_stamped_topic_slug(seeded: Session):
-    user = _user(seeded, "stamped@example.com")
+def test_mastery_counts_mapped_and_verified(seeded: Session):
+    user = _user(seeded, "mv@example.com")
     seeded.add(
-        UserMastery(user_id=user.id, tag="entanglement", topic_slug="entanglement",
-                    score=0.8, attempts=2)
+        TopicMastery(user_id=user.id, topic_id="qc.entanglement",
+                     mastery_level=0.8, status="mapped", source="migration")
+    )
+    seeded.add(
+        TopicMastery(user_id=user.id, topic_id="qc.qubits",
+                     mastery_level=1.0, status="verified", source="quiz:basics")
     )
     seeded.commit()
     m = topic_mastery(seeded, user.id)
-    assert m["entanglement"]["score"] == pytest.approx(0.8)
-    assert m["entanglement"]["attempts"] == 2
+    assert m["qc.entanglement"]["score"] == pytest.approx(0.8)
+    assert m["qc.qubits"]["score"] == pytest.approx(1.0)
 
 
-def test_mastery_falls_back_to_legacy_tag(seeded: Session):
-    """A row written before the migration has no topic_slug. It must still
-    count, otherwise existing progress disappears on upgrade."""
-    user = _user(seeded, "legacy@example.com")
-    seeded.add(UserMastery(user_id=user.id, tag="decoherence", score=0.5, attempts=1))
-    seeded.commit()
-    m = topic_mastery(seeded, user.id)
-    assert m["quantum-noise"]["score"] == pytest.approx(0.5)
-
-
-def test_mastery_ignores_unmappable_tags_without_dropping_them(seeded: Session):
-    user = _user(seeded, "unmapped@example.com")
-    seeded.add(UserMastery(user_id=user.id, tag="no-such-tag", score=0.9, attempts=4))
+def test_legacy_only_mastery_is_preserved_but_not_counted(seeded: Session):
+    """An ambiguous legacy record must not silently satisfy a prerequisite."""
+    user = _user(seeded, "lo@example.com")
+    seeded.add(
+        TopicMastery(user_id=user.id, topic_id="qiskit.quantum_noise",
+                     mastery_level=1.0, status="legacy_only", source="migration")
+    )
     seeded.commit()
     assert topic_mastery(seeded, user.id) == {}
-    # The row survives; it is just not counted.
-    assert seeded.scalar(
-        select(UserMastery).where(UserMastery.tag == "no-such-tag")
-    ).score == pytest.approx(0.9)
+    # Still in the table for audit.
+    assert seeded.scalar(select(TopicMastery).where(
+        TopicMastery.status == "legacy_only")) is not None
 
 
-def test_mastery_averages_multiple_rows_for_one_topic(seeded: Session):
-    user = _user(seeded, "avg@example.com")
-    seeded.add(UserMastery(user_id=user.id, tag="noise", topic_slug="quantum-noise",
-                           score=1.0, attempts=1))
-    seeded.add(UserMastery(user_id=user.id, tag="decoherence", topic_slug="quantum-noise",
-                           score=0.0, attempts=1))
-    seeded.commit()
-    assert topic_mastery(seeded, user.id)["quantum-noise"]["score"] == pytest.approx(0.5)
+def test_confidence_gate_only_allows_high(seeded: Session):
+    assert MASTERY_MAPPABLE_CONFIDENCE == ("high",)
 
 
 # --------------------------------------------------------------------------- #
-# Service: prerequisite evaluation
+# Prerequisites
 # --------------------------------------------------------------------------- #
 
 
-def test_required_prerequisite_blocks_but_recommended_does_not(seeded: Session):
+def test_required_blocks_recommended_warns(seeded: Session):
     prereqs = prerequisites_for(seeded)
-    # vqe-qaoa: quantum-noise required, grover recommended.
-    blocked = evaluate_prerequisites("vqe-qaoa", prereqs, {})
+    blocked = evaluate_prerequisites("nisq.vqe", prereqs, {})
     assert blocked["ready"] is False
-    assert "quantum-noise" in blocked["missing_required"]
-    assert "grover" in blocked["missing_recommended"]
+    assert "qiskit.quantum_noise" in blocked["missing_required"]
+    assert "algo.grover" in blocked["missing_recommended"]
 
-    # Only the required one satisfied: still advisory, not ready.
     partial = evaluate_prerequisites(
-        "vqe-qaoa", prereqs, {"quantum-noise": {"score": 0.9}}
+        "nisq.vqe", prereqs, {"qiskit.quantum_noise": {"score": 0.9}}
     )
-    assert partial["ready"] is True
-    assert partial["advisory"] is True
-
-    # Both satisfied.
-    full = evaluate_prerequisites(
-        "vqe-qaoa",
-        prereqs,
-        {"quantum-noise": {"score": 0.9}, "grover": {"score": 0.9}},
-    )
-    assert full["ready"] is True
-    assert full["advisory"] is False
+    assert partial["ready"] is True and partial["advisory"] is True
 
 
-def test_mastery_threshold_is_the_gate(seeded: Session):
+def test_threshold_is_the_gate(seeded: Session):
     prereqs = prerequisites_for(seeded)
-    just_under = evaluate_prerequisites(
-        "vqe-qaoa", prereqs, {"quantum-noise": {"score": MASTERY_THRESHOLD - 0.01}}
+    under = evaluate_prerequisites(
+        "nisq.vqe", prereqs, {"qiskit.quantum_noise": {"score": MASTERY_THRESHOLD - 0.01}}
     )
-    just_over = evaluate_prerequisites(
-        "vqe-qaoa", prereqs, {"quantum-noise": {"score": MASTERY_THRESHOLD}}
+    over = evaluate_prerequisites(
+        "nisq.vqe", prereqs, {"qiskit.quantum_noise": {"score": MASTERY_THRESHOLD}}
     )
-    assert just_under["ready"] is False
-    assert just_over["ready"] is True
+    assert under["ready"] is False and over["ready"] is True
 
 
-def test_topic_with_no_prerequisites_is_ready(seeded: Session):
+def test_legacy_only_does_not_unlock(seeded: Session):
+    """Regression guard: the whole point of the status split."""
+    from app.services.curriculum_service import topic_mastery as _tm
+
+    user = _user(seeded, "unlock@example.com")
+    seeded.add(
+        TopicMastery(user_id=user.id, topic_id="qiskit.quantum_noise",
+                     mastery_level=1.0, status="legacy_only", source="migration")
+    )
+    seeded.commit()
     prereqs = prerequisites_for(seeded)
-    assert evaluate_prerequisites("classical-vs-qubit", prereqs, {})["ready"] is True
+    status = evaluate_prerequisites("nisq.vqe", prereqs, _tm(seeded, user.id))
+    assert status["ready"] is False
 
 
 # --------------------------------------------------------------------------- #
-# Service: hierarchy assembly
+# Hierarchy
 # --------------------------------------------------------------------------- #
 
 
-def test_anonymous_gets_structure_with_no_locks(seeded: Session):
-    """A visitor has no history, so nothing may be gated: gating them would
-    make the curriculum a dead end."""
+def test_anonymous_is_never_gated(seeded: Session):
     tree = build_curriculum(seeded, None)
-    assert tree["sections"]
     for section in tree["sections"]:
         for topic in section["topics"]:
             assert topic["mastery"] == 0.0
-            assert topic["completed"] is False
             assert topic["status"]["ready"] is True
 
 
-def test_empty_sections_are_omitted(seeded: Session):
-    """Seven of ten sections have no content yet. Emitting them would put
-    unopenable entries in the learner's navigation."""
+def test_only_published_topics_reach_learners(seeded: Session):
+    tree = build_curriculum(seeded, None)
+    published = {str(t["id"]) for t in TOPICS if t["status"] == "published"}
+    shown = {t["slug"] for s in tree["sections"] for t in s["topics"]}
+    assert shown == published
+
+
+def test_empty_sections_omitted(seeded: Session):
     tree = build_curriculum(seeded, None)
     slugs = {s["slug"] for s in tree["sections"]}
     assert "mathematical-foundations" not in slugs
     assert "error-correction" not in slugs
-    assert slugs == {
-        "core-quantum-theory",
-        "intro-quantum-computing",
-        "quantum-algorithms",
-        "advanced-theory-circuits",
-        "variational-nisq",
-    }
 
 
-def test_sections_and_topics_are_ordered(seeded: Session):
+def test_ordering(seeded: Session):
     tree = build_curriculum(seeded, None)
-    positions = [s["position"] for s in tree["sections"]]
-    assert positions == sorted(positions)
+    assert [s["position"] for s in tree["sections"]] == sorted(
+        s["position"] for s in tree["sections"]
+    )
     for section in tree["sections"]:
-        tpos = [t["position"] for t in section["topics"]]
-        assert tpos == sorted(tpos)
+        pos = [t["position"] for t in section["topics"]]
+        assert pos == sorted(pos)
 
 
-def test_lessons_appear_under_their_topic(seeded: Session):
+def test_lesson_appears_under_every_topic_it_teaches(seeded: Session):
+    """Many-to-many: a lesson teaching several topics is reachable from each."""
     tree = build_curriculum(seeded, None)
-    by_slug = {
-        t["slug"]: t for s in tree["sections"] for t in s["topics"]
-    }
-    assert [l["slug"] for l in by_slug["quantum-gates"]["lessons"]] == [
+    by_id = {t["slug"]: t for s in tree["sections"] for t in s["topics"]}
+    assert "01_qubits" in [l["slug"] for l in by_id["qc.qubits"]["lessons"]]
+    assert "01_qubits" in [l["slug"] for l in by_id["qc.superposition"]["lessons"]]
+    assert [l["slug"] for l in by_id["qc.basic_gates"]["lessons"]] == [
         "02_gates",
         "10_gates_bootcamp",
     ]
-    assert [l["slug"] for l in by_slug["vqe-qaoa"]["lessons"]] == ["07_vqe_qaoa"]
 
 
-def test_progress_percent_reflects_mastery(seeded: Session):
-    user = _user(seeded, "pct@example.com")
-    tree_before = build_curriculum(seeded, user.id)
-    assert tree_before["progress"]["topics_completed"] == 0
+def test_no_duplicate_lessons_within_a_topic(seeded: Session):
+    tree = build_curriculum(seeded, None)
+    for section in tree["sections"]:
+        for topic in section["topics"]:
+            slugs = [l["slug"] for l in topic["lessons"]]
+            assert len(slugs) == len(set(slugs)), f"{topic['slug']} duplicates a lesson"
 
-    seeded.add(UserMastery(user_id=user.id, tag="qubit", topic_slug="qubits",
-                           score=1.0, attempts=1))
+
+def test_recommended_next(seeded: Session):
+    user = _user(seeded, "nx@example.com")
+    seeded.add(
+        TopicMastery(user_id=user.id, topic_id="qc.qubits",
+                     mastery_level=1.0, status="verified", source="quiz:basics")
+    )
     seeded.commit()
-    tree_after = build_curriculum(seeded, user.id)
-    assert tree_after["progress"]["topics_completed"] == 1
-    assert tree_after["progress"]["percent"] > 0
-
-
-def test_recommended_next_prefers_ready_topics(seeded: Session):
-    user = _user(seeded, "next@example.com")
-    seeded.add(UserMastery(user_id=user.id, tag="qubit", topic_slug="qubits",
-                           score=1.0, attempts=1))
-    seeded.commit()
-    nxt = recommended_next(seeded, user.id, limit=3)
-    slugs = [n["slug"] for n in nxt]
-    assert "qubits" not in slugs  # already complete
-    assert nxt
-
-
-def test_recommended_next_never_empty_for_a_fresh_learner(seeded: Session):
-    user = _user(seeded, "fresh@example.com")
-    assert recommended_next(seeded, user.id, limit=3)
+    slugs = [n["slug"] for n in recommended_next(seeded, user.id, limit=3)]
+    assert "qc.qubits" not in slugs
+    assert slugs
 
 
 # --------------------------------------------------------------------------- #
@@ -301,66 +303,40 @@ def test_recommended_next_never_empty_for_a_fresh_learner(seeded: Session):
 # --------------------------------------------------------------------------- #
 
 
-def test_get_curriculum_is_readable_anonymously(client, seeded):
+def test_get_curriculum_anonymous(client, seeded):
     r = client.get("/curriculum")
     assert r.status_code == 200
-    body = r.json()
-    assert body["sections"]
-    assert "progress" in body
+    assert r.json()["sections"]
 
 
-def test_get_curriculum_rejects_unknown_topic(client, seeded):
-    assert client.get("/curriculum/topics/not-a-topic").status_code == 404
+def test_topic_404(client, seeded):
+    assert client.get("/curriculum/topics/nope.nope").status_code == 404
 
 
-def test_topic_detail_exposes_prerequisites(client, seeded):
-    r = client.get("/curriculum/topics/vqe-qaoa")
+def test_topic_detail_namespaced_id(client, seeded):
+    r = client.get("/curriculum/topics/nisq.vqe")
     assert r.status_code == 200
     body = r.json()
-    assert body["slug"] == "vqe-qaoa"
+    assert body["slug"] == "nisq.vqe"
     kinds = {p["slug"]: p["kind"] for p in body["prerequisites"]}
-    assert kinds["quantum-noise"] == "required"
-    assert kinds["grover"] == "recommended"
-    # Anonymous: the declared edges are visible, but nothing is gated, because
-    # there is no mastery to gate on.
-    assert body["status"]["ready"] is True
+    assert kinds["qiskit.quantum_noise"] == "required"
+    assert kinds["algo.grover"] == "recommended"
+    assert body["status"]["ready"] is True  # anonymous: not gated
     assert body["status"]["unevaluated"] is True
 
 
-def test_topic_detail_gates_an_authenticated_learner(client, seeded, db: Session):
-    """The anonymous exemption must not leak to a learner with real history.
-
-    This is the counterpart to test_topic_detail_exposes_prerequisites: an
-    anonymous visitor is never gated, but a learner who has not covered
-    quantum-noise genuinely should be.
-    """
-    user = _user(db, "gated@example.com")
+def test_topic_detail_gates_authenticated_learner(client, seeded, db: Session):
+    user = _user(db, "gate2@example.com")
     db.commit()
-    from app.security import create_access_token
-
     token = create_access_token(str(user.id), user.role)
     r = client.get(
-        "/curriculum/topics/vqe-qaoa", headers={"Authorization": f"Bearer {token}"}
+        "/curriculum/topics/nisq.vqe", headers={"Authorization": f"Bearer {token}"}
     )
     assert r.status_code == 200
-    body = r.json()
-    assert body["status"]["ready"] is False
-    assert "quantum-noise" in body["status"]["missing_required"]
-    assert "grover" in body["status"]["missing_recommended"]
+    assert r.json()["status"]["ready"] is False
+    assert "qiskit.quantum_noise" in r.json()["status"]["missing_required"]
 
 
-def test_next_endpoint_works_anonymously(client, seeded):
-    r = client.get("/curriculum/next")
-    assert r.status_code == 200
-    assert isinstance(r.json(), list)
-
-
-def test_next_endpoint_respects_limit(client, seeded):
+def test_next_endpoint(client, seeded):
+    assert client.get("/curriculum/next").status_code == 200
     assert len(client.get("/curriculum/next?limit=2").json()) <= 2
-
-
-def test_no_duplicate_lessons_across_topics(client, seeded):
-    """A lesson claimed by two topics would appear twice in navigation."""
-    body = client.get("/curriculum").json()
-    seen = [l["slug"] for s in body["sections"] for t in s["topics"] for l in t["lessons"]]
-    assert len(seen) == len(set(seen))

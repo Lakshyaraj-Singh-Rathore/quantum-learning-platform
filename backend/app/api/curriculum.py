@@ -88,14 +88,14 @@ def get_next(
     return recommended_next(db, user.id, max(0, min(limit, 10)))
 
 
-@router.get("/topics/{slug}")
+@router.get("/topics/{topic_id}")
 def get_topic(
-    slug: str,
+    topic_id: str,
     user: User | None = Depends(get_optional_user),
     db: Session = Depends(get_db),
 ) -> dict:
     """One topic: its lessons, prerequisites and readiness for this learner."""
-    topic = db.scalar(select(CurriculumTopic).where(CurriculumTopic.slug == slug))
+    topic = db.scalar(select(CurriculumTopic).where(CurriculumTopic.id == topic_id))
     if topic is None:
         raise HTTPException(status_code=404, detail="Topic not found")
 
@@ -113,16 +113,16 @@ def get_topic(
         }
     else:
         mastery = topic_mastery(db, user.id)
-        status = evaluate_prerequisites(slug, prereqs, mastery)
+        status = evaluate_prerequisites(topic_id, prereqs, mastery)
 
     return {
-        "slug": topic.slug,
+        "slug": topic.id,
         "title": topic.title,
         "section_slug": topic.section_slug,
         "difficulty": topic.difficulty,
-        "summary": topic.summary,
+        "summary": topic.description,
         "objectives": topic.learning_objectives or [],
-        "prerequisites": prereqs.get(slug, []),
+        "prerequisites": prereqs.get(topic_id, []),
         "status": status,
-        "mastery": mastery.get(slug, {}).get("score", 0.0),
+        "mastery": mastery.get(topic_id, {}).get("score", 0.0),
     }

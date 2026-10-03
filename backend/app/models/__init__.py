@@ -10,7 +10,14 @@ from app.models.assessment import (
 from app.models.circuit import SavedCircuit
 from app.models.content import ContentChunk, Lesson
 from app.models.job import SimulationJob
-from app.models.curriculum import CurriculumSection, CurriculumTopic, TopicPrerequisite
+from app.models.curriculum import (
+    CurriculumSection,
+    CurriculumTopic,
+    LessonCompletion,
+    LessonTopic,
+    TopicMastery,
+    TopicPrerequisite,
+)
 from app.models.mastery import Recommendation, UserMastery
 from app.models.user import User
 
@@ -28,6 +35,9 @@ __all__ = [
     "AutogradeResult",
     "CurriculumSection",
     "CurriculumTopic",
+    "LessonCompletion",
+    "LessonTopic",
+    "TopicMastery",
     "TopicPrerequisite",
     "UserMastery",
     "Recommendation",
