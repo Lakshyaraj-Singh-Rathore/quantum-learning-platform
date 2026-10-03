@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import glob
+import json
 import os
 import pathlib
 import re
@@ -591,3 +592,108 @@ def test_parameter_reuse_is_explicitly_cast_for_postgres():
             f"parametrised SELECT without an explicit CAST is ambiguous on "
             f"PostgreSQL: {line}"
         )
+
+
+# -- M4 tracker validation -------------------------------------------------- #
+
+
+def _tracker_items() -> list[dict]:
+    import subprocess
+
+    docs = pathlib.Path(__file__).resolve().parents[2] / "docs"
+    data = json.loads((docs / "M4_LESSON_REWRITE_TRACKER.json").read_text())
+    return data["items"]
+
+
+def test_tracker_every_item_id_is_unique():
+    ids = [i["item_id"] for i in _tracker_items()]
+    assert len(ids) == len(set(ids)), "duplicate item_id in the tracker"
+
+
+def test_tracker_mapped_topic_ids_all_exist():
+    from app.curriculum import TOPICS as REGISTRY_TOPICS
+
+    known = {str(t["id"]) for t in REGISTRY_TOPICS}
+    for item in _tracker_items():
+        if item["topic_id"] is not None:
+            assert item["topic_id"] in known, (
+                f"{item['item_id']} references unknown topic {item['topic_id']}"
+            )
+
+
+def test_tracker_no_item_lists_the_same_lesson_twice():
+    """A lesson may legitimately serve several target items -- 01_qubits teaches
+    both Qubits and Superposition. What must never happen is one item claiming
+    the same lesson as both its lesson and an additional one, or two identical
+    rows."""
+    items = _tracker_items()
+    for item in items:
+        if not item["lesson_slug"]:
+            continue
+        assert item["lesson_slug"] not in (item.get("additional_existing_lessons") or []), (
+            f"{item['item_id']} lists {item['lesson_slug']} as both primary and additional"
+        )
+    pairs = [(i["item_id"], i["lesson_slug"]) for i in items if i["lesson_slug"]]
+    assert len(pairs) == len(set(pairs)), "duplicate (item_id, lesson_slug) row"
+
+
+def test_tracker_assigned_lessons_exist_on_disk():
+    content = pathlib.Path(__file__).resolve().parents[2] / "content"
+    for item in _tracker_items():
+        if item["lesson_slug"]:
+            assert (content / f"{item['lesson_slug']}.md").exists(), (
+                f"{item['item_id']} points at missing lesson {item['lesson_slug']}"
+            )
+
+
+def test_tracker_statuses_use_the_agreed_vocabulary():
+    allowed_content = {"existing", "partial", "missing"}
+    allowed_rewrite = {
+        "not_started", "audited", "in_progress", "draft_complete",
+        "technical_review", "content_review", "integration_test", "verified",
+        "blocked", "deferred",
+    }
+    allowed_validation = {"not_run", "passed", "failed", "blocked", "not_applicable"}
+    for item in _tracker_items():
+        assert item["content_status"] in allowed_content, item["item_id"]
+        assert item["rewrite_status"] in allowed_rewrite, item["item_id"]
+        for field in ("technical_review", "schema_validation", "mapping_validation",
+                      "prerequisite_validation", "code_validation",
+                      "integration_validation"):
+            assert item[field] in allowed_validation, f"{item['item_id']}.{field}"
+
+
+def test_tracker_counts_reconcile_with_the_gap_report():
+    # Compare target items only; M4-EXTRA-* rows are existing lessons that the
+    # target list does not cover, tracked separately.
+    items = [i for i in _tracker_items() if not i["item_id"].startswith("M4-EXTRA-")]
+    counts = {
+        "existing": sum(1 for i in items if i["content_status"] == "existing"),
+        "partial": sum(1 for i in items if i["content_status"] == "partial"),
+        "missing": sum(1 for i in items if i["content_status"] == "missing"),
+    }
+    assert counts == {"existing": 7, "partial": 8, "missing": 82}, counts
+    assert len(items) == 97
+
+
+def test_tracker_sections_are_the_canonical_ten():
+    from app.curriculum import NAMESPACES as NS
+
+    valid = {slug for slug, _l, _t in NS.values()}
+    sections = {i["section_id"] for i in _tracker_items()}
+    assert sections <= valid, f"unknown sections: {sections - valid}"
+    assert len(sections) == 10, f"expected 10 sections, got {len(sections)}"
+
+
+def test_tracker_reports_every_existing_lesson():
+    """Every lesson on disk must be reachable from the tracker, otherwise M4
+    would silently leave content behind."""
+    content = pathlib.Path(__file__).resolve().parents[2] / "content"
+    on_disk = {p.stem for p in content.glob("*.md")}
+    tracked = set()
+    for i in _tracker_items():
+        if i["lesson_slug"]:
+            tracked.add(i["lesson_slug"])
+        tracked.update(i.get("additional_existing_lessons") or [])
+    untracked = on_disk - tracked
+    assert not untracked, f"existing lessons absent from the tracker: {sorted(untracked)}"
