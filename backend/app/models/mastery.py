@@ -12,6 +12,12 @@ class UserMastery(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     tag: Mapped[str] = mapped_column(String(64), index=True)
+    #: Curriculum topic this row evidences, backfilled from the authored
+    #: quiz/challenge tag via curriculum.LEGACY_TAG_TO_TOPIC. Nullable and
+    #: additive: legacy rows keep their tag, score and attempts untouched.
+    topic_slug: Mapped[str | None] = mapped_column(
+        ForeignKey("curriculum_topics.slug"), index=True, nullable=True
+    )
     score: Mapped[float] = mapped_column(Float, default=0.0)
     attempts: Mapped[int] = mapped_column(Integer, default=0)
     updated_at: Mapped[datetime] = mapped_column(

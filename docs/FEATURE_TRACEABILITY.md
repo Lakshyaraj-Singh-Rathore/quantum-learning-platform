@@ -67,11 +67,11 @@ against commit `7ee6c01`. Locations are real paths in this repository.
 | Security headers | **Verified** | `frontend/web/nginx.conf` |
 | Theme-aware charts | **Verified** | `--accent-2` in `src/globals.css` |
 | Responsive <900px notice | **Verified** | `src/components/shell/NarrowViewportNotice.tsx` |
-| Structured learning paths | **Not started** | no path model |
-| Prerequisite graph | **Not started** | `Lesson` has no prerequisite field (audit §3.2) |
-| Difficulty levels | **Not started** | no field |
-| Learning objectives | **Not started** | no field |
-| Topic mastery tracking | **Partial** | `UserMastery` keyed by **inferred tag** — unreliable (audit §3.3) |
+| Structured learning paths | **Not started** | no path model (M0 provides the graph it will run on) |
+| Prerequisite graph | **Implemented** | `backend/app/curriculum.py` (canonical data), `models/curriculum.py`, migration `f1a2b3c4d5e6`; 12 topics, 13 edges, cycle-tested |
+| Difficulty levels | **Implemented** | `curriculum_topics.difficulty`, mirrored onto `lessons.difficulty` |
+| Learning objectives | **Implemented** | `curriculum_topics.learning_objectives`, mirrored onto `lessons.learning_objectives` |
+| Topic mastery tracking | **In progress** | `UserMastery.topic_slug` added and backfilled from authored assessment tags; legacy `tag` preserved. Reading/apply logic still pending |
 | Placement diagnostics | **Not started** | — |
 | Practice mode | **Not started** | — |
 | Exam mode | **Not started** | — |

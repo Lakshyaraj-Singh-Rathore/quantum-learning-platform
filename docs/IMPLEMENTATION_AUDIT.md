@@ -85,10 +85,13 @@ There is **no** `prerequisites`, `difficulty`, `learning_objectives`, `section`,
 `module`, or `estimated_time`. There is no adjacency or dependency table. The
 only structure is a flat integer and a two-valued track.
 
-### 3.3 Mastery is keyed by tag, and the tags are unreliable
+### 3.3 Mastery is keyed by tag — and which tags matters
 
-`UserMastery` is `(user_id, tag, score, attempts)`. Since tags are inferred from
-prose keywords, running the real ingester over the real content produces:
+`UserMastery` is `(user_id, tag, score, attempts)`. The critical question is
+*which* tags, because the platform has two separate tag vocabularies.
+
+**Lesson tags are unreliable.** They come from `infer_tags(text)`, matched
+against eight keywords. Running the real ingester over the real content gives:
 
 ```
 01_qubits                 theory  ['dynamic','gates','measurement','qubit']
@@ -102,12 +105,33 @@ Every lesson is tagged `measurement` and `qubit`; nearly every one is tagged
 is tagged `grover`. `13_classical_bit_vs_qubit` is tagged `entanglement` and
 `dynamic`.
 
-**Consequence:** the existing mastery signal is close to noise. A learner who
-has only read the qubits lesson already carries `gates`, `measurement` and
-`qubit` credit. Any prerequisite gating or mastery display built on the current
-tags would be actively misleading, and any restructuring that edits lesson prose
-would silently change the mastery keys underneath existing rows. This is the
-single most important thing to fix before building prerequisites.
+Those lesson tags are close to noise, and they are used for RAG chunking and
+lesson recommendation. They are **not**, however, what mastery is keyed on.
+
+**Mastery tags come from assessments, and they are hand-authored.**
+`services/recommendations.py` writes mastery from `quiz.tags` and
+`challenge.tags`, not from lesson text. Those tags are authored literals in
+`backend/app/seed.py`, and the vocabulary is small and coherent:
+
+```
+entanglement(8)  noise(7)  measurement(5)  gates(5)
+grover(4)        qubit(3)  dynamic(2)      algorithms(2)  decoherence(1)
+```
+
+So existing mastery rows are meaningful and migratable onto curriculum topics.
+This materially changes the risk picture: the prerequisite graph does not have
+to start from nothing.
+
+**The real hazard is a mismatch, not noise.** A learner's mastery is recorded
+against one vocabulary while lessons are described in another, and nothing ties
+them together. Editing lesson prose silently changes lesson tags; adding a quiz
+tag that no topic maps to silently stops that mastery accruing anywhere. Both
+fail quietly. The fix is a stable topic identifier that both sides reference,
+with an explicit, tested mapping for the legacy vocabulary.
+
+> Correction to the first version of this document: it stated that the mastery
+> signal itself was noise. That conflated the two vocabularies and was wrong.
+> Lesson tags are noise; mastery tags are authored and usable.
 
 ### 3.4 Lesson → simulation linkage is hardcoded in the UI
 
@@ -218,10 +242,11 @@ below deliberately stops short of Phase 1.
 
 ## 9. Conclusions relevant to the restructuring request
 
-1. **Do not build prerequisites on the existing tags.** Introduce stable, authored
-   topic identifiers first, and migrate `UserMastery` rows onto them. Otherwise
-   the prerequisite graph is built on keyword noise and the migration is a
-   one-way door.
+1. **Do not build prerequisites on the existing lesson tags.** Introduce stable,
+   authored topic identifiers first, and stamp `UserMastery` rows with them.
+   The mastery rows themselves are worth keeping — they are keyed by authored
+   assessment tags — but nothing currently ties them to lessons, so the link has
+   to be made explicitly and the migration is a one-way door.
 2. **Do not delete or renumber the existing 13 files.** Slugs are the foreign key
    for quiz attempts, challenge attempts, recommendations and chat history.
    Restructure by *adding* structure around stable slugs.

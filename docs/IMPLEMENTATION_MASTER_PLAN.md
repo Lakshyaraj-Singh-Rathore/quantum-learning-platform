@@ -44,7 +44,14 @@ produce a graph that is confidently wrong.
   discarding them.
 
 **Exit gate:** all 13 lessons carry a stable topic; existing mastery rows survive
-with their scores intact; backend suite still 511 passed.
+with their scores intact; backend suite still green.
+
+**Status: COMPLETE (commit pending).** 12 topics across 6 sections, 13
+prerequisite edges, 10 sections seeded, all 13 lessons placed, zero unplaced.
+Mastery rows stamped; unmapped tags left NULL rather than guessed. Verified
+against a database seeded with the real 13 lessons and real mastery rows, and
+the downgrade was run to confirm it restores the prior schema with every row
+and score intact.
 
 **Risk:** this is the one irreversible step. Get the migration right and test it
 against a copied database before running it on real data.

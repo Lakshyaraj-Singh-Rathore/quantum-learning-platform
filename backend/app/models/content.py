@@ -1,7 +1,7 @@
 from datetime import datetime
 
 
-from sqlalchemy import DateTime, Integer, String, Text, func
+from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, func
 
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -20,6 +20,22 @@ class Lesson(Base):
     order_index: Mapped[int] = mapped_column(Integer, default=0)
     #: "theory" (concepts) or "circuit" (hands-on). Drives the Learn tabs.
     track: Mapped[str] = mapped_column(String(20), default="theory")
+
+    # -- Curriculum placement (M0). Added rather than replacing order_index --
+    # so that anything still reading the flat ordering keeps working until it
+    # is migrated. ``order_index`` remains the filename-derived position.
+
+    #: Owning topic. Nullable: a lesson the curriculum has not claimed yet is
+    #: still a valid lesson, it just sits outside the hierarchy.
+    topic_slug: Mapped[str | None] = mapped_column(
+        ForeignKey("curriculum_topics.slug"), index=True, nullable=True
+    )
+    #: Order within the owning topic. Distinct from ``order_index``, which is
+    #: the global filename-derived sequence.
+    position: Mapped[int] = mapped_column(Integer, default=0)
+    #: beginner | intermediate | advanced. Inherited from the topic when set.
+    difficulty: Mapped[str] = mapped_column(String(20), default="beginner")
+    learning_objectives: Mapped[list] = mapped_column(JSONType, default=list)
 
 
 class ContentChunk(Base):
