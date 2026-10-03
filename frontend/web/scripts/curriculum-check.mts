@@ -148,6 +148,19 @@ const curriculum = {
       position: 10,
       topics: [emptyTopic],
     },
+    // Sections with no published topics must still render (M1 spec).
+    {
+      slug: "mathematical-foundations",
+      title: "Mathematical Foundations",
+      position: 1,
+      topics: [],
+    },
+    {
+      slug: "error-correction",
+      title: "Error Correction and Fault Tolerance",
+      position: 8,
+      topics: [],
+    },
   ],
   progress: { topics_total: 5, topics_completed: 1, percent: 20 },
 };
@@ -251,6 +264,15 @@ check("empty topic says content is not available",
     !card.includes("Completed") && !card.includes("In progress"),
     `saw: ${card.slice(0, 120)}`);
 }
+
+console.log("\n-- empty sections --");
+check("sections with no topics are still rendered, not hidden",
+  overview.includes("Mathematical Foundations") &&
+  overview.includes("Error Correction and Fault Tolerance"));
+check("empty section explains itself in neutral language",
+  overview.includes("No topics in this section yet"));
+check("empty section reports zero topics without a broken label",
+  overview.includes("0 topics"));
 
 console.log("\n-- resume learning --");
 const noNext = renderWithData(createElement(CurriculumPage), { noNext: true });

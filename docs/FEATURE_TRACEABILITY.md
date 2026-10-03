@@ -122,7 +122,28 @@ against commit `7ee6c01`. Locations are real paths in this repository.
 | Narrow viewport | Tailwind stack, no horizontal scroll | — | source review only | **Not visually verified** |
 | Keyboard + screen reader | real `<button aria-expanded>`, `sr-only` labels | — | `npm run a11y` (8 pages, 0 criticals) | **Verified** |
 
-### Known gaps
+### F3. M1 — Non-Destructive Curriculum Integration
+
+| Requirement | Where | Test | Status |
+|---|---|---|---|
+| Mapping report with confidence + evidence | `backend/scripts/curriculum_reports.py`, `docs/CURRICULUM_MAPPING.md` | `test_every_mapping_has_recorded_evidence` | Complete |
+| Mappings derived from content, not filenames | `LESSON_TOPIC_EVIDENCE` cites lesson sections | manual review in the report | Complete |
+| `algorithms -> algo.grover` stays flagged | `REVIEW_REQUIRED` | `test_inferred_mappings_are_flagged_for_review` | Complete, still flagged |
+| Low confidence never grants mastery | `MASTERY_MAPPABLE_CONFIDENCE = ("high",)` | `test_low_confidence_mappings_cannot_grant_mastery` | Complete |
+| Content-gap report | `docs/CONTENT_GAP_REPORT.md` | generated, not authored | Complete |
+| UI renders from backend data | `CurriculumPage`/`TopicDetailPage` | `npm run curriculum` (29 checks x 2 modes) | Complete |
+| Empty sections render, not hidden | `build_curriculum` | `test_empty_sections_are_still_emitted` + UI check | Complete, behaviour changed |
+| Required vs recommended distinguished | `TopicDetailPage` prerequisite lists | 3 curriculum UI checks | Complete |
+| Anonymous browsing correct | `status.unevaluated`, empty `missing_*` | anonymous `npm run curriculum` | Complete |
+| Progress from real data only | `topic_mastery()` | backend tests | Complete |
+| Resume from real backend data | `/curriculum/next` | UI checks | Complete |
+| Empty/loading/error/not-found states | `CurriculumBrowser` | `npm run curriculum` + `npm run states` | Complete |
+| Responsive + accessibility | — | — | **Unverifiable: no browser in this environment** |
+| Downgrade investigated | `additional_topics` column | `test_downgrade_places_every_lesson_and_preserves_secondary_placements` | Complete, 13/13 |
+| PostgreSQL staging validated | — | — | **Pending: PostgreSQL unavailable here** |
+| Production migration NOT run | — | verified no `alembic upgrade` against production | Held |
+
+## Known gaps
 
 - **Visual verification was not performed.** No headless browser is available
   in this environment, so desktop/narrow/theme rendering was never inspected.

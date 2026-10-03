@@ -269,6 +269,32 @@ def upgrade() -> None:
                 "p": 1 if is_primary else 0,
             },
         )
+    # Recover secondary placements preserved by an earlier downgrade. Without
+    # this, downgrade -> upgrade would lose every non-primary mapping.
+    if _has_column("lessons", "additional_topics"):
+        for lesson_slug, raw in bind.execute(
+            sa.text(
+                "SELECT slug, additional_topics FROM lessons"
+                " WHERE additional_topics IS NOT NULL"
+            )
+        ):
+            try:
+                restored = json.loads(raw)
+            except (TypeError, ValueError):
+                continue
+            for topic_id in restored:
+                if topic_id not in {t["id"] for t in TOPICS}:
+                    continue
+                bind.execute(
+                    sa.text(
+                        "INSERT INTO lesson_topics (lesson_slug, topic_id, confidence, is_primary)"
+                        " SELECT :l, :t, 'medium', 0"
+                        " WHERE NOT EXISTS (SELECT 1 FROM lesson_topics"
+                        "  WHERE lesson_slug = :l AND topic_id = :t)"
+                    ),
+                    {"l": str(lesson_slug), "t": str(topic_id)},
+                )
+
     # Any lesson placed provisionally but absent from the registry keeps its
     # placement at medium confidence rather than being orphaned.
     for lesson_slug, topic_id in provisional.items():
@@ -288,6 +314,29 @@ def upgrade() -> None:
     op.drop_table("curriculum_topics")
     op.rename_table("curriculum_topics_new", "curriculum_topics")
     op.rename_table("topic_prerequisites_new", "topic_prerequisites")
+    # Retire sections the current registry no longer defines. The superseded
+    # registry had an "advanced-theory-circuits" section that this one drops;
+    # simply upserting the current set leaves that orphan behind, where it
+    # renders as a nameless, letterless section competing for position 6. Only
+    # sections with no topics referencing them are removed, so this can never
+    # strand real content.
+    keep = {section["slug"] for section in SECTIONS}
+    orphans = [
+        row[0]
+        for row in bind.execute(
+            sa.text(
+                "SELECT s.slug FROM curriculum_sections s"
+                " WHERE NOT EXISTS (SELECT 1 FROM curriculum_topics t"
+                "  WHERE t.section_slug = s.slug)"
+            )
+        )
+        if row[0] not in keep
+    ]
+    for slug in orphans:
+        bind.execute(
+            sa.text("DELETE FROM curriculum_sections WHERE slug = :s"), {"s": slug}
+        )
+
 
     # -- mastery: derived, provenance-carrying, non-destructive ------------- #
     if not _has_table("topic_mastery"):
@@ -440,6 +489,24 @@ def downgrade() -> None:
                 sa.text("UPDATE lessons SET topic_slug = :t WHERE slug = :l"),
                 {"t": reverse.get(topic_id, topic_id), "l": lesson_slug},
             )
+        # The pre-migration schema stores ONE topic per lesson in topic_slug.
+        # Some lessons legitimately belong to two topics, so restoring only the
+        # primary would silently drop the secondary placement. The secondary is
+        # written to an additive, nullable column that pre-migration code never
+        # reads, so the old schema stays exactly as it was for old code while a
+        # re-upgrade can recover every placement. Nothing is discarded.
+        if not _has_column("lessons", "additional_topics"):
+            op.add_column("lessons", sa.Column("additional_topics", sa.Text(), nullable=True))
+        secondary: dict[str, list[str]] = {}
+        for lesson_slug, topic_id in bind.execute(
+            sa.text("SELECT lesson_slug, topic_id FROM lesson_topics WHERE is_primary = 0")
+        ):
+            secondary.setdefault(str(lesson_slug), []).append(str(topic_id))
+        for lesson_slug, topic_ids in secondary.items():
+            bind.execute(
+                sa.text("UPDATE lessons SET additional_topics = :j WHERE slug = :l"),
+                {"j": json.dumps(sorted(topic_ids)), "l": lesson_slug},
+            )
         op.drop_table("lesson_topics")
 
     # Rebuild the flat-slug topic tables.
@@ -461,11 +528,16 @@ def downgrade() -> None:
                 continue
             bind.execute(
                 sa.text(
-                    "INSERT OR IGNORE INTO curriculum_topics_flat"
+                    # ON CONFLICT DO NOTHING, not INSERT OR IGNORE: the latter
+                    # is SQLite-only and would fail outright on PostgreSQL,
+                    # which is the production dialect. ON CONFLICT is supported
+                    # by PostgreSQL 9.5+ and SQLite 3.24+.
+                    "INSERT INTO curriculum_topics_flat"
                     " (slug, title, section_slug, position, difficulty, summary,"
                     "  learning_objectives)"
                     " VALUES (:slug, :title, :section, :position, :difficulty,"
                     "  :summary, :objectives)"
+                    " ON CONFLICT (slug) DO NOTHING"
                 ),
                 {
                     "slug": flat,

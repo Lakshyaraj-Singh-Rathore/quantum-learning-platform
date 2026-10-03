@@ -204,10 +204,12 @@ def build_curriculum(db: Session, user_id: int | None) -> dict[str, object]:
                     "lessons": lessons_by_topic.get(topic.id, []),
                 }
             )
-        # A section with no topics yet is not rendered. The roadmap forbids
-        # inaccessible modules, and seven of ten sections have no content.
-        if not topics_out:
-            continue
+        # Empty sections ARE emitted. Hiding them was the earlier choice, on the
+        # grounds that an unopenable entry is bad navigation, but the owner's
+        # M1 spec is explicit: "Sections with no content must still render
+        # correctly. Do not hide empty sections merely because M4 content has
+        # not yet been authored." The section is the roadmap's promise; hiding
+        # it makes the curriculum look smaller than it is and hides the gap.
         sections_out.append(
             {
                 "slug": section.slug,

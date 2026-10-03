@@ -4,12 +4,14 @@ from __future__ import annotations
 
 import glob
 import os
+import pathlib
 
 import pytest
 from sqlalchemy import create_engine, inspect, select, text
 from sqlalchemy.orm import Session
 
 from app.curriculum import (
+    CONFIDENCES,
     LEGACY_TAG_TO_TOPIC,
     MASTERY_MAPPABLE_CONFIDENCE,
     NAMESPACES,
@@ -79,6 +81,79 @@ def test_identifier_does_not_depend_on_filename_or_title():
 # --------------------------------------------------------------------------- #
 # Lesson -> topic mapping
 # --------------------------------------------------------------------------- #
+
+
+def test_only_registry_sections_are_exposed():
+    """A retired section left in the database renders as a nameless, letterless
+    entry competing for another section's position. Every section in the
+    registry, and no others."""
+    from app.curriculum import SECTIONS
+
+    registry = {s["slug"] for s in SECTIONS}
+    assert len(registry) == len(SECTIONS), "duplicate section slugs in the registry"
+    for section in SECTIONS:
+        assert section.get("letter"), f"section {section['slug']} has no letter"
+
+
+def test_every_mapping_has_recorded_evidence():
+    """An unexplained mapping cannot land. This is what makes the mapping
+    report trustworthy rather than decorative."""
+    from app.curriculum import LESSON_TOPIC_EVIDENCE
+
+    for slug, topic_id, _confidence, _primary in all_lesson_topics():
+        key = f"{slug}::{topic_id}"
+        assert key in LESSON_TOPIC_EVIDENCE, f"{key} has no evidence recorded"
+        assert LESSON_TOPIC_EVIDENCE[key].strip(), f"{key} evidence is empty"
+
+
+def test_only_known_confidence_levels_are_used():
+    assert {c for _s, _t, c, _p in all_lesson_topics()} <= set(CONFIDENCES)
+
+
+def test_inferred_mappings_are_flagged_for_review():
+    """The algorithms -> algo.grover mapping rests on indirect evidence. It
+    must stay visible and must never be promoted silently."""
+    from app.curriculum import REVIEW_REQUIRED
+
+    assert "algorithms::algo.grover" in REVIEW_REQUIRED
+    assert LEGACY_TAG_TO_TOPIC["algorithms"] == "algo.grover"
+    assert "INFERRED" in REVIEW_REQUIRED["algorithms::algo.grover"]
+
+
+def test_low_confidence_mappings_cannot_grant_mastery():
+    """Only high confidence may carry legacy mastery onto a topic."""
+    from app.curriculum import MASTERY_MAPPABLE_CONFIDENCE
+
+    assert "low" not in MASTERY_MAPPABLE_CONFIDENCE
+    assert "medium" not in MASTERY_MAPPABLE_CONFIDENCE
+
+
+def test_every_lesson_has_exactly_one_primary_topic():
+    """A lesson with no primary topic has no canonical home: the old flat
+    schema cannot place it on downgrade and the UI cannot offer a start here
+    lesson."""
+    primaries: dict[str, list[str]] = {}
+    for slug, topic_id, _confidence, is_primary in all_lesson_topics():
+        if is_primary:
+            primaries.setdefault(slug, []).append(topic_id)
+    for slug, _t, _c, _p in all_lesson_topics():
+        assert slug in primaries, f"lesson {slug} has no primary topic at all"
+
+
+def test_every_lesson_has_at_most_one_primary_topic():
+    """The old flat schema holds exactly one topic_slug per lesson, so a lesson
+    with two primary topics makes the downgrade ambiguous. A topic may
+    legitimately have several primary lessons (a tutorial and a bootcamp, say);
+    the constraint is one primary topic per lesson, not one lesson per topic."""
+    primaries: dict[str, list[str]] = {}
+    for slug, topic_id, _c, is_primary in all_lesson_topics():
+        if is_primary:
+            primaries.setdefault(slug, []).append(topic_id)
+    for slug, topics in primaries.items():
+        assert len(topics) == 1, (
+            f"lesson {slug} has {len(topics)} primary topics {topics}; "
+            "downgrade would be ambiguous"
+        )
 
 
 def test_every_existing_lesson_is_mapped():
@@ -371,3 +446,95 @@ def test_new_schema_tables_exist(tmp_path):
     # Legacy table and its columns survive.
     assert "user_mastery" in tables
     assert "tag" in {c["name"] for c in inspect(engine).get_columns("user_mastery")}
+
+
+def test_downgrade_places_every_lesson_and_preserves_secondary_placements(tmp_path):
+    """The old flat schema stores one topic_slug per lesson. Lessons belonging
+    to two topics used to lose their secondary placement on downgrade, and any
+    lesson with no primary topic was left unplaced entirely. Both are fixed:
+    the secondary goes to an additive column pre-migration code never reads,
+    and re-upgrading restores it."""
+    from alembic import command
+    from alembic.config import Config
+
+    db_path = tmp_path / "rt.db"
+    url = f"sqlite:///{db_path}"
+
+    # alembic/env.py takes the URL from app settings, never from alembic.ini,
+    # so the environment variable is the only way in.
+    import os
+
+    from app.config import get_settings
+
+    previous = os.environ.get("DATABASE_URL")
+    os.environ["DATABASE_URL"] = url
+    get_settings.cache_clear()
+    try:
+        cfg = Config(str(pathlib.Path(__file__).resolve().parents[1] / "alembic.ini"))
+        engine = create_engine(url)
+
+        # Only migrate up to the revision before the curriculum migration, then
+        # seed lessons, then finish. The curriculum migration attaches
+        # placements by scanning the lessons table, so lessons must already
+        # exist. (Running create_all first would trip the migrations' own
+        # "already provisioned" guard and skip every step.)
+        command.upgrade(cfg, "e9c4a7d31b22")
+
+        # Raw SQL, not the ORM: the Lesson model expects lessons.position,
+        # which the curriculum migration itself adds.
+        content_root = pathlib.Path(__file__).resolve().parents[2] / "content"
+        with engine.begin() as conn:
+            for path in sorted(content_root.glob("*.md")):
+                conn.execute(
+                    # Only the columns that exist at this revision: difficulty
+                    # and position are added by the curriculum migration.
+                    # tags/order_index/track are NOT NULL, so they must be
+                    # supplied -- and no OR IGNORE, which would silently
+                    # swallow a constraint failure and hide the problem.
+                    text("INSERT INTO lessons (slug, title, path, tags,"
+                         " order_index, track) VALUES (:s, :t, :p, '[]', 0, '')"),
+                    {"s": path.stem, "t": path.stem, "p": str(path)},
+                )
+
+        command.upgrade(cfg, "head")
+
+        before = set(
+            engine.connect().execute(
+                text("SELECT lesson_slug, topic_id, is_primary FROM lesson_topics")
+            ).all()
+        )
+        assert before, "migration seeded no lesson placements"
+
+        command.downgrade(cfg, "f1a2b3c4d5e6")
+
+        with engine.connect() as conn:
+            lessons_total = conn.execute(text("SELECT COUNT(*) FROM lessons")).scalar()
+            placed = conn.execute(
+                text("SELECT COUNT(*) FROM lessons WHERE topic_slug IS NOT NULL")
+            ).scalar()
+            assert placed == lessons_total, (
+                f"only {placed} of {lessons_total} lessons were placed on downgrade"
+            )
+            extra = conn.execute(
+                text("SELECT slug, additional_topics FROM lessons"
+                     " WHERE additional_topics IS NOT NULL")
+            ).all()
+        assert extra, "no secondary placements were preserved"
+
+        command.upgrade(cfg, "head")
+
+        after = set(
+            engine.connect().execute(
+                text("SELECT lesson_slug, topic_id, is_primary FROM lesson_topics")
+            ).all()
+        )
+        assert before == after, (
+            "round-trip lost placements: "
+            f"missing={sorted(before - after)} added={sorted(after - before)}"
+        )
+    finally:
+        if previous is None:
+            os.environ.pop("DATABASE_URL", None)
+        else:
+            os.environ["DATABASE_URL"] = previous
+        get_settings.cache_clear()

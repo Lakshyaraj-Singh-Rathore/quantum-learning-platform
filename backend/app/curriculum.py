@@ -256,7 +256,7 @@ TOPICS: list[dict[str, object]] = [
             "Explain phase kickback",
         ],
         "lessons": [
-            ("13_classical_bit_vs_qubit", "high", False),
+            ("13_classical_bit_vs_qubit", "high", True),
             ("05_deutsch_jozsa", "medium", False),
             ("06_grover", "medium", False),
         ],
@@ -539,6 +539,128 @@ LEGACY_MAPPING_EVIDENCE: dict[str, str] = {
 # --------------------------------------------------------------------------- #
 # Accessors
 # --------------------------------------------------------------------------- #
+
+
+#: Evidence for each lesson -> topic mapping, keyed ``"<lesson>::<topic>"``.
+#:
+#: Entries cite what the lesson actually contains (section headings, worked
+#: derivations, exercises) or, where assessment data is involved, which
+#: authored quiz or challenge backs the link. Every mapping in TOPICS must have
+#: an entry here; a test enforces that, so an unexplained mapping cannot land.
+#:
+#: ``inferred`` marks a mapping resting on indirect evidence. Those are never
+#: treated as verified and never gate mastery on their own.
+LESSON_TOPIC_EVIDENCE: dict[str, str] = {
+    "13_classical_bit_vs_qubit::qc.qubits": (
+        "Lesson is titled 'A Classical Switch vs a Qubit' and works through the "
+        "classical-switch comparison end to end. Content-derived."
+    ),
+    "13_classical_bit_vs_qubit::core.quantum_interference": (
+        "Contains 'The decisive experiment', 'The hidden coin hypothesis' and "
+        "'Now break the interference' — an explicit interference demonstration. "
+        "Content-derived."
+    ),
+    "01_qubits::qc.qubits": (
+        "Titled 'Qubits and Superposition'; sections on basis states, the Bloch "
+        "sphere and multiple qubits. Primary source for the topic."
+    ),
+    "01_qubits::qc.superposition": (
+        "Has 'Why amplitudes matter more than probabilities', which is the "
+        "amplitude-versus-probability distinction. It does NOT cover relative "
+        "versus global phase or density matrices, so this is partial only."
+    ),
+    "02_gates::qc.basic_gates": (
+        "Titled 'Quantum Gates'; enumerates single-qubit, rotation/phase and "
+        "multi-qubit gates with matrices. Primary source."
+    ),
+    "02_gates::adv.quantum_universality": (
+        "Has a 'Universality and transpilation' section. Covers the concept but "
+        "not native gate sets or routing, so partial."
+    ),
+    "10_gates_bootcamp::qc.basic_gates": (
+        "Titled 'Gates Bootcamp: Every Gate, Step by Step'; walks I, X, H, Z, Y, "
+        "S/S-dagger individually. Practice material for the same topic."
+    ),
+    "11_bell_states::qc.bell_states": (
+        "Titled 'The Four Bell States'; derives each one and distinguishes them. "
+        "Primary source."
+    ),
+    "11_bell_states::qc.entanglement": (
+        "Has 'Why maximally entangled' and 'The crucial observation'. Supports "
+        "the entanglement topic but does not generalise to separability tests."
+    ),
+    "03_entanglement::qc.entanglement": (
+        "Titled 'Entanglement'; covers non-separability, GHZ, and 'what "
+        "entanglement is not'. Primary source for the general concept."
+    ),
+    "04_measurement::core.measurement_theory": (
+        "Titled 'Measurement and Dynamic Circuits'; covers shots, the Born-rule "
+        "reading and terminal versus mid-circuit measurement. Primary source."
+    ),
+    "04_measurement::qiskit.sampler": (
+        "Has a 'Shots' section on sampling and counts. Covers the primitive "
+        "conceptually but does not demonstrate the Sampler API or convergence."
+    ),
+    "04_measurement::adv.dynamic_circuits": (
+        "Has 'Dynamic circuits: classical feedback' and 'The two measurement "
+        "buttons'. Introductory only; the dedicated lessons go deeper."
+    ),
+    "09_quantum_noise::qiskit.quantum_noise": (
+        "Titled 'Quantum Noise and Decoherence'; covers T1/T2, amplitude damping "
+        "and dephasing. Primary source."
+    ),
+    "09_quantum_noise::core.quantum_channels": (
+        "Has 'The standard noise channels' with depolarizing, amplitude- and "
+        "phase-damping. Channel content is genuine but framed for practitioners."
+    ),
+    "05_deutsch_jozsa::algo.deutsch_jozsa": (
+        "Titled 'Deutsch-Jozsa and Quantum Parallelism'; covers the promise, "
+        "phase kickback and the circuit. Primary source."
+    ),
+    "05_deutsch_jozsa::core.quantum_interference": (
+        "Has 'The phase kickback trick' and 'Why it works', which is applied "
+        "interference. Secondary: the lesson's purpose is the algorithm."
+    ),
+    "06_grover::algo.grover": (
+        "Titled 'Grover's Search Algorithm'; covers the iteration, geometry "
+        "and over-rotation. Primary source."
+    ),
+    "06_grover::core.quantum_interference": (
+        "Has 'Geometry' and 'Do not over-rotate', describing amplitude "
+        "amplification. Secondary: the lesson's purpose is the algorithm."
+    ),
+    "07_vqe_qaoa::nisq.vqe": (
+        "Titled 'Variational Algorithms: VQE and QAOA'; has 'The hybrid loop' "
+        "and a VQE section. Primary source."
+    ),
+    "07_vqe_qaoa::nisq.qaoa": (
+        "Has a dedicated QAOA section. Shares one lesson with VQE, so both are "
+        "covered at similar depth rather than one being primary."
+    ),
+    "07_vqe_qaoa::nisq.parameterized_circuits": (
+        "Has 'Ansatz design and barren plateaus'. Covers the ideas; no "
+        "parameter-shift derivation. Partial."
+    ),
+    "08_dynamic_circuits::adv.dynamic_circuits": (
+        "Titled 'Dynamic Circuits and Classical Control Flow'; covers if/else, "
+        "bitstring comparison, for and while. Primary source."
+    ),
+    "12_control_flow::adv.dynamic_circuits": (
+        "Titled 'Control Flow: if, for, while and Box'; includes 'Measurement "
+        "semantics: the trap'. Hands-on counterpart to 08."
+    ),
+}
+
+#: Mappings whose evidence is indirect and which must not be treated as
+#: verified. Kept visible so a reviewer can promote or retire them.
+REVIEW_REQUIRED: dict[str, str] = {
+    "algorithms::algo.grover": (
+        "INFERRED. 'algorithms' is an authored tag on the Grover quiz. It is "
+        "mapped to algo.grover only because Grover is currently the sole "
+        "algorithms quiz. If a second algorithms assessment is authored, this "
+        "inference stops holding and legacy mastery will need re-deriving."
+    ),
+}
 
 
 def topics_for_lesson(lesson_slug: str) -> list[tuple[str, str, bool]]:

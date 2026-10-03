@@ -86,6 +86,35 @@ topic, or explicitly classified as supplementary. No lesson is dropped.
 - Extend linkage to cover playgrounds, assessments and reference material, not
   only demos.
 
+## M1 — Non-Destructive Curriculum Integration and UI Implementation
+
+Status: **complete apart from PostgreSQL staging, which is unavailable in this
+environment and is reported as pending rather than faked.**
+
+Delivered:
+
+- Mapping report (`docs/CURRICULUM_MAPPING.md` + `.json`): 24 lesson-to-topic
+  mappings, 17 high / 7 medium / 0 low, each backed by evidence cited from the
+  actual lesson content. `algorithms -> algo.grover` remains flagged.
+- Content-gap report (`docs/CONTENT_GAP_REPORT.md`): 7 existing, 8 partial,
+  82 missing of 97 target items, with an M4 authoring order. Names the gaps;
+  authors nothing.
+- Empty sections now render rather than being hidden (behaviour change per the
+  spec). Orphaned retired sections are cleaned up without stranding content.
+- Downgrade fixed: 13 of 13 lessons placed, 24 of 24 placements survive a
+  round-trip, via an additive `additional_topics` column.
+- PostgreSQL blocker removed statically: `INSERT OR IGNORE` (SQLite-only) is now
+  `ON CONFLICT ... DO NOTHING`.
+
+Not delivered:
+
+- **PostgreSQL staging validation.** No server, no Docker, no way to install.
+  Reported as pending. The `INSERT OR IGNORE` fix is a static-review finding and
+  still needs a real staging run.
+- **Visual/responsive verification.** No browser in this environment.
+
+Untouched: no production migration, no P8, no P9, Streamlit still default.
+
 ## M3 — Curriculum navigation in the Learn page
 
 - Section → module → topic → lesson hierarchy, expandable.

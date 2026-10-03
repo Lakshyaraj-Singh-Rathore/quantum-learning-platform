@@ -282,11 +282,23 @@ def test_only_published_topics_reach_learners(seeded: Session):
     assert shown == published
 
 
-def test_empty_sections_omitted(seeded: Session):
+def test_empty_sections_are_still_emitted(seeded: Session):
+    """M1 spec: sections with no content must render, not disappear. Hiding
+    them makes the curriculum look smaller than the roadmap promises and
+    conceals the authoring gap."""
     tree = build_curriculum(seeded, None)
     slugs = {s["slug"] for s in tree["sections"]}
-    assert "mathematical-foundations" not in slugs
-    assert "error-correction" not in slugs
+    assert len(slugs) == 10, f"expected all 10 sections, got {sorted(slugs)}"
+    assert "mathematical-foundations" in slugs
+    assert "error-correction" in slugs
+
+
+def test_empty_section_has_no_topics(seeded: Session):
+    tree = build_curriculum(seeded, None)
+    for section in tree["sections"]:
+        assert isinstance(section["topics"], list)
+    empty = [s for s in tree["sections"] if s["slug"] == "mathematical-foundations"][0]
+    assert empty["topics"] == []
 
 
 def test_ordering(seeded: Session):

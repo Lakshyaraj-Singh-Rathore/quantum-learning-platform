@@ -1,5 +1,66 @@
 # Changelog
 
+## M1 — Non-Destructive Curriculum Integration and UI Implementation
+
+Status: **complete except PostgreSQL staging validation, which is unavailable in
+this environment and is reported as pending rather than faked.**
+
+### Changed behaviour
+
+- **Empty sections are now rendered instead of hidden.** The earlier build
+  omitted sections with no published topics; the M1 spec requires them to
+  render. `build_curriculum` emits all 10 sections, and the UI shows "No topics
+  in this section yet." Hiding them made the curriculum look smaller than the
+  roadmap promises and concealed the authoring gap.
+- **Retired sections are cleaned up.** The superseded registry defined an
+  `advanced-theory-circuits` section that the current registry drops. Upserting
+  the current set left that orphan in place, where it rendered as a nameless,
+  letterless entry colliding at position 6. The migration now removes sections
+  that are absent from the registry **and** have no topics referencing them, so
+  real content can never be stranded.
+- **Downgrade no longer loses a lesson.** The old flat schema holds one
+  `topic_slug` per lesson, so lessons belonging to two topics lost their
+  secondary placement and lessons with no primary topic were left unplaced
+  (12 of 13). Secondary placements are now written to an additive
+  `additional_topics` column that pre-migration code never reads, and
+  re-upgrading restores them. Verified: **13 of 13 lessons placed, 24 of 24
+  placements survive a downgrade/upgrade round-trip.**
+- **PostgreSQL compatibility fix.** The downgrade used `INSERT OR IGNORE`,
+  which is SQLite-only and would fail outright on PostgreSQL. Replaced with
+  `ON CONFLICT ... DO NOTHING`, supported by PostgreSQL 9.5+ and SQLite 3.24+.
+  Found by static review, not execution — see the gap below.
+- **Registry fix.** `13_classical_bit_vs_qubit` had `is_primary=False` for both
+  of its topics, leaving it with no primary topic and `core.quantum_interference`
+  with no primary lesson. It is now the primary lesson for
+  `core.quantum_interference`, which its content supports directly
+  ("The decisive experiment", "Now break the interference").
+
+### Added
+
+- `backend/scripts/curriculum_reports.py` — generates both reports from the
+  registry and the real lesson files. Run rather than hand-edit.
+- `docs/CURRICULUM_MAPPING.md` and `docs/CURRICULUM_MAPPING.json` — 24 mappings
+  (17 high, 7 medium, 0 low; 13 primary, 11 secondary), each with recorded
+  evidence drawn from actual lesson content, plus legacy assessment-tag
+  mappings and the flagged `algorithms -> algo.grover` inference.
+- `docs/CONTENT_GAP_REPORT.md` — coverage against the 97-item target
+  curriculum: 7 existing, 8 partial, 82 missing, with an M4 authoring order.
+  It names what is missing; it does not author it.
+- Mapping-integrity tests: every mapping carries evidence, only known
+  confidence levels are used, low-confidence mappings can never grant mastery,
+  every lesson has exactly one primary topic, and the downgrade round-trip
+  preserves every placement.
+
+### Not done — PostgreSQL staging
+
+PostgreSQL is **not installed** in this environment: no server binary, no
+Docker, and no way to install one (no root, `apt` unavailable). The migration
+has therefore still only been exercised on SQLite. This is reported as
+**pending**, not as verified. The `INSERT OR IGNORE` fix above is a static-review
+finding and must be confirmed by a real staging run before production.
+
+
+
 Significant implementation changes, newest first. Kept deliberately short —
 per-milestone detail lives in `IMPLEMENTATION_MASTER_PLAN.md`,
 `FEATURE_TRACEABILITY.md` and `MASTERY_MIGRATION_REPORT.md`.
