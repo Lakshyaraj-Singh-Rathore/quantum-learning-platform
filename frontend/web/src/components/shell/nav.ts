@@ -5,6 +5,7 @@ import {
   FlaskConical,
   Gamepad2,
   LayoutDashboard,
+  Route as RouteIcon,
   Trophy,
   type LucideIcon,
 } from "lucide-react";
@@ -23,6 +24,7 @@ export interface NavItem {
 
 export const NAV_ITEMS: NavItem[] = [
   { to: "/learn", label: "Learn", icon: BookOpen, phase: "P4" },
+  { to: "/curriculum", label: "Curriculum", icon: RouteIcon, phase: "M3 · live", live: true },
   { to: "/composer", label: "Composer", icon: Blocks, phase: "P1 · live", live: true },
   { to: "/challenges", label: "Challenges", icon: Trophy, phase: "P5" },
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, phase: "P5" },

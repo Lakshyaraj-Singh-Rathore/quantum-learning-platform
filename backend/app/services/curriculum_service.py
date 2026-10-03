@@ -7,6 +7,8 @@ share one implementation of "is this learner ready for this topic".
 
 from __future__ import annotations
 
+import json
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -21,6 +23,29 @@ from app.models.curriculum import (
 
 #: Mastery at or above this counts as having covered a topic.
 MASTERY_THRESHOLD = 0.6
+
+
+def _evidence_attempts(evidence: object) -> int:
+    """Pull ``attempts`` out of the evidence column without trusting its type.
+
+    Evidence is a JSON column, so it is whatever was written to it. A row
+    written by raw SQL, or by an older code path, can hold a JSON *string*
+    rather than an object. Reading that naively raises AttributeError, which
+    took down the whole /curriculum endpoint for every learner because one
+    single row was malformed. A missing or odd value costs us an attempt count,
+    not the page.
+    """
+    if isinstance(evidence, str):
+        try:
+            evidence = json.loads(evidence)
+        except (ValueError, TypeError):
+            return 0
+    if not isinstance(evidence, dict):
+        return 0
+    try:
+        return int(evidence.get("attempts") or 0)
+    except (TypeError, ValueError):
+        return 0
 
 
 def topic_mastery(db: Session, user_id: int) -> dict[str, dict[str, float]]:
@@ -45,9 +70,8 @@ def topic_mastery(db: Session, user_id: int) -> dict[str, dict[str, float]]:
     attempts: dict[str, int] = {}
     for row in rows:
         totals.setdefault(row.topic_id, []).append(float(row.mastery_level))
-        evidence = row.evidence or {}
         attempts[row.topic_id] = attempts.get(row.topic_id, 0) + int(
-            evidence.get("attempts") or 0
+            _evidence_attempts(row.evidence)
         )
 
     return {
@@ -224,12 +248,16 @@ def recommended_next(db: Session, user_id: int, limit: int = 3) -> list[dict[str
         for topic in section["topics"]:  # type: ignore[index]
             if topic["completed"]:  # type: ignore[index]
                 continue
+            lessons = topic["lessons"]  # type: ignore[index]
             entry = {
                 "slug": topic["slug"],  # type: ignore[index]
                 "title": topic["title"],  # type: ignore[index]
                 "section": section["slug"],  # type: ignore[index]
                 "difficulty": topic["difficulty"],  # type: ignore[index]
                 "missing_required": topic["status"]["missing_required"],  # type: ignore[index]
+                # None when the topic has no content yet; the UI must fall back
+                # to browsing rather than inventing a target.
+                "lesson_slug": lessons[0]["slug"] if lessons else None,
             }
             if topic["status"]["ready"]:  # type: ignore[index]
                 ready.append(entry)

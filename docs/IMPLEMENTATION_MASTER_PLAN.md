@@ -99,6 +99,20 @@ topic, or explicitly classified as supplementary. No lesson is dropped.
 **Exit gate:** prerequisite warnings demonstrably fire for a learner without the
 required background, and do not fire for one who has it.
 
+## M3 — Curriculum navigation in the Learn page
+
+**Status: largely complete (commit pending).** Shipped as a React curriculum
+section wired to the real API: overview, expandable sections, topic detail by
+stable slug, prerequisite presentation, resume learning, and lesson deep links.
+
+Two additive backend fields were needed because existing endpoints could not
+support required UI states: `GET /curriculum/topics/{id}` now returns its
+`lessons`, and `GET /curriculum/next` now returns a `lesson_slug` so resume can
+open a lesson rather than only a topic.
+
+Not done: visual verification (no headless browser in this environment), and
+true resume-from-furthest-position, which needs per-lesson completion data.
+
 ## M4 — Content authoring for the seven empty sections
 
 Authoring, not restructuring, and deliberately separate so it never blocks M0–M3.

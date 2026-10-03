@@ -54,6 +54,7 @@ const { QueryClient, QueryClientProvider } = await import("@tanstack/react-query
 // invalid" rather than naming the file.
 const pages: [string, string, () => Promise<Record<string, React.ComponentType>>][] = [
   ["Learn", "LearnPage", () => import("../src/pages/LearnPage.tsx")],
+  ["Curriculum", "CurriculumPage", () => import("../src/pages/CurriculumPage.tsx")],
   ["Composer", "ComposerPage", () => import("../src/pages/ComposerPage.tsx")],
   ["Challenges", "ChallengesPage", () => import("../src/pages/ChallengesPage.tsx")],
   ["Dashboard", "DashboardPage", () => import("../src/pages/DashboardPage.tsx")],

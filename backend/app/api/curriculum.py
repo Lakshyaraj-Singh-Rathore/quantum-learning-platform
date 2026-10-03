@@ -53,6 +53,36 @@ def get_optional_user(
     return user if user is not None and user.is_active else None
 
 
+def _lessons_for_topic(db: Session, topic_id: str) -> list[dict]:
+    """Lessons for a topic, primary first then authored order.
+
+    The topic detail response needs these so the UI can offer start/continue
+    without fetching the whole tree.
+    """
+    from app.models.content import Lesson as _Lesson
+    from app.models.curriculum import LessonTopic
+
+    links = db.scalars(
+        select(LessonTopic)
+        .where(LessonTopic.topic_id == topic_id)
+        .order_by(LessonTopic.is_primary.desc(), LessonTopic.id)
+    ).all()
+    out: list[dict] = []
+    for link in links:
+        lesson = db.scalar(select(_Lesson).where(_Lesson.slug == link.lesson_slug))
+        if lesson is None:
+            continue
+        out.append({
+            "slug": lesson.slug,
+            "title": lesson.title,
+            "track": lesson.track,
+            "position": lesson.position,
+            "is_primary": bool(link.is_primary),
+            "confidence": link.confidence,
+        })
+    return out
+
+
 @router.get("")
 def get_curriculum(
     user: User | None = Depends(get_optional_user),
@@ -82,6 +112,11 @@ def get_next(
                         "section": section["slug"],
                         "difficulty": topic["difficulty"],
                         "missing_required": topic["status"]["missing_required"],
+                        # Additive: resume must open a lesson, and a topic id
+                        # alone cannot say which one.
+                        "lesson_slug": (
+                            topic["lessons"][0]["slug"] if topic.get("lessons") else None
+                        ),
                     }
                 )
         return out[: max(0, min(limit, 10))]
@@ -125,4 +160,5 @@ def get_topic(
         "prerequisites": prereqs.get(topic_id, []),
         "status": status,
         "mastery": mastery.get(topic_id, {}).get("score", 0.0),
+        "lessons": _lessons_for_topic(db, topic_id),
     }

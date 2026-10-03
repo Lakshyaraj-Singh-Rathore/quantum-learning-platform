@@ -63,6 +63,7 @@ function check(name: string, ok: boolean, extra = "") {
 
 const pages: [string, string, string][] = [
   ["Learn", "LearnPage", "../src/pages/LearnPage.tsx"],
+  ["Curriculum", "CurriculumPage", "../src/pages/CurriculumPage.tsx"],
   ["Composer", "ComposerPage", "../src/pages/ComposerPage.tsx"],
   ["Challenges", "ChallengesPage", "../src/pages/ChallengesPage.tsx"],
   ["Dashboard", "DashboardPage", "../src/pages/DashboardPage.tsx"],

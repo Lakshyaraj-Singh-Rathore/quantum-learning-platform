@@ -101,6 +101,41 @@ against commit `7ee6c01`. Locations are real paths in this repository.
 | Backend tests | **Verified** | 511 passed, 5 skipped |
 | Frontend pytest | **Verified** | 418 passed, 77 skipped |
 
+## F2. M3 — Curriculum UI (React)
+
+| Requirement | Component / integration | API or data source | Test | Status |
+|---|---|---|---|---|
+| Curriculum overview | `pages/CurriculumPage.tsx` | `GET /curriculum` | `npm run curriculum` | **Verified** |
+| Expandable sections | `components/curriculum/CurriculumBrowser.tsx` | canonical `position` from API | curriculum-check: aria-expanded, button semantics | **Verified** |
+| Topic cards (title, difficulty, objectives, lesson count, state) | `CurriculumBrowser.tsx` `TopicCard` | `GET /curriculum` topic fields | curriculum-check | **Verified** |
+| Topic detail by stable slug | `pages/TopicDetailPage.tsx` at `/curriculum/topic/:topicId` | `GET /curriculum/topics/{id}` | curriculum-check (8 assertions) | **Verified** |
+| Required vs recommended prerequisites | `PrereqList`, detail page | `prerequisites[].kind` + `status` | curriculum-check: required/recommended distinct | **Verified** |
+| Required prereq blocks with navigation | blocked banner + links | `status.ready`, `missing_required` | curriculum-check | **Verified** |
+| Recommended prereq warns without blocking | advisory banner | `status.advisory` | curriculum-check | **Verified** |
+| Anonymous browsing without false locks | server returns `unevaluated: true`; UI shows no lock | `build_curriculum(user_id=None)` | `test_anonymous_is_never_gated`, curriculum-check | **Verified** |
+| Authenticated access states | topic cards reflect server decision | `status.ready` | `test_topic_detail_gates_authenticated_learner` | **Verified** |
+| Progress from real data only | progress card + `StateIndicator` | `progress`, `mastery`, `completed` | `test_progress_percent_reflects_mastery` | **Verified** |
+| Resume learning | resume button | `GET /curriculum/next` → `lesson_slug` | `test_next_exposes_a_resume_lesson_slug` | **Verified** |
+| Lesson deep link | `/learn?lesson=<slug>` | LearnPage reads `useSearchParams` | manual (browser) | **Implemented, not automated** |
+| Empty topic / empty section | neutral copy, not an error | `lessons: []` | curriculum-check | **Verified** |
+| Loading / error / retry / not-found | Spinner, ErrorNote, 404 branch | — | `npm run states` (8 pages) | **Verified** |
+| Narrow viewport | Tailwind stack, no horizontal scroll | — | source review only | **Not visually verified** |
+| Keyboard + screen reader | real `<button aria-expanded>`, `sr-only` labels | — | `npm run a11y` (8 pages, 0 criticals) | **Verified** |
+
+### Known gaps
+
+- **Visual verification was not performed.** No headless browser is available
+  in this environment, so desktop/narrow/theme rendering was never inspected.
+  Layout is asserted only through SSR markup and source review.
+- **Authenticated UI is not covered by the SSR harness.** zustand v5 serves
+  `getInitialState()` to `getServerSnapshot`, so any component reading the
+  session through the hook renders the pre-hydration state under
+  `renderToString`. This is a harness limitation only — the app is a
+  client-rendered SPA. Covered instead by backend tests and manual checks.
+- **`/curriculum/next` returns a topic's first lesson**, not the learner's
+  furthest position. True "resume where I left off" needs per-lesson completion
+  data, which `lesson_completions` does not yet populate.
+
 ## G. Cutover gates
 
 | Gate | Status | Evidence |

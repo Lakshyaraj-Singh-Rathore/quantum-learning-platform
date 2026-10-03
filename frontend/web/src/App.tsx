@@ -26,6 +26,12 @@ const GamesPage = lazy(() =>
 const PlaygroundPage = lazy(() =>
   import("./pages/PlaygroundPage").then((m) => ({ default: m.PlaygroundPage })),
 );
+const CurriculumPage = lazy(() =>
+  import("./pages/CurriculumPage").then((m) => ({ default: m.CurriculumPage })),
+);
+const TopicDetailPage = lazy(() =>
+  import("./pages/TopicDetailPage").then((m) => ({ default: m.TopicDetailPage })),
+);
 
 function NotFound() {
   return (
@@ -53,6 +59,8 @@ export default function App() {
           <Route element={<AppShell />}>
             <Route index element={<Navigate to="/learn" replace />} />
             <Route path="/learn" element={<LearnPage />} />
+            <Route path="/curriculum" element={<CurriculumPage />} />
+            <Route path="/curriculum/topic/:topicId" element={<TopicDetailPage />} />
             <Route path="/composer" element={<ComposerPage />} />
 <Route path="/challenges" element={<ChallengesPage />} />
 <Route path="/dashboard" element={<DashboardPage />} />

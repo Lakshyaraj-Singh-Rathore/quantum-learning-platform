@@ -167,6 +167,39 @@ def test_mastery_counts_mapped_and_verified(seeded: Session):
     assert m["qc.qubits"]["score"] == pytest.approx(1.0)
 
 
+def test_malformed_evidence_does_not_take_down_the_page(seeded: Session):
+    """Regression: one row whose evidence is a JSON string rather than an
+    object raised AttributeError inside topic_mastery, which returned a 500
+    for /curriculum for every learner. An odd value must cost an attempt
+    count, not the page.
+    """
+    from app.services.curriculum_service import _evidence_attempts
+
+    # Direct unit checks on the coercion helper.
+    assert _evidence_attempts(None) == 0
+    assert _evidence_attempts("not json") == 0
+    assert _evidence_attempts(42) == 0
+    assert _evidence_attempts({"attempts": 3}) == 3
+    assert _evidence_attempts('{"attempts": 5}') == 5
+    assert _evidence_attempts({"attempts": None}) == 0
+
+    # And end to end through the service, with a string-typed row present.
+    user = _user(seeded, "malformed@example.com")
+    seeded.add(TopicMastery(
+        user_id=user.id, topic_id="qc.qubits", mastery_level=0.9,
+        status="verified", source="quiz:basics", evidence='{"attempts": 2}',
+    ))
+    seeded.add(TopicMastery(
+        user_id=user.id, topic_id="qc.entanglement", mastery_level=0.7,
+        status="verified", source="quiz:other", evidence={"attempts": 4},
+    ))
+    seeded.commit()
+    m = topic_mastery(seeded, user.id)
+    # Both rows still count; neither crashes.
+    assert m["qc.qubits"]["score"] == pytest.approx(0.9)
+    assert m["qc.entanglement"]["score"] == pytest.approx(0.7)
+
+
 def test_legacy_only_mastery_is_preserved_but_not_counted(seeded: Session):
     """An ambiguous legacy record must not silently satisfy a prerequisite."""
     user = _user(seeded, "lo@example.com")
@@ -335,6 +368,41 @@ def test_topic_detail_gates_authenticated_learner(client, seeded, db: Session):
     assert r.status_code == 200
     assert r.json()["status"]["ready"] is False
     assert "qiskit.quantum_noise" in r.json()["status"]["missing_required"]
+
+
+def test_topic_detail_includes_lessons_in_sequence(client, seeded):
+    """Additive field: the detail view shows lessons without a second call."""
+    r = client.get("/curriculum/topics/qc.basic_gates")
+    assert r.status_code == 200
+    lessons = r.json()["lessons"]
+    assert [l["slug"] for l in lessons] == ["02_gates", "10_gates_bootcamp"]
+    # Primary first, and the primary flag is exposed.
+    assert lessons[0]["is_primary"] is True
+
+
+def test_topic_detail_lessons_empty_for_topic_without_lessons(client, seeded):
+    """A published topic always has lessons today; assert the field exists and
+    is a list so a future content-less topic degrades rather than 500s."""
+    r = client.get("/curriculum/topics/nisq.vqe")
+    assert r.status_code == 200
+    assert isinstance(r.json()["lessons"], list)
+
+
+def test_next_exposes_a_resume_lesson_slug(client, seeded):
+    """Resume must open a lesson, so /next has to say which one."""
+    body = client.get("/curriculum/next").json()
+    assert body
+    for entry in body:
+        assert "lesson_slug" in entry
+    # Every returned topic has content today, so a real slug is expected.
+    assert all(e["lesson_slug"] for e in body)
+
+
+def test_next_lesson_slug_points_at_a_real_lesson(client, seeded):
+    slugs = {l["slug"] for l in client.get("/lessons").json()}
+    for entry in client.get("/curriculum/next").json():
+        if entry["lesson_slug"]:
+            assert entry["lesson_slug"] in slugs, f"{entry['lesson_slug']} is not a lesson"
 
 
 def test_next_endpoint(client, seeded):

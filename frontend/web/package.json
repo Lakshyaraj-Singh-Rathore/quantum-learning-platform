@@ -28,7 +28,8 @@
     "fixtures:lessons": "python3 scripts/lesson-fixtures.py",
     "fixtures:challenges": "python3 scripts/challenge-fixtures.py",
     "fixtures:games": "python3 scripts/game-fixtures.py",
-    "fixtures:game-results": "python3 scripts/game-results.py"
+    "fixtures:game-results": "python3 scripts/game-results.py",
+    "curriculum": "tsx scripts/curriculum-check.mts && tsx scripts/curriculum-check.mts --auth"
   },
   "dependencies": {
     "@codemirror/lang-python": "^6.2.1",

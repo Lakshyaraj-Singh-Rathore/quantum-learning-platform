@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Send } from "lucide-react";
 import { getLesson, listLessons, aiChat, type ChatTurn } from "../api/lessons";
@@ -27,6 +28,10 @@ const DEMOS_FOR_LESSON: Record<string, string[]> = {
 export function LearnPage() {
   const [track, setTrack] = useState<Track>("All");
   const [slug, setSlug] = useState<string | null>(null);
+  // ?lesson=<slug> lets the curriculum deep-link straight to a lesson. The URL
+  // wins over the in-page selection so a link always opens the right content.
+  const [searchParams] = useSearchParams();
+  const lessonFromUrl = searchParams.get("lesson");
   const [histories, setHistories] = useState<Record<string, ChatTurn[]>>({});
   const [question, setQuestion] = useState("");
   const [demoKey, setDemoKey] = useState<string | null>(null);
@@ -43,7 +48,12 @@ export function LearnPage() {
   // Derived, not stored: a selected lesson that is not in the visible track
   // (or none selected yet) falls back to the first one. Keeping this out of an
   // effect means the page is correct on its very first render.
-  const current = slug && visible.some((l) => l.slug === slug) ? slug : (visible[0]?.slug ?? null);
+  const current =
+    lessonFromUrl && visible.some((l) => l.slug === lessonFromUrl)
+      ? lessonFromUrl
+      : slug && visible.some((l) => l.slug === slug)
+        ? slug
+        : (visible[0]?.slug ?? null);
 
   const detail = useQuery({
     queryKey: ["lesson", current],
@@ -135,7 +145,7 @@ export function LearnPage() {
           ) : (
             <ul className="flex flex-col gap-1">
               {visible.map((lesson) => {
-                const active = lesson.slug === slug;
+                const active = lesson.slug === current;
                 return (
                   <li key={lesson.slug}>
                     <button
