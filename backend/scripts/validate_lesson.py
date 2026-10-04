@@ -44,7 +44,8 @@ MEASURABLE_VERBS = {
     "distinguish", "list", "compute", "show", "describe", "draw", "predict",
     "evaluate", "classify", "convert", "locate", "prepare", "measure",
     "write", "enter", "build", "predict", "report", "verify", "use", "run",
-    "choose", "decide", "select", "set", "match",
+    "choose", "decide", "select", "set", "match", "contrast", "trace",
+    "give", "name", "read", "record",
 }
 VAGUE_VERBS = {"understand", "appreciate", "learn", "know", "grasp", "explore"}
 

@@ -61,7 +61,7 @@ Validation: `not_run` | `passed` | `failed` | `blocked` | `not_applicable`
 | M4-B03 | Pure and Mixed States | — *pending* | *pure_and_mixed_states?* | missing | not_started | No registered topic covers this target item |
 | M4-B04 | Density Matrices | — *pending* | *density_matrices?* | missing | not_started | No registered topic covers this target item |
 | M4-B05 | Partial Trace and Reduced States | — *pending* | *partial_trace_and_reduced_states?* | missing | not_started | No registered topic covers this target item |
-| M4-B06 | Quantum Interference | `core.quantum_interference` | `13_classical_bit_vs_qubit` | partial | not_started | Existing lesson touches this item without covering the intended scope |
+| M4-B06 | Quantum Interference | `core.quantum_interference` | `13_classical_bit_vs_qubit` | partial | verified | Rewritten |
 | M4-B07 | Relative and Global Phase | — *pending* | *relative_and_global_phase?* | missing | not_started | No registered topic covers this target item |
 | M4-B08 | Quantum Channels | `core.quantum_channels` | `09_quantum_noise` | partial | verified | Rewritten |
 | M4-B09 | Entanglement Entropy and Monogamy | — *pending* | *entanglement_entropy_and_monogamy?* | missing | not_started | No registered topic covers this target item |
@@ -79,7 +79,7 @@ Validation: `not_run` | `passed` | `failed` | `blocked` | `not_applicable`
 | M4-C04 | Tensor Products | — *pending* | *tensor_products?* | missing | not_started | No registered topic covers this target item |
 | M4-C05 | Inner Product | — *pending* | *inner_product?* | missing | not_started | No registered topic covers this target item |
 | M4-C06 | Superposition | `qc.superposition` | `01_qubits` | partial | verified | Rewritten per the M4 standard |
-| M4-C07 | Bell States | `qc.bell_states` | `11_bell_states` | existing | not_started |  |
+| M4-C07 | Bell States | `qc.bell_states` | `11_bell_states` | existing | verified | Rewritten |
 | M4-C08 | Basic Quantum Gates | `qc.basic_gates` | `02_gates` | existing | verified | Rewritten |
 | M4-C09 | Understanding Circuits and Finding Results | — *pending* | *understanding_circuits_and_finding_results?* | missing | not_started | No registered topic covers this target item |
 | M4-C10 | Quantum Teleportation | — *pending* | *quantum_teleportation?* | missing | not_started | No registered topic covers this target item |
@@ -105,7 +105,7 @@ Validation: `not_run` | `passed` | `failed` | `blocked` | `not_applicable`
 |---|---|---|---|---|---|---|
 | M4-E01 | Bernstein-Vazirani | — *pending* | *bernstein_vazirani?* | missing | not_started | No registered topic covers this target item |
 | M4-E02 | Deutsch-Jozsa | `algo.deutsch_jozsa` | `05_deutsch_jozsa` | existing | verified | Rewritten |
-| M4-E03 | Grover's Search | `algo.grover` | `06_grover` | existing | not_started |  |
+| M4-E03 | Grover's Search | `algo.grover` | `06_grover` | existing | verified | Rewritten |
 | M4-E04 | Quantum Fourier Transform | — *pending* | *quantum_fourier_transform?* | missing | not_started | No registered topic covers this target item |
 | M4-E05 | Quantum Phase Estimation | — *pending* | *quantum_phase_estimation?* | missing | not_started | No registered topic covers this target item |
 | M4-E06 | Shor's Algorithm | — *pending* | *shors_algorithm?* | missing | not_started | No registered topic covers this target item |
@@ -141,11 +141,11 @@ Validation: `not_run` | `passed` | `failed` | `blocked` | `not_applicable`
 
 | Item ID | Target item | Topic ID | Lesson slug | Status | Rewrite | Notes |
 |---|---|---|---|---|---|---|
-| M4-G01 | Parameterized Quantum Circuits | `nisq.parameterized_circuits` | `07_vqe_qaoa` | partial | not_started | Existing lesson touches this item without covering the intended scope |
-| M4-G02 | Variational Quantum Eigensolver | `nisq.vqe` | `07_vqe_qaoa` | existing | not_started |  |
+| M4-G01 | Parameterized Quantum Circuits | `nisq.parameterized_circuits` | `07_vqe_qaoa` | partial | verified | Rewritten |
+| M4-G02 | Variational Quantum Eigensolver | `nisq.vqe` | `07_vqe_qaoa` | existing | verified | Rewritten |
 | M4-G03 | Ansatz Construction | — *pending* | *ansatz_construction?* | missing | not_started | No registered topic covers this target item |
 | M4-G04 | Classical Optimization Loops | — *pending* | *classical_optimization_loops?* | missing | not_started | No registered topic covers this target item |
-| M4-G05 | QAOA | `nisq.qaoa` | `07_vqe_qaoa` | partial | not_started | Existing lesson touches this item without covering the intended scope |
+| M4-G05 | QAOA | `nisq.qaoa` | `07_vqe_qaoa` | partial | verified | Rewritten |
 | M4-G06 | Approximation Ratios | — *pending* | *approximation_ratios?* | missing | not_started | No registered topic covers this target item |
 | M4-G07 | Parameter-Shift Rule | — *pending* | *parameter_shift_rule?* | missing | not_started | No registered topic covers this target item |
 | M4-G08 | Barren Plateaus | — *pending* | *barren_plateaus?* | missing | not_started | No registered topic covers this target item |

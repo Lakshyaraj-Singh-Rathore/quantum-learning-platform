@@ -85,3 +85,41 @@ next block, merging unrelated maths and flattening headings into body text.
 **Status:** FIXED. Delimiters are now anchored to whole lines
 (`^\$\$\s*$\n(.*?)^\$\$\s*$`). The one damaged file was repaired, and the
 validator gained a rule rejecting headings merged with body text.
+
+### M4-7: `06_grover` bit-order convention mismatch (self-corrected)
+
+My first version of the Grover helper indexed its `marked` string in qubit order
+while Qiskit bitstrings are qubit-0-rightmost, so `grover(2, "01", 1)` returned
+`{'10': 2048}` rather than the `{'01': 2048}` I had claimed in the answers.
+Caught by executing the code rather than reading it.
+
+**Status:** FIXED. The helper now takes the marked string in Qiskit display
+order, and the empty-X-list case is guarded.
+
+### M4-8: `format_lesson.py` merged unrelated blocks (self-corrected)
+
+Its collapse regex `\$\$\n(.*?)\n\$\$` also matched the *closing* delimiter of an
+already single-line block, merging unrelated display maths onto one line and
+flattening headings into body text.
+
+**Status:** FIXED. Delimiters are anchored to whole lines. The validator now
+rejects headings merged with body text, so the damage cannot pass silently.
+
+### M4-9: Tracker progress must be recorded per physical lesson
+
+A target row's status is driven by its primary `lesson_slug`. Marking rows by
+`additional_existing_lessons` would falsely report a lesson as rewritten — for
+example `05_deutsch_jozsa` appears as an additional lesson on M4-B06, whose
+primary is `13_classical_bit_vs_qubit`.
+
+**Status:** RESOLVED. Progress is recorded per physical lesson in a
+`lesson_progress` map, carried across regeneration and checked by
+`test_rewritten_lessons_pass_the_authoring_standard`.
+
+### M4-10: Still open after Batch 1
+
+- **82 of 97 target items have no registered topic.** Not addressed: creating
+  them is the separate topic-expansion phase, deliberately not started.
+- **Inferred-tag defect (M4-1)** remains unfixed pending a separate decision.
+  Rewrites were written to avoid adding misleading tags where avoidable, but the
+  substring matcher still fires on ordinary English in 9 of 13 lessons.
