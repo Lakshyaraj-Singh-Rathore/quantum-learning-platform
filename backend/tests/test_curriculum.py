@@ -726,12 +726,20 @@ def _rewritten_slugs() -> set[str]:
         / "docs"
         / "M4_LESSON_REWRITE_TRACKER.json"
     )
-    items = json.loads(path.read_text(encoding="utf-8"))["items"]
-    return {
+    tracker = json.loads(path.read_text(encoding="utf-8"))
+    slugs = {
         item["lesson_slug"]
-        for item in items
+        for item in tracker["items"]
         if item["rewrite_status"] != "not_started" and item["lesson_slug"]
     }
+    # Physical lessons that only appear in `additional_existing_lessons` have no
+    # target row of their own, so they are recorded in `lesson_progress`.
+    slugs |= {
+        slug
+        for slug, rec in tracker.get("lesson_progress", {}).items()
+        if rec.get("rewrite_status", "not_started") != "not_started"
+    }
+    return slugs
 
 
 def test_rewritten_lessons_pass_the_authoring_standard():

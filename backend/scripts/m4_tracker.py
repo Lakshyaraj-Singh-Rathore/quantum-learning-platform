@@ -435,13 +435,20 @@ def carry_forward(rows: list[dict[str, Any]], out_dir: Path) -> int:
     if not path.exists():
         return 0
     try:
-        previous = json.loads(path.read_text(encoding="utf-8")).get("items", [])
+        previous_tracker = json.loads(path.read_text(encoding="utf-8"))
     except (json.JSONDecodeError, AttributeError):
         return 0
+    previous = previous_tracker.get("items", [])
+    carried_lessons: dict[str, Any] = {}
 
     by_id = {
         r["item_id"]: r for r in previous if r.get("rewrite_status", "not_started") != "not_started"
     }
+    # Progress is recorded per PHYSICAL lesson as well as per target row: a
+    # lesson that only ever appears in `additional_existing_lessons` has no row
+    # of its own, so marking that row would falsely claim its primary was done.
+    if isinstance(previous_tracker.get("lesson_progress"), dict):
+        carried_lessons.update(previous_tracker["lesson_progress"])
     restored = 0
     for row in rows:
         prior = by_id.get(row["item_id"])
@@ -451,22 +458,25 @@ def carry_forward(rows: list[dict[str, Any]], out_dir: Path) -> int:
             if prior.get(field) is not None:
                 row[field] = prior[field]
         restored += 1
-    return restored
+    return restored, carried_lessons
 
 
 def main() -> None:
     rows = build_rows()
     docs = ROOT / "docs"
     docs.mkdir(exist_ok=True)
-    carried = carry_forward(rows, docs)
+    carried, lessons = carry_forward(rows, docs)
     if carried:
         print(f"carried forward recorded progress for {carried} item(s)")
+    if lessons:
+        print(f"carried forward progress for {len(lessons)} physical lesson(s)")
 
     (docs / "M4_LESSON_REWRITE_TRACKER.json").write_text(
         json.dumps(
             {
                 "generated_by": "backend/scripts/m4_tracker.py",
                 "generated_on": date.today().isoformat(),
+                "lesson_progress": lessons,
                 "items": rows,
             },
             indent=2,

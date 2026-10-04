@@ -149,6 +149,18 @@ def validate(slug: str, text: str) -> LessonReport:
                 "separate lines"
             )
 
+    # -- raw HTML is not rendered -------------------------------------------- #
+    # The renderer is react-markdown with remark-gfm/remark-math/rehype-katex
+    # and no rehype-raw, so any literal tag is escaped and shown as text.
+    body = re.sub(r"```.*?```", "", text, flags=re.S)
+    html_tags = sorted({m.group(1).lower() for m in re.finditer(r"</?([a-zA-Z][a-zA-Z0-9-]*)\b[^>]*>", body)})
+    if html_tags:
+        rep.errors.append(
+            "raw HTML is escaped by the renderer, not rendered: "
+            + ", ".join(f"<{t}>" for t in html_tags)
+            + ". Use plain markdown (e.g. an '### Answers' heading) instead."
+        )
+
     # -- code fences --------------------------------------------------------- #
     if text.count("```") % 2:
         rep.errors.append("odd number of ``` fences; a code block is unclosed")

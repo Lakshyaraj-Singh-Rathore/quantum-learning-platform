@@ -104,7 +104,7 @@ Validation: `not_run` | `passed` | `failed` | `blocked` | `not_applicable`
 | Item ID | Target item | Topic ID | Lesson slug | Status | Rewrite | Notes |
 |---|---|---|---|---|---|---|
 | M4-E01 | Bernstein-Vazirani | — *pending* | *bernstein_vazirani?* | missing | not_started | No registered topic covers this target item |
-| M4-E02 | Deutsch-Jozsa | `algo.deutsch_jozsa` | `05_deutsch_jozsa` | existing | not_started |  |
+| M4-E02 | Deutsch-Jozsa | `algo.deutsch_jozsa` | `05_deutsch_jozsa` | existing | verified | Rewritten |
 | M4-E03 | Grover's Search | `algo.grover` | `06_grover` | existing | not_started |  |
 | M4-E04 | Quantum Fourier Transform | — *pending* | *quantum_fourier_transform?* | missing | not_started | No registered topic covers this target item |
 | M4-E05 | Quantum Phase Estimation | — *pending* | *quantum_phase_estimation?* | missing | not_started | No registered topic covers this target item |

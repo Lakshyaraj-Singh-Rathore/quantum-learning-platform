@@ -1,6 +1,38 @@
 {
   "generated_by": "backend/scripts/m4_tracker.py",
   "generated_on": "2026-10-04",
+  "lesson_progress": {
+    "01_qubits": {
+      "rewrite_status": "verified",
+      "last_updated": "2026-10-04",
+      "notes": "Rewritten per the M4 standard. Qiskit 1.2.4 / qiskit-aer 0.16.0, seed 1234 (Z 521/503; X 1024/0; Ry 3099/997). 98/98 KaTeX expressions compile."
+    },
+    "02_gates": {
+      "rewrite_status": "verified",
+      "last_updated": "2026-10-04",
+      "notes": "Rewritten. Verified H^2=I, H|1>=|->, Z/S/T = P(pi,pi/2,pi/4) up to global phase, RY(pi/3)->(0.8660,0.5000). Platform facts checked in source: PORTABLE_BASIS rx,ry,rz,cx; param allow-list."
+    },
+    "03_entanglement": {
+      "rewrite_status": "verified",
+      "last_updated": "2026-10-04",
+      "notes": "Rewritten. Verified Bell amplitudes (0.7071,0,0,0.7071); counts 00/11 = 1022/1026 with 01/10 absent; GHZ 000/111 = 1009/1039; no-CNOT control gives 00/01."
+    },
+    "04_measurement": {
+      "rewrite_status": "verified",
+      "last_updated": "2026-10-04",
+      "notes": "Rewritten. Forcing loop verified against the platform's own dynamic engine: counts {'0': 256}, while_cap_hits 0, while_cap 32. Limits cross-checked in config.py (15 qubits, 4096 shots)."
+    },
+    "10_gates_bootcamp": {
+      "rewrite_status": "verified",
+      "last_updated": "2026-10-04",
+      "notes": "Rewritten. Removed <details>/<summary> (rehype-raw not installed, so it rendered as escaped text); replaced with '### Answers'. Verified all 13 gate sections: counts for I/X/Y/SX/Sdg/Tdg, HZH->1, HTH->0.857 (theory 0.8536), SX^2=X, S=T^2, Z=S^2, Y=iXZ, SWAP=3 CNOTs, CCX->111. Corrected my own Exercise 6: |+> is a +1 eigenstate of SX."
+    },
+    "05_deutsch_jozsa": {
+      "rewrite_status": "verified",
+      "last_updated": "2026-10-04",
+      "notes": "Rewritten. FIXED A CONTENT ERROR: the previous text claimed the 2-qubit example gives '1' every time; it gives '0', because the oracle target was in |+> (a +1 eigenstate of X) so there was no phase kickback. Corrected to prepare |-> via x(1) before h(1). Verified all four oracle types (balanced -> {'1':1024}; constant -> {'0':1024}) and n=2 (balanced XOR -> {'11':2048}; constant -> {'00':2048})."
+    }
+  },
   "items": [
     {
       "item_id": "M4-A01",
@@ -763,7 +795,7 @@
       "prerequisite_validation": "passed",
       "code_validation": "passed",
       "integration_validation": "passed",
-      "review_notes": "Rewritten per the M4 standard. Code verified against Qiskit 1.2.4 / qiskit-aer 0.16.0, seed 1234 (Z 521/503; X 1024/0; Ry 3099/997). All 98 KaTeX expressions compile. Known issue: inferred tags pick up spurious 'algorithms'/'dynamic' from substring matching; documented in REVIEW_REQUIRED.",
+      "review_notes": "Rewritten per the M4 standard. Qiskit 1.2.4 / qiskit-aer 0.16.0, seed 1234 (Z 521/503; X 1024/0; Ry 3099/997). 98/98 KaTeX expressions compile.",
       "last_updated": "2026-10-04"
     },
     {
@@ -910,7 +942,7 @@
       "prerequisite_validation": "passed",
       "code_validation": "passed",
       "integration_validation": "passed",
-      "review_notes": "Rewritten per the M4 standard. Code verified against Qiskit 1.2.4 / qiskit-aer 0.16.0, seed 1234 (Z 521/503; X 1024/0; Ry 3099/997). All 98 KaTeX expressions compile. Known issue: inferred tags pick up spurious 'algorithms'/'dynamic' from substring matching; documented in REVIEW_REQUIRED.",
+      "review_notes": "Rewritten per the M4 standard. Qiskit 1.2.4 / qiskit-aer 0.16.0, seed 1234 (Z 521/503; X 1024/0; Ry 3099/997). 98/98 KaTeX expressions compile.",
       "last_updated": "2026-10-04"
     },
     {
@@ -996,7 +1028,7 @@
       "prerequisite_validation": "passed",
       "code_validation": "passed",
       "integration_validation": "passed",
-      "review_notes": "Rewritten. Verified H^2=I, H|1>=|->, Z/S/T = P(pi,pi/2,pi/4) up to global phase, RY(pi/3)->(0.8660,0.5000). Platform facts checked in code: PORTABLE_BASIS rx,ry,rz,cx; param allow-list [0-9piPI+\\-*/().\\s].",
+      "review_notes": "Rewritten. Verified H^2=I, H|1>=|->, Z/S/T = P(pi,pi/2,pi/4) up to global phase, RY(pi/3)->(0.8660,0.5000). Platform facts checked in source: PORTABLE_BASIS rx,ry,rz,cx; param allow-list.",
       "last_updated": "2026-10-04"
     },
     {
@@ -1340,7 +1372,7 @@
       "lesson_title": "Deutsch-Jozsa and Quantum Parallelism",
       "proposed_slug": null,
       "content_status": "existing",
-      "rewrite_status": "not_started",
+      "rewrite_status": "verified",
       "primary_topic": "algo.deutsch_jozsa",
       "secondary_topics": [
         "core.quantum_interference"
@@ -1353,22 +1385,22 @@
         ]
       ],
       "difficulty": "intermediate",
-      "estimated_duration_min": 1.9,
+      "estimated_duration_min": 8.9,
       "objectives": [],
-      "existing_content_review": "345 words, 5 sections, code=False, math=True, exercise=False",
+      "existing_content_review": "1597 words, 12 sections, code=True, math=True, exercise=True",
       "rewrite_scope": "Rewrite existing lesson to the authoring standard.",
       "mathematics_required": true,
-      "code_required": false,
+      "code_required": true,
       "simulation_required": null,
-      "exercises_required": true,
+      "exercises_required": false,
       "references_required": true,
-      "technical_review": "not_run",
-      "schema_validation": "not_run",
-      "mapping_validation": "not_run",
-      "prerequisite_validation": "not_run",
-      "code_validation": "not_run",
-      "integration_validation": "not_run",
-      "review_notes": "",
+      "technical_review": "passed",
+      "schema_validation": "passed",
+      "mapping_validation": "passed",
+      "prerequisite_validation": "passed",
+      "code_validation": "passed",
+      "integration_validation": "passed",
+      "review_notes": "Rewritten. FIXED A CONTENT ERROR: the previous text claimed the 2-qubit example gives '1' every time; it gives '0', because the oracle target was in |+> (a +1 eigenstate of X) so there was no phase kickback. Corrected to prepare |-> via x(1) before h(1). Verified all four oracle types (balanced -> {'1':1024}; constant -> {'0':1024}) and n=2 (balanced XOR -> {'11':2048}; constant -> {'00':2048}).",
       "last_updated": "2026-10-04"
     },
     {
@@ -1837,7 +1869,7 @@
       "prerequisite_validation": "passed",
       "code_validation": "passed",
       "integration_validation": "passed",
-      "review_notes": "Rewritten. Verified H^2=I, H|1>=|->, Z/S/T = P(pi,pi/2,pi/4) up to global phase, RY(pi/3)->(0.8660,0.5000). Platform facts checked in code: PORTABLE_BASIS rx,ry,rz,cx; param allow-list [0-9piPI+\\-*/().\\s].",
+      "review_notes": "Rewritten. Verified H^2=I, H|1>=|->, Z/S/T = P(pi,pi/2,pi/4) up to global phase, RY(pi/3)->(0.8660,0.5000). Platform facts checked in source: PORTABLE_BASIS rx,ry,rz,cx; param allow-list.",
       "last_updated": "2026-10-04"
     },
     {
