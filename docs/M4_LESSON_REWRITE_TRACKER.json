@@ -31,6 +31,21 @@
       "rewrite_status": "verified",
       "last_updated": "2026-10-04",
       "notes": "Rewritten. FIXED A CONTENT ERROR: the previous text claimed the 2-qubit example gives '1' every time; it gives '0', because the oracle target was in |+> (a +1 eigenstate of X) so there was no phase kickback. Corrected to prepare |-> via x(1) before h(1). Verified all four oracle types (balanced -> {'1':1024}; constant -> {'0':1024}) and n=2 (balanced XOR -> {'11':2048}; constant -> {'00':2048})."
+    },
+    "08_dynamic_circuits": {
+      "rewrite_status": "verified",
+      "last_updated": "2026-10-04",
+      "notes": "Rewritten. FOCUS: the execution model and export behaviour. Verified is_dynamic() per construct: if=True, while=True, for=False, box=False, terminal measure=False, plain gates=False. Confirmed DYNAMIC_BACKENDS == ['qiskit_dynamic'] (one entry). Verified if/else counts {'00':276,'01':748} and that H^4=I. Cross-checked limits in config.py: 15 qubits, 4096 shots, while_cap 32, 8s/15s celery timeouts. Complements 12_control_flow (the blocks in detail) with cross-links both ways."
+    },
+    "09_quantum_noise": {
+      "rewrite_status": "verified",
+      "last_updated": "2026-10-04",
+      "notes": "Rewritten. Verified against the platform's own Aer noise backend, not assumed: T2 clamped to 2*T1 (t1=5,t2=100 -> 10 with note); readout 15% gives counts {'00':791,'01':241,'10':255,'11':761} with fidelity 1.0000 and purity 1.0000; decoherence t1=5,t2=4 gives {'00':1049,'01':56,'10':73,'11':870} with fidelity 0.8645, purity 0.7586. CORRECTED A NUANCE: the 'purity bottoms out at 0.5' claim holds for pure DEPHASING (verified 0.5000 at t2=0.01), but strong T1 relaxation drives the state to pure |0>, returning purity to 1.0 at fidelity 0.5. Added a table showing both regimes. Virtual-Z list verified in noise.py."
+    },
+    "12_control_flow": {
+      "rewrite_status": "verified",
+      "last_updated": "2026-10-04",
+      "notes": "Rewritten. FOCUS: the four blocks in detail, measurement semantics, limits. Verified the conditional-correction example on the dynamic engine: with if -> {'00':514,'01':510} (q1 always 0); without if -> {'00':514,'11':510} (q1 copies q0). Verified repeat-until-success: {'0':512}, while_cap_hits 0. Noted the OpenQASM 3 inclusive-slice gotcha (c[0:2] is three bits). Cross-linked to 08_dynamic_circuits."
     }
   },
   "items": [
@@ -623,7 +638,7 @@
       "lesson_title": "Quantum Noise and Decoherence",
       "proposed_slug": null,
       "content_status": "partial",
-      "rewrite_status": "not_started",
+      "rewrite_status": "verified",
       "primary_topic": "core.quantum_channels",
       "secondary_topics": [
         "core.quantum_channels"
@@ -636,22 +651,22 @@
         ]
       ],
       "difficulty": "intermediate",
-      "estimated_duration_min": 6.1,
+      "estimated_duration_min": 11.9,
       "objectives": [],
-      "existing_content_review": "1094 words, 11 sections, code=False, math=True, exercise=True",
+      "existing_content_review": "2151 words, 17 sections, code=True, math=True, exercise=True",
       "rewrite_scope": "Complete partial lesson to the authoring standard.",
       "mathematics_required": true,
-      "code_required": false,
+      "code_required": true,
       "simulation_required": null,
       "exercises_required": false,
       "references_required": true,
-      "technical_review": "not_run",
-      "schema_validation": "not_run",
-      "mapping_validation": "not_run",
-      "prerequisite_validation": "not_run",
-      "code_validation": "not_run",
-      "integration_validation": "not_run",
-      "review_notes": "Existing lesson touches this item without covering the intended scope.",
+      "technical_review": "passed",
+      "schema_validation": "passed",
+      "mapping_validation": "passed",
+      "prerequisite_validation": "passed",
+      "code_validation": "passed",
+      "integration_validation": "passed",
+      "review_notes": "Rewritten. Verified against the platform's own Aer noise backend, not assumed: T2 clamped to 2*T1 (t1=5,t2=100 -> 10 with note); readout 15% gives counts {'00':791,'01':241,'10':255,'11':761} with fidelity 1.0000 and purity 1.0000; decoherence t1=5,t2=4 gives {'00':1049,'01':56,'10':73,'11':870} with fidelity 0.8645, purity 0.7586. CORRECTED A NUANCE: the 'purity bottoms out at 0.5' claim holds for pure DEPHASING (verified 0.5000 at t2=0.01), but strong T1 relaxation drives the state to pure |0>, returning purity to 1.0 at fidelity 0.5. Added a table showing both regimes. Virtual-Z list verified in noise.py.",
       "last_updated": "2026-10-04"
     },
     {
@@ -1295,7 +1310,7 @@
       "lesson_title": "Quantum Noise and Decoherence",
       "proposed_slug": null,
       "content_status": "existing",
-      "rewrite_status": "not_started",
+      "rewrite_status": "verified",
       "primary_topic": "qiskit.quantum_noise",
       "secondary_topics": [
         "core.quantum_channels"
@@ -1308,22 +1323,22 @@
         ]
       ],
       "difficulty": "intermediate",
-      "estimated_duration_min": 6.1,
+      "estimated_duration_min": 11.9,
       "objectives": [],
-      "existing_content_review": "1094 words, 11 sections, code=False, math=True, exercise=True",
+      "existing_content_review": "2151 words, 17 sections, code=True, math=True, exercise=True",
       "rewrite_scope": "Rewrite existing lesson to the authoring standard.",
       "mathematics_required": true,
-      "code_required": false,
+      "code_required": true,
       "simulation_required": null,
       "exercises_required": false,
       "references_required": true,
-      "technical_review": "not_run",
-      "schema_validation": "not_run",
-      "mapping_validation": "not_run",
-      "prerequisite_validation": "not_run",
-      "code_validation": "not_run",
-      "integration_validation": "not_run",
-      "review_notes": "",
+      "technical_review": "passed",
+      "schema_validation": "passed",
+      "mapping_validation": "passed",
+      "prerequisite_validation": "passed",
+      "code_validation": "passed",
+      "integration_validation": "passed",
+      "review_notes": "Rewritten. Verified against the platform's own Aer noise backend, not assumed: T2 clamped to 2*T1 (t1=5,t2=100 -> 10 with note); readout 15% gives counts {'00':791,'01':241,'10':255,'11':761} with fidelity 1.0000 and purity 1.0000; decoherence t1=5,t2=4 gives {'00':1049,'01':56,'10':73,'11':870} with fidelity 0.8645, purity 0.7586. CORRECTED A NUANCE: the 'purity bottoms out at 0.5' claim holds for pure DEPHASING (verified 0.5000 at t2=0.01), but strong T1 relaxation drives the state to pure |0>, returning purity to 1.0 at fidelity 0.5. Added a table showing both regimes. Virtual-Z list verified in noise.py.",
       "last_updated": "2026-10-04"
     },
     {
@@ -3595,7 +3610,7 @@
       "lesson_title": "Dynamic Circuits and Classical Control Flow",
       "proposed_slug": null,
       "content_status": "existing",
-      "rewrite_status": "not_started",
+      "rewrite_status": "verified",
       "primary_topic": "adv.dynamic_circuits",
       "secondary_topics": [],
       "prerequisites": [
@@ -3609,22 +3624,22 @@
         ]
       ],
       "difficulty": "advanced",
-      "estimated_duration_min": 2.9,
+      "estimated_duration_min": 8.3,
       "objectives": [],
-      "existing_content_review": "515 words, 10 sections, code=True, math=False, exercise=False",
+      "existing_content_review": "1503 words, 18 sections, code=True, math=False, exercise=True",
       "rewrite_scope": "Rewrite existing lesson to the authoring standard.",
       "mathematics_required": false,
       "code_required": true,
       "simulation_required": null,
-      "exercises_required": true,
+      "exercises_required": false,
       "references_required": true,
-      "technical_review": "not_run",
-      "schema_validation": "not_run",
-      "mapping_validation": "not_run",
-      "prerequisite_validation": "not_run",
-      "code_validation": "not_run",
-      "integration_validation": "not_run",
-      "review_notes": "This lesson exists on disk but no target-curriculum item points at it: the 97-item target list and the 17-topic registry do not line up. M4 still requires rewriting it.",
+      "technical_review": "passed",
+      "schema_validation": "passed",
+      "mapping_validation": "passed",
+      "prerequisite_validation": "passed",
+      "code_validation": "passed",
+      "integration_validation": "passed",
+      "review_notes": "Rewritten. FOCUS: the execution model and export behaviour. Verified is_dynamic() per construct: if=True, while=True, for=False, box=False, terminal measure=False, plain gates=False. Confirmed DYNAMIC_BACKENDS == ['qiskit_dynamic'] (one entry). Verified if/else counts {'00':276,'01':748} and that H^4=I. Cross-checked limits in config.py: 15 qubits, 4096 shots, while_cap 32, 8s/15s celery timeouts. Complements 12_control_flow (the blocks in detail) with cross-links both ways.",
       "last_updated": "2026-10-04"
     },
     {
@@ -3638,7 +3653,7 @@
       "lesson_title": "Control Flow: if, for, while and Box",
       "proposed_slug": null,
       "content_status": "existing",
-      "rewrite_status": "not_started",
+      "rewrite_status": "verified",
       "primary_topic": "adv.dynamic_circuits",
       "secondary_topics": [],
       "prerequisites": [
@@ -3652,22 +3667,22 @@
         ]
       ],
       "difficulty": "advanced",
-      "estimated_duration_min": 4.3,
+      "estimated_duration_min": 9.1,
       "objectives": [],
-      "existing_content_review": "779 words, 9 sections, code=True, math=False, exercise=True",
+      "existing_content_review": "1640 words, 15 sections, code=True, math=False, exercise=True",
       "rewrite_scope": "Rewrite existing lesson to the authoring standard.",
       "mathematics_required": false,
       "code_required": true,
       "simulation_required": null,
       "exercises_required": false,
       "references_required": true,
-      "technical_review": "not_run",
-      "schema_validation": "not_run",
-      "mapping_validation": "not_run",
-      "prerequisite_validation": "not_run",
-      "code_validation": "not_run",
-      "integration_validation": "not_run",
-      "review_notes": "This lesson exists on disk but no target-curriculum item points at it: the 97-item target list and the 17-topic registry do not line up. M4 still requires rewriting it.",
+      "technical_review": "passed",
+      "schema_validation": "passed",
+      "mapping_validation": "passed",
+      "prerequisite_validation": "passed",
+      "code_validation": "passed",
+      "integration_validation": "passed",
+      "review_notes": "Rewritten. FOCUS: the four blocks in detail, measurement semantics, limits. Verified the conditional-correction example on the dynamic engine: with if -> {'00':514,'01':510} (q1 always 0); without if -> {'00':514,'11':510} (q1 copies q0). Verified repeat-until-success: {'0':512}, while_cap_hits 0. Noted the OpenQASM 3 inclusive-slice gotcha (c[0:2] is three bits). Cross-linked to 08_dynamic_circuits.",
       "last_updated": "2026-10-04"
     }
   ]

@@ -63,7 +63,7 @@ Validation: `not_run` | `passed` | `failed` | `blocked` | `not_applicable`
 | M4-B05 | Partial Trace and Reduced States | — *pending* | *partial_trace_and_reduced_states?* | missing | not_started | No registered topic covers this target item |
 | M4-B06 | Quantum Interference | `core.quantum_interference` | `13_classical_bit_vs_qubit` | partial | not_started | Existing lesson touches this item without covering the intended scope |
 | M4-B07 | Relative and Global Phase | — *pending* | *relative_and_global_phase?* | missing | not_started | No registered topic covers this target item |
-| M4-B08 | Quantum Channels | `core.quantum_channels` | `09_quantum_noise` | partial | not_started | Existing lesson touches this item without covering the intended scope |
+| M4-B08 | Quantum Channels | `core.quantum_channels` | `09_quantum_noise` | partial | verified | Rewritten |
 | M4-B09 | Entanglement Entropy and Monogamy | — *pending* | *entanglement_entropy_and_monogamy?* | missing | not_started | No registered topic covers this target item |
 | M4-B10 | No-Cloning and No-Deleting | — *pending* | *no_cloning_and_no_deleting?* | missing | not_started | No registered topic covers this target item |
 
@@ -95,7 +95,7 @@ Validation: `not_run` | `passed` | `failed` | `blocked` | `not_applicable`
 | M4-D03 | Estimator | — *pending* | *estimator?* | missing | not_started | No registered topic covers this target item |
 | M4-D04 | Bloch Sphere | — *pending* | *bloch_sphere?* | missing | not_started | No registered topic covers this target item |
 | M4-D05 | Histograms | — *pending* | *histograms?* | missing | not_started | No registered topic covers this target item |
-| M4-D06 | Quantum Noise | `qiskit.quantum_noise` | `09_quantum_noise` | existing | not_started |  |
+| M4-D06 | Quantum Noise | `qiskit.quantum_noise` | `09_quantum_noise` | existing | verified | Rewritten |
 
 ## Section E — Quantum Algorithms
 
@@ -115,8 +115,8 @@ Validation: `not_run` | `passed` | `failed` | `blocked` | `not_applicable`
 | M4-E10 | HHL | — *pending* | *hhl?* | missing | not_started | No registered topic covers this target item |
 | M4-E11 | Quantum Key Distribution | — *pending* | *quantum_key_distribution?* | missing | not_started | No registered topic covers this target item |
 | M4-EXTRA-03_entanglement |  | `qc.entanglement` | `03_entanglement` | existing | verified | Rewritten |
-| M4-EXTRA-08_dynamic_circuits |  | `adv.dynamic_circuits` | `08_dynamic_circuits` | existing | not_started | This lesson exists on disk but no target-curriculum item points at it: the 97-item target list and the 17-topic registry do not line up |
-| M4-EXTRA-12_control_flow |  | `adv.dynamic_circuits` | `12_control_flow` | existing | not_started | This lesson exists on disk but no target-curriculum item points at it: the 97-item target list and the 17-topic registry do not line up |
+| M4-EXTRA-08_dynamic_circuits |  | `adv.dynamic_circuits` | `08_dynamic_circuits` | existing | verified | Rewritten |
+| M4-EXTRA-12_control_flow |  | `adv.dynamic_circuits` | `12_control_flow` | existing | verified | Rewritten |
 
 ## Section F — Advanced Gates and Circuits
 
@@ -214,5 +214,5 @@ mismatch visible instead of hiding it.
 | Item ID | Lesson slug | Topic ID | Status | Rewrite |
 |---|---|---|---|---|
 | M4-EXTRA-03_entanglement | `03_entanglement` | `qc.entanglement` | existing | verified |
-| M4-EXTRA-08_dynamic_circuits | `08_dynamic_circuits` | `adv.dynamic_circuits` | existing | not_started |
-| M4-EXTRA-12_control_flow | `12_control_flow` | `adv.dynamic_circuits` | existing | not_started |
+| M4-EXTRA-08_dynamic_circuits | `08_dynamic_circuits` | `adv.dynamic_circuits` | existing | verified |
+| M4-EXTRA-12_control_flow | `12_control_flow` | `adv.dynamic_circuits` | existing | verified |

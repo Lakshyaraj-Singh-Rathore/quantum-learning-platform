@@ -25,8 +25,13 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 CONTENT_DIR = ROOT / "content"
 
-#: A "$$" block whose closing delimiter is on a later line.
-MULTILINE_DISPLAY = re.compile(r"\$\$\n(.*?)\n\$\$", re.S)
+#: A "$$" block whose delimiters are each alone on their own line.
+#:
+#: The delimiters must be anchored to whole lines. A bare ``\$\$\n`` also
+#: matches the *closing* delimiter of an already single-line block
+#: (``$$x$$`` followed by a newline), which would swallow everything up to the
+#: next block and merge unrelated maths onto one line.
+MULTILINE_DISPLAY = re.compile(r"^\$\$\s*$\n(.*?)^\$\$\s*$", re.S | re.M)
 
 
 def collapse_display_maths(text: str) -> tuple[str, int]:

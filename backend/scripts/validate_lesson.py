@@ -44,6 +44,7 @@ MEASURABLE_VERBS = {
     "distinguish", "list", "compute", "show", "describe", "draw", "predict",
     "evaluate", "classify", "convert", "locate", "prepare", "measure",
     "write", "enter", "build", "predict", "report", "verify", "use", "run",
+    "choose", "decide", "select", "set", "match",
 }
 VAGUE_VERBS = {"understand", "appreciate", "learn", "know", "grasp", "explore"}
 
@@ -170,6 +171,17 @@ def validate(slug: str, text: str) -> LessonReport:
         after = text.split(re.search(r"^##\s+Exercises?\s*$", text, flags=re.M).group(0), 1)[1]
         if not re.search(r"^#{2,3}\s+Answers?", after, flags=re.M):
             rep.errors.append("exercises section has no answers subsection")
+
+    # -- headings stand alone ------------------------------------------------ #
+    # A heading merged with the paragraph that follows it renders as one huge
+    # heading. This is what a bad markdown reflow leaves behind.
+    prose = re.sub(r"```.*?```", "", text, flags=re.S)
+    for number, line in enumerate(prose.split("\n"), start=1):
+        if re.match(r"#{1,6}\s", line) and len(line) > 90:
+            rep.errors.append(
+                f"line {number} is a heading merged with body text "
+                f"({len(line)} chars); put the heading on its own line"
+            )
 
     # -- chunking ------------------------------------------------------------ #
     sections = re.split(r"\n(?=#{1,3}\s)", text.strip())
