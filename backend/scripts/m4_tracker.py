@@ -80,6 +80,35 @@ def lesson_meta(slug: str) -> dict[str, Any]:
     }
 
 
+#: Populated lazily by :func:`_topic_proposal`, which reads the M4 topic-gap
+#: proposal. The proposal is documentation only -- attaching it here records
+#: analysis status without creating any topic.
+_TOPIC_PROPOSAL_CACHE: dict[str, str] | None = None
+
+
+def _topic_proposal() -> dict[str, str]:
+    """Map target item -> proposed topic id, from the gap analysis.
+
+    Returns an empty mapping if the analysis module is unavailable, so the
+    tracker never depends on it.
+    """
+    global _TOPIC_PROPOSAL_CACHE
+    if _TOPIC_PROPOSAL_CACHE is not None:
+        return _TOPIC_PROPOSAL_CACHE
+    mapping: dict[str, str] = {}
+    try:
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        import topic_gap_analysis as tga
+
+        for entry in tga.PROPOSAL:
+            for item in entry["items"]:
+                mapping[item] = entry["id"]
+    except Exception:  # noqa: BLE001 - the tracker must not fail on this
+        mapping = {}
+    _TOPIC_PROPOSAL_CACHE = mapping
+    return mapping
+
+
 def build_rows() -> list[dict[str, Any]]:
     """One row per target item, in roadmap order."""
     links = all_lesson_topics()
@@ -161,6 +190,17 @@ def build_rows() -> list[dict[str, Any]]:
                 "topic_id": topic_id,
                 "topic_name": str(topic["title"]) if topic else None,
                 "topic_state": topic_state,
+                "proposed_topic_id": (
+                    _topic_proposal().get(item)
+                    if topic_state == "PENDING_TOPIC_CREATION"
+                    else None
+                ),
+                "analysis_status": (
+                    "proposed_topic" if topic_state == "PENDING_TOPIC_CREATION"
+                    and item in _topic_proposal()
+                    else ("analysis_pending" if topic_state == "PENDING_TOPIC_CREATION"
+                          else "not_applicable")
+                ),
                 "lesson_slug": lesson_slug,
                 "lesson_title": lesson_title,
                 "proposed_slug": None if lesson_slug else slugify(item),
@@ -256,6 +296,8 @@ def _orphan_lesson_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
             "topic_id": topic_id,
             "topic_name": str(topic["title"]) if topic else None,
             "topic_state": "registered" if topic_id else "PENDING_TOPIC_CREATION",
+            "proposed_topic_id": None,
+            "analysis_status": "not_applicable",
             "lesson_slug": slug,
             "lesson_title": meta["title"],
             "proposed_slug": None,

@@ -123,3 +123,25 @@ primary is `13_classical_bit_vs_qubit`.
 - **Inferred-tag defect (M4-1)** remains unfixed pending a separate decision.
   Rewrites were written to avoid adding misleading tags where avoidable, but the
   substring matcher still fires on ordinary English in 9 of 13 lessons.
+
+### M4-11: Adding a topic requires a migration, not just a registry edit
+
+`app/curriculum.py` is imported only by Alembic migrations, tests and scripts.
+There is **no runtime sync** from the registry into the database, so adding an
+entry to `TOPICS` changes nothing for a running service until a new Alembic
+revision inserts the row.
+
+**Status:** DOCUMENTED in the topic-gap analysis. Relevant to any future
+approval: approving the topic architecture is a separate decision from
+approving the migration that implements it.
+
+### M4-12: The target list double-counts quantum cryptography
+
+`Quantum Key Distribution` (section E, algorithms) and `Quantum Cryptography`
+(section J, communication) describe the same subject. The target list therefore
+holds 96 distinct subjects across 97 items, so any coverage percentage computed
+against 97 is marginally pessimistic.
+
+**Status:** FLAGGED, not silently merged. Deduplicating the target list is a
+curriculum decision, not a documentation one. The proposal assigns both to a
+single `comm.cryptography` topic and records the discrepancy.

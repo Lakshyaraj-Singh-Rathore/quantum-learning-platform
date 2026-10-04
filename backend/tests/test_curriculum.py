@@ -773,3 +773,72 @@ def test_tracker_progress_survives_regeneration():
     for item in progressed:
         assert item["last_updated"], f"{item['item_id']} has progress but no timestamp"
         assert item["review_notes"], f"{item['item_id']} has progress but no notes"
+
+
+# -------------------------------------------------------------------------- #
+# M4 topic-gap analysis: the proposal is documentation only, but it is
+# checked so it cannot silently contradict the registry.
+# -------------------------------------------------------------------------- #
+
+
+def _gap_module():
+    """Import backend/scripts/topic_gap_analysis.py."""
+    import importlib.util
+
+    path = (
+        pathlib.Path(__file__).resolve().parents[1]
+        / "scripts"
+        / "topic_gap_analysis.py"
+    )
+    spec = importlib.util.spec_from_file_location("topic_gap_analysis", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_topic_gap_proposal_validates():
+    """Every unmapped item is covered exactly once, ids are unique, and every
+    prerequisite resolves."""
+    mod = _gap_module()
+    assert mod.validate() == [], f"proposal is invalid: {mod.validate()}"
+
+
+def test_topic_gap_proposal_creates_no_topics():
+    """The proposal must not touch the registry. This is the guard that keeps a
+    documentation phase from becoming an unapproved implementation."""
+    import subprocess
+
+    mod = _gap_module()
+    proposed = {p["id"] for p in mod.PROPOSAL}
+    registered = {t["id"] for t in TOPICS}
+    assert not (proposed & registered), (
+        f"proposal collides with registered topics: {sorted(proposed & registered)}"
+    )
+    # The registry file itself must be unmodified by importing/running the script.
+    registry = pathlib.Path(__file__).resolve().parents[1] / "app" / "curriculum.py"
+    diff = subprocess.run(
+        ["git", "diff", "--quiet", "--", str(registry)],
+        cwd=str(registry.parents[2]),
+        capture_output=True,
+    )
+    assert diff.returncode == 0, "app/curriculum.py has uncommitted changes"
+
+
+def test_topic_gap_document_is_in_sync():
+    """The committed document must match what the generator would produce now,
+    so the numbers in it cannot drift from the data."""
+    mod = _gap_module()
+    doc = (
+        pathlib.Path(__file__).resolve().parents[1].parent
+        / "docs"
+        / "M4_TOPIC_GAP_ANALYSIS.md"
+    )
+    assert doc.exists(), "M4_TOPIC_GAP_ANALYSIS.md is missing"
+    text = doc.read_text(encoding="utf-8")
+    assert "PROPOSAL ONLY" in text
+    # Headline counts must match the live data.
+    pending = len(mod.pending_items())
+    assert f"**Unmapped: {pending} items**" in text, (
+        "document headline count is stale; re-run topic_gap_analysis.py"
+    )
+    assert f"**{len(mod.PROPOSAL)} proposed topics for {pending} items**" in text
