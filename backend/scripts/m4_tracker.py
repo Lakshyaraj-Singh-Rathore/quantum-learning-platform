@@ -408,10 +408,59 @@ def _target_name(item_id: str) -> str:
     return _TARGET_INDEX.get(item_id, "")
 
 
+#: Fields the generator owns and recomputes from the curriculum definition.
+#: Everything else -- review state, validation results, notes -- is authored by
+#: hand and must survive a regeneration, or re-running the script would silently
+#: erase recorded progress.
+PROGRESS_FIELDS = (
+    "rewrite_status",
+    "technical_review",
+    "schema_validation",
+    "mapping_validation",
+    "prerequisite_validation",
+    "code_validation",
+    "integration_validation",
+    "review_notes",
+    "last_updated",
+)
+
+
+def carry_forward(rows: list[dict[str, Any]], out_dir: Path) -> int:
+    """Re-apply hand-authored progress from the existing tracker onto `rows`.
+
+    Rows are matched on `item_id`, which is stable. Returns how many rows had
+    progress restored.
+    """
+    path = out_dir / "M4_LESSON_REWRITE_TRACKER.json"
+    if not path.exists():
+        return 0
+    try:
+        previous = json.loads(path.read_text(encoding="utf-8")).get("items", [])
+    except (json.JSONDecodeError, AttributeError):
+        return 0
+
+    by_id = {
+        r["item_id"]: r for r in previous if r.get("rewrite_status", "not_started") != "not_started"
+    }
+    restored = 0
+    for row in rows:
+        prior = by_id.get(row["item_id"])
+        if not prior:
+            continue
+        for field in PROGRESS_FIELDS:
+            if prior.get(field) is not None:
+                row[field] = prior[field]
+        restored += 1
+    return restored
+
+
 def main() -> None:
     rows = build_rows()
     docs = ROOT / "docs"
     docs.mkdir(exist_ok=True)
+    carried = carry_forward(rows, docs)
+    if carried:
+        print(f"carried forward recorded progress for {carried} item(s)")
 
     (docs / "M4_LESSON_REWRITE_TRACKER.json").write_text(
         json.dumps(

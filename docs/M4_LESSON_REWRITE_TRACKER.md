@@ -57,7 +57,7 @@ Validation: `not_run` | `passed` | `failed` | `blocked` | `not_applicable`
 | Item ID | Target item | Topic ID | Lesson slug | Status | Rewrite | Notes |
 |---|---|---|---|---|---|---|
 | M4-B01 | Quantum Postulates | — *pending* | *quantum_postulates?* | missing | not_started | No registered topic covers this target item |
-| M4-B02 | Measurement Theory and POVMs | `core.measurement_theory` | `04_measurement` | partial | not_started | Existing lesson touches this item without covering the intended scope |
+| M4-B02 | Measurement Theory and POVMs | `core.measurement_theory` | `04_measurement` | partial | verified | Rewritten |
 | M4-B03 | Pure and Mixed States | — *pending* | *pure_and_mixed_states?* | missing | not_started | No registered topic covers this target item |
 | M4-B04 | Density Matrices | — *pending* | *density_matrices?* | missing | not_started | No registered topic covers this target item |
 | M4-B05 | Partial Trace and Reduced States | — *pending* | *partial_trace_and_reduced_states?* | missing | not_started | No registered topic covers this target item |
@@ -74,13 +74,13 @@ Validation: `not_run` | `passed` | `failed` | `blocked` | `not_applicable`
 | Item ID | Target item | Topic ID | Lesson slug | Status | Rewrite | Notes |
 |---|---|---|---|---|---|---|
 | M4-C01 | Quantum Mechanics | — *pending* | *quantum_mechanics?* | missing | not_started | No registered topic covers this target item |
-| M4-C02 | Qubits | `qc.qubits` | `01_qubits` | existing | not_started | Topic already has 2 lessons: 13_classical_bit_vs_qubit, 01_qubits |
+| M4-C02 | Qubits | `qc.qubits` | `01_qubits` | existing | verified | Rewritten per the M4 standard |
 | M4-C03 | Dirac Notation | — *pending* | *dirac_notation?* | missing | not_started | No registered topic covers this target item |
 | M4-C04 | Tensor Products | — *pending* | *tensor_products?* | missing | not_started | No registered topic covers this target item |
 | M4-C05 | Inner Product | — *pending* | *inner_product?* | missing | not_started | No registered topic covers this target item |
-| M4-C06 | Superposition | `qc.superposition` | `01_qubits` | partial | not_started | Existing lesson touches this item without covering the intended scope |
+| M4-C06 | Superposition | `qc.superposition` | `01_qubits` | partial | verified | Rewritten per the M4 standard |
 | M4-C07 | Bell States | `qc.bell_states` | `11_bell_states` | existing | not_started |  |
-| M4-C08 | Basic Quantum Gates | `qc.basic_gates` | `02_gates` | existing | not_started | Topic already has 2 lessons: 02_gates, 10_gates_bootcamp |
+| M4-C08 | Basic Quantum Gates | `qc.basic_gates` | `02_gates` | existing | verified | Rewritten |
 | M4-C09 | Understanding Circuits and Finding Results | — *pending* | *understanding_circuits_and_finding_results?* | missing | not_started | No registered topic covers this target item |
 | M4-C10 | Quantum Teleportation | — *pending* | *quantum_teleportation?* | missing | not_started | No registered topic covers this target item |
 
@@ -91,7 +91,7 @@ Validation: `not_run` | `passed` | `failed` | `blocked` | `not_applicable`
 | Item ID | Target item | Topic ID | Lesson slug | Status | Rewrite | Notes |
 |---|---|---|---|---|---|---|
 | M4-D01 | Quantum Composer | — *pending* | *quantum_composer?* | missing | not_started | No registered topic covers this target item |
-| M4-D02 | Sampler | `qiskit.sampler` | `04_measurement` | partial | not_started | Existing lesson touches this item without covering the intended scope |
+| M4-D02 | Sampler | `qiskit.sampler` | `04_measurement` | partial | verified | Rewritten |
 | M4-D03 | Estimator | — *pending* | *estimator?* | missing | not_started | No registered topic covers this target item |
 | M4-D04 | Bloch Sphere | — *pending* | *bloch_sphere?* | missing | not_started | No registered topic covers this target item |
 | M4-D05 | Histograms | — *pending* | *histograms?* | missing | not_started | No registered topic covers this target item |
@@ -114,7 +114,7 @@ Validation: `not_run` | `passed` | `failed` | `blocked` | `not_applicable`
 | M4-E09 | Amplitude Estimation | — *pending* | *amplitude_estimation?* | missing | not_started | No registered topic covers this target item |
 | M4-E10 | HHL | — *pending* | *hhl?* | missing | not_started | No registered topic covers this target item |
 | M4-E11 | Quantum Key Distribution | — *pending* | *quantum_key_distribution?* | missing | not_started | No registered topic covers this target item |
-| M4-EXTRA-03_entanglement |  | `qc.entanglement` | `03_entanglement` | existing | not_started | This lesson exists on disk but no target-curriculum item points at it: the 97-item target list and the 17-topic registry do not line up |
+| M4-EXTRA-03_entanglement |  | `qc.entanglement` | `03_entanglement` | existing | verified | Rewritten |
 | M4-EXTRA-08_dynamic_circuits |  | `adv.dynamic_circuits` | `08_dynamic_circuits` | existing | not_started | This lesson exists on disk but no target-curriculum item points at it: the 97-item target list and the 17-topic registry do not line up |
 | M4-EXTRA-12_control_flow |  | `adv.dynamic_circuits` | `12_control_flow` | existing | not_started | This lesson exists on disk but no target-curriculum item points at it: the 97-item target list and the 17-topic registry do not line up |
 
@@ -127,7 +127,7 @@ Validation: `not_run` | `passed` | `failed` | `blocked` | `not_applicable`
 | M4-F01 | Toffoli and Multi-Controlled Gates | — *pending* | *toffoli_and_multi_controlled_gates?* | missing | not_started | No registered topic covers this target item |
 | M4-F02 | Controlled Rotations | — *pending* | *controlled_rotations?* | missing | not_started | No registered topic covers this target item |
 | M4-F03 | U3, iSWAP and fSim | — *pending* | *u3_iswap_and_fsim?* | missing | not_started | No registered topic covers this target item |
-| M4-F04 | Quantum Universality | `adv.quantum_universality` | `02_gates` | partial | not_started | Existing lesson touches this item without covering the intended scope |
+| M4-F04 | Quantum Universality | `adv.quantum_universality` | `02_gates` | partial | verified | Rewritten |
 | M4-F05 | Circuit Identities and Simplification | — *pending* | *circuit_identities_and_simplification?* | missing | not_started | No registered topic covers this target item |
 | M4-F06 | GHZ versus W States | — *pending* | *ghz_versus_w_states?* | missing | not_started | No registered topic covers this target item |
 | M4-F07 | Transpilation | — *pending* | *transpilation?* | missing | not_started | No registered topic covers this target item |
@@ -213,6 +213,6 @@ mismatch visible instead of hiding it.
 
 | Item ID | Lesson slug | Topic ID | Status | Rewrite |
 |---|---|---|---|---|
-| M4-EXTRA-03_entanglement | `03_entanglement` | `qc.entanglement` | existing | not_started |
+| M4-EXTRA-03_entanglement | `03_entanglement` | `qc.entanglement` | existing | verified |
 | M4-EXTRA-08_dynamic_circuits | `08_dynamic_circuits` | `adv.dynamic_circuits` | existing | not_started |
 | M4-EXTRA-12_control_flow | `12_control_flow` | `adv.dynamic_circuits` | existing | not_started |

@@ -52,9 +52,37 @@ def infer_track(text: str) -> str:
     return match.group(1).lower() if match else "theory"
 
 
+def split_on_headings(text: str) -> list[str]:
+    """Split on ``#``/``##``/``###`` headings, skipping fenced code blocks."""
+    sections: list[str] = []
+    current: list[str] = []
+    in_fence = False
+    for line in text.splitlines(keepends=True):
+        if line.lstrip().startswith("```"):
+            in_fence = not in_fence
+            current.append(line)
+            continue
+        if not in_fence and re.match(r"#{1,3}\s", line):
+            if current:
+                sections.append("".join(current))
+            current = [line]
+            continue
+        current.append(line)
+    if current:
+        sections.append("".join(current))
+    return [s for s in (sec.strip() for sec in sections) if s]
+
+
 def chunk_markdown(text: str) -> list[str]:
-    """Split on headings, then pack sections up to a target size."""
-    sections = re.split(r"\n(?=#{1,3}\s)", text.strip())
+    """Split on headings, then pack sections up to a target size.
+
+    Heading detection ignores anything inside a fenced code block. Without
+    that guard, a Python comment such as ``# run the circuit`` matches
+    ``#{1,3}\s`` and the lesson is split in the middle of a code sample,
+    leaving unbalanced fences and a truncated snippet. Lessons are full of
+    commented code, so this matters in practice.
+    """
+    sections = split_on_headings(text.strip())
     chunks: list[str] = []
     buffer = ""
     for section in sections:

@@ -697,3 +697,71 @@ def test_tracker_reports_every_existing_lesson():
         tracked.update(i.get("additional_existing_lessons") or [])
     untracked = on_disk - tracked
     assert not untracked, f"existing lessons absent from the tracker: {sorted(untracked)}"
+
+
+# --------------------------------------------------------------------------
+# M4: lessons marked as rewritten must satisfy the authoring standard.
+# --------------------------------------------------------------------------
+
+
+def _m4_validator():
+    """Import the M4 lesson validator from backend/scripts."""
+    import importlib.util
+
+    path = (
+        pathlib.Path(__file__).resolve().parents[1]
+        / "scripts"
+        / "validate_lesson.py"
+    )
+    spec = importlib.util.spec_from_file_location("validate_lesson", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def _rewritten_slugs() -> set[str]:
+    """Slugs of lessons the tracker records as rewritten."""
+    path = (
+        pathlib.Path(__file__).resolve().parents[1].parent
+        / "docs"
+        / "M4_LESSON_REWRITE_TRACKER.json"
+    )
+    items = json.loads(path.read_text(encoding="utf-8"))["items"]
+    return {
+        item["lesson_slug"]
+        for item in items
+        if item["rewrite_status"] != "not_started" and item["lesson_slug"]
+    }
+
+
+def test_rewritten_lessons_pass_the_authoring_standard():
+    """Every lesson the tracker claims is rewritten must actually validate.
+
+    This is the anti-fake-progress check: it must be impossible to flip a
+    tracker row to 'complete' without the content meeting the standard.
+    """
+    validator = _m4_validator()
+    slugs = _rewritten_slugs()
+    assert slugs, "the tracker records no rewritten lessons"
+
+    content_dir = pathlib.Path(__file__).resolve().parents[1].parent / "content"
+    for slug in sorted(slugs):
+        path = content_dir / f"{slug}.md"
+        assert path.exists(), f"tracker marks {slug} rewritten but the file is missing"
+        report = validator.validate(slug, path.read_text(encoding="utf-8"))
+        assert report.errors == [], f"{slug} fails the authoring standard: {report.errors}"
+
+
+def test_tracker_progress_survives_regeneration():
+    """Regenerating the tracker must not erase hand-authored progress."""
+    rows_path = (
+        pathlib.Path(__file__).resolve().parents[1].parent
+        / "docs"
+        / "M4_LESSON_REWRITE_TRACKER.json"
+    )
+    items = json.loads(rows_path.read_text(encoding="utf-8"))["items"]
+    progressed = [i for i in items if i["rewrite_status"] != "not_started"]
+    assert progressed, "no recorded progress to check"
+    for item in progressed:
+        assert item["last_updated"], f"{item['item_id']} has progress but no timestamp"
+        assert item["review_notes"], f"{item['item_id']} has progress but no notes"

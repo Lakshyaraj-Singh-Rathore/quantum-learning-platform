@@ -43,3 +43,35 @@ def test_inline_math_delimiters_are_balanced(path: pathlib.Path):
         assert line.count("$") % 2 == 0, (
             f"{path.name}:{number} has an unbalanced inline $ delimiter"
         )
+
+
+def test_chunking_never_splits_inside_a_code_block():
+    """A Python comment looks like a level-1 heading, so a naive split on
+    `#{1,3}\\s` cuts lessons in the middle of a code sample. Lessons are full of
+    commented code, so the chunker must be fence-aware."""
+    from app.ai.rag import chunk_markdown
+
+    lesson = (
+        "# Title\n\n"
+        "Prose before the example.\n\n"
+        "## Example\n\n"
+        "```python\n"
+        "# this comment looks like a heading\n"
+        "qc.h(0)\n"
+        "# and so does this one\n"
+        "qc.measure(0, 0)\n"
+        "```\n\n"
+        "## After\n\n"
+        "Prose after the example.\n"
+    )
+    chunks = chunk_markdown(lesson)
+    # Each chunk must have balanced fences: a split inside a block leaves one.
+    for i, chunk in enumerate(chunks):
+        assert chunk.count("```") % 2 == 0, f"chunk {i} has an unbalanced fence"
+    # The code must survive intact in a single chunk.
+    joined = "\n".join(chunks)
+    assert "# this comment looks like a heading" in joined
+    assert "qc.measure(0, 0)" in joined
+    assert any("qc.h(0)" in c and "qc.measure(0, 0)" in c for c in chunks), (
+        "the code sample was split across chunks"
+    )

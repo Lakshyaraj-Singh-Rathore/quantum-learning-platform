@@ -1,6 +1,6 @@
 {
   "generated_by": "backend/scripts/m4_tracker.py",
-  "generated_on": "2026-10-03",
+  "generated_on": "2026-10-04",
   "items": [
     {
       "item_id": "M4-A01",
@@ -35,7 +35,7 @@
       "code_validation": "not_run",
       "integration_validation": "not_run",
       "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'complex_numbers_and_eulers_formula' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-03"
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-A02",
@@ -70,7 +70,7 @@
       "code_validation": "not_run",
       "integration_validation": "not_run",
       "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'linear_algebra' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-03"
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-A03",
@@ -105,7 +105,7 @@
       "code_validation": "not_run",
       "integration_validation": "not_run",
       "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'vectors_and_matrices' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-03"
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-A04",
@@ -140,7 +140,7 @@
       "code_validation": "not_run",
       "integration_validation": "not_run",
       "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'eigenvalues_and_eigenvectors' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-03"
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-A05",
@@ -175,7 +175,7 @@
       "code_validation": "not_run",
       "integration_validation": "not_run",
       "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'hermitian_and_unitary_matrices' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-03"
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-A06",
@@ -210,7 +210,7 @@
       "code_validation": "not_run",
       "integration_validation": "not_run",
       "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'change_of_basis' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-03"
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-A07",
@@ -245,7 +245,7 @@
       "code_validation": "not_run",
       "integration_validation": "not_run",
       "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'probability_expectation_and_variance' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-03"
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-A08",
@@ -280,7 +280,7 @@
       "code_validation": "not_run",
       "integration_validation": "not_run",
       "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'sampling_error_and_confidence_intervals' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-03"
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-A09",
@@ -315,7 +315,7 @@
       "code_validation": "not_run",
       "integration_validation": "not_run",
       "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'introductory_group_theory' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-03"
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-B01",
@@ -350,7 +350,7 @@
       "code_validation": "not_run",
       "integration_validation": "not_run",
       "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'quantum_postulates' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-03"
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-B02",
@@ -363,7 +363,7 @@
       "lesson_title": "Measurement and Dynamic Circuits",
       "proposed_slug": null,
       "content_status": "partial",
-      "rewrite_status": "not_started",
+      "rewrite_status": "verified",
       "primary_topic": "core.measurement_theory",
       "secondary_topics": [
         "qiskit.sampler",
@@ -377,23 +377,23 @@
         ]
       ],
       "difficulty": "beginner",
-      "estimated_duration_min": 2.9,
+      "estimated_duration_min": 9.5,
       "objectives": [],
-      "existing_content_review": "528 words, 7 sections, code=True, math=True, exercise=False",
+      "existing_content_review": "1702 words, 15 sections, code=True, math=True, exercise=True",
       "rewrite_scope": "Complete partial lesson to the authoring standard.",
       "mathematics_required": true,
       "code_required": true,
       "simulation_required": null,
-      "exercises_required": true,
+      "exercises_required": false,
       "references_required": true,
-      "technical_review": "not_run",
-      "schema_validation": "not_run",
-      "mapping_validation": "not_run",
-      "prerequisite_validation": "not_run",
-      "code_validation": "not_run",
-      "integration_validation": "not_run",
-      "review_notes": "Existing lesson touches this item without covering the intended scope.",
-      "last_updated": "2026-10-03"
+      "technical_review": "passed",
+      "schema_validation": "passed",
+      "mapping_validation": "passed",
+      "prerequisite_validation": "passed",
+      "code_validation": "passed",
+      "integration_validation": "passed",
+      "review_notes": "Rewritten. Forcing loop verified against the platform's own dynamic engine: counts {'0': 256}, while_cap_hits 0, while_cap 32. Limits cross-checked in config.py (15 qubits, 4096 shots).",
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-B03",
@@ -428,7 +428,7 @@
       "code_validation": "not_run",
       "integration_validation": "not_run",
       "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'pure_and_mixed_states' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-03"
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-B04",
@@ -463,7 +463,7 @@
       "code_validation": "not_run",
       "integration_validation": "not_run",
       "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'density_matrices' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-03"
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-B05",
@@ -498,7 +498,7 @@
       "code_validation": "not_run",
       "integration_validation": "not_run",
       "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'partial_trace_and_reduced_states' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-03"
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-B06",
@@ -543,7 +543,7 @@
       "code_validation": "not_run",
       "integration_validation": "not_run",
       "review_notes": "Existing lesson touches this item without covering the intended scope. Topic already has 3 lessons: 13_classical_bit_vs_qubit, 05_deutsch_jozsa, 06_grover",
-      "last_updated": "2026-10-03"
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-B07",
@@ -578,7 +578,7 @@
       "code_validation": "not_run",
       "integration_validation": "not_run",
       "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'relative_and_global_phase' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-03"
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-B08",
@@ -620,7 +620,7 @@
       "code_validation": "not_run",
       "integration_validation": "not_run",
       "review_notes": "Existing lesson touches this item without covering the intended scope.",
-      "last_updated": "2026-10-03"
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-B09",
@@ -655,7 +655,7 @@
       "code_validation": "not_run",
       "integration_validation": "not_run",
       "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'entanglement_entropy_and_monogamy' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-03"
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-B10",
@@ -690,7 +690,7 @@
       "code_validation": "not_run",
       "integration_validation": "not_run",
       "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'no_cloning_and_no_deleting' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-03"
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-C01",
@@ -725,7 +725,7 @@
       "code_validation": "not_run",
       "integration_validation": "not_run",
       "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'quantum_mechanics' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-03"
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-C02",
@@ -738,7 +738,7 @@
       "lesson_title": "Qubits and Superposition",
       "proposed_slug": null,
       "content_status": "existing",
-      "rewrite_status": "not_started",
+      "rewrite_status": "verified",
       "primary_topic": "qc.qubits",
       "secondary_topics": [
         "qc.superposition"
@@ -748,23 +748,23 @@
       ],
       "prerequisites": [],
       "difficulty": "beginner",
-      "estimated_duration_min": 2.4,
+      "estimated_duration_min": 11.1,
       "objectives": [],
-      "existing_content_review": "430 words, 5 sections, code=False, math=True, exercise=True",
+      "existing_content_review": "1996 words, 15 sections, code=True, math=True, exercise=True",
       "rewrite_scope": "Rewrite existing lesson to the authoring standard.",
       "mathematics_required": true,
-      "code_required": false,
+      "code_required": true,
       "simulation_required": null,
       "exercises_required": false,
       "references_required": true,
-      "technical_review": "not_run",
-      "schema_validation": "not_run",
-      "mapping_validation": "not_run",
-      "prerequisite_validation": "not_run",
-      "code_validation": "not_run",
-      "integration_validation": "not_run",
-      "review_notes": "Topic already has 2 lessons: 13_classical_bit_vs_qubit, 01_qubits",
-      "last_updated": "2026-10-03"
+      "technical_review": "passed",
+      "schema_validation": "passed",
+      "mapping_validation": "passed",
+      "prerequisite_validation": "passed",
+      "code_validation": "passed",
+      "integration_validation": "passed",
+      "review_notes": "Rewritten per the M4 standard. Code verified against Qiskit 1.2.4 / qiskit-aer 0.16.0, seed 1234 (Z 521/503; X 1024/0; Ry 3099/997). All 98 KaTeX expressions compile. Known issue: inferred tags pick up spurious 'algorithms'/'dynamic' from substring matching; documented in REVIEW_REQUIRED.",
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-C03",
@@ -799,7 +799,7 @@
       "code_validation": "not_run",
       "integration_validation": "not_run",
       "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'dirac_notation' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-03"
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-C04",
@@ -834,7 +834,7 @@
       "code_validation": "not_run",
       "integration_validation": "not_run",
       "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'tensor_products' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-03"
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-C05",
@@ -869,7 +869,7 @@
       "code_validation": "not_run",
       "integration_validation": "not_run",
       "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'inner_product' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-03"
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-C06",
@@ -882,7 +882,7 @@
       "lesson_title": "Qubits and Superposition",
       "proposed_slug": null,
       "content_status": "partial",
-      "rewrite_status": "not_started",
+      "rewrite_status": "verified",
       "primary_topic": "qc.superposition",
       "secondary_topics": [
         "qc.superposition"
@@ -895,23 +895,23 @@
         ]
       ],
       "difficulty": "beginner",
-      "estimated_duration_min": 2.4,
+      "estimated_duration_min": 11.1,
       "objectives": [],
-      "existing_content_review": "430 words, 5 sections, code=False, math=True, exercise=True",
+      "existing_content_review": "1996 words, 15 sections, code=True, math=True, exercise=True",
       "rewrite_scope": "Complete partial lesson to the authoring standard.",
       "mathematics_required": true,
-      "code_required": false,
+      "code_required": true,
       "simulation_required": null,
       "exercises_required": false,
       "references_required": true,
-      "technical_review": "not_run",
-      "schema_validation": "not_run",
-      "mapping_validation": "not_run",
-      "prerequisite_validation": "not_run",
-      "code_validation": "not_run",
-      "integration_validation": "not_run",
-      "review_notes": "Existing lesson touches this item without covering the intended scope.",
-      "last_updated": "2026-10-03"
+      "technical_review": "passed",
+      "schema_validation": "passed",
+      "mapping_validation": "passed",
+      "prerequisite_validation": "passed",
+      "code_validation": "passed",
+      "integration_validation": "passed",
+      "review_notes": "Rewritten per the M4 standard. Code verified against Qiskit 1.2.4 / qiskit-aer 0.16.0, seed 1234 (Z 521/503; X 1024/0; Ry 3099/997). All 98 KaTeX expressions compile. Known issue: inferred tags pick up spurious 'algorithms'/'dynamic' from substring matching; documented in REVIEW_REQUIRED.",
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-C07",
@@ -953,7 +953,7 @@
       "code_validation": "not_run",
       "integration_validation": "not_run",
       "review_notes": "",
-      "last_updated": "2026-10-03"
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-C08",
@@ -966,7 +966,7 @@
       "lesson_title": "Quantum Gates",
       "proposed_slug": null,
       "content_status": "existing",
-      "rewrite_status": "not_started",
+      "rewrite_status": "verified",
       "primary_topic": "qc.basic_gates",
       "secondary_topics": [
         "adv.quantum_universality"
@@ -981,23 +981,23 @@
         ]
       ],
       "difficulty": "beginner",
-      "estimated_duration_min": 2.9,
+      "estimated_duration_min": 10.7,
       "objectives": [],
-      "existing_content_review": "527 words, 6 sections, code=False, math=True, exercise=False",
+      "existing_content_review": "1926 words, 15 sections, code=True, math=True, exercise=True",
       "rewrite_scope": "Rewrite existing lesson to the authoring standard.",
       "mathematics_required": true,
-      "code_required": false,
+      "code_required": true,
       "simulation_required": null,
-      "exercises_required": true,
+      "exercises_required": false,
       "references_required": true,
-      "technical_review": "not_run",
-      "schema_validation": "not_run",
-      "mapping_validation": "not_run",
-      "prerequisite_validation": "not_run",
-      "code_validation": "not_run",
-      "integration_validation": "not_run",
-      "review_notes": "Topic already has 2 lessons: 02_gates, 10_gates_bootcamp",
-      "last_updated": "2026-10-03"
+      "technical_review": "passed",
+      "schema_validation": "passed",
+      "mapping_validation": "passed",
+      "prerequisite_validation": "passed",
+      "code_validation": "passed",
+      "integration_validation": "passed",
+      "review_notes": "Rewritten. Verified H^2=I, H|1>=|->, Z/S/T = P(pi,pi/2,pi/4) up to global phase, RY(pi/3)->(0.8660,0.5000). Platform facts checked in code: PORTABLE_BASIS rx,ry,rz,cx; param allow-list [0-9piPI+\\-*/().\\s].",
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-C09",
@@ -1032,7 +1032,7 @@
       "code_validation": "not_run",
       "integration_validation": "not_run",
       "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'understanding_circuits_and_finding_results' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-03"
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-C10",
@@ -1067,7 +1067,7 @@
       "code_validation": "not_run",
       "integration_validation": "not_run",
       "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'quantum_teleportation' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-03"
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-D01",
@@ -1102,7 +1102,7 @@
       "code_validation": "not_run",
       "integration_validation": "not_run",
       "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'quantum_composer' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-03"
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-D02",
@@ -1115,7 +1115,7 @@
       "lesson_title": "Measurement and Dynamic Circuits",
       "proposed_slug": null,
       "content_status": "partial",
-      "rewrite_status": "not_started",
+      "rewrite_status": "verified",
       "primary_topic": "qiskit.sampler",
       "secondary_topics": [
         "qiskit.sampler",
@@ -1129,23 +1129,23 @@
         ]
       ],
       "difficulty": "beginner",
-      "estimated_duration_min": 2.9,
+      "estimated_duration_min": 9.5,
       "objectives": [],
-      "existing_content_review": "528 words, 7 sections, code=True, math=True, exercise=False",
+      "existing_content_review": "1702 words, 15 sections, code=True, math=True, exercise=True",
       "rewrite_scope": "Complete partial lesson to the authoring standard.",
       "mathematics_required": true,
       "code_required": true,
       "simulation_required": null,
-      "exercises_required": true,
+      "exercises_required": false,
       "references_required": true,
-      "technical_review": "not_run",
-      "schema_validation": "not_run",
-      "mapping_validation": "not_run",
-      "prerequisite_validation": "not_run",
-      "code_validation": "not_run",
-      "integration_validation": "not_run",
-      "review_notes": "Existing lesson touches this item without covering the intended scope.",
-      "last_updated": "2026-10-03"
+      "technical_review": "passed",
+      "schema_validation": "passed",
+      "mapping_validation": "passed",
+      "prerequisite_validation": "passed",
+      "code_validation": "passed",
+      "integration_validation": "passed",
+      "review_notes": "Rewritten. Forcing loop verified against the platform's own dynamic engine: counts {'0': 256}, while_cap_hits 0, while_cap 32. Limits cross-checked in config.py (15 qubits, 4096 shots).",
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-D03",
@@ -1180,7 +1180,7 @@
       "code_validation": "not_run",
       "integration_validation": "not_run",
       "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'estimator' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-03"
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-D04",
@@ -1215,7 +1215,7 @@
       "code_validation": "not_run",
       "integration_validation": "not_run",
       "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'bloch_sphere' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-03"
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-D05",
@@ -1250,7 +1250,7 @@
       "code_validation": "not_run",
       "integration_validation": "not_run",
       "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'histograms' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-03"
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-D06",
@@ -1292,7 +1292,7 @@
       "code_validation": "not_run",
       "integration_validation": "not_run",
       "review_notes": "",
-      "last_updated": "2026-10-03"
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-E01",
@@ -1327,7 +1327,7 @@
       "code_validation": "not_run",
       "integration_validation": "not_run",
       "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'bernstein_vazirani' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-03"
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-E02",
@@ -1369,7 +1369,7 @@
       "code_validation": "not_run",
       "integration_validation": "not_run",
       "review_notes": "",
-      "last_updated": "2026-10-03"
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-E03",
@@ -1411,7 +1411,7 @@
       "code_validation": "not_run",
       "integration_validation": "not_run",
       "review_notes": "",
-      "last_updated": "2026-10-03"
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-E04",
@@ -1446,7 +1446,7 @@
       "code_validation": "not_run",
       "integration_validation": "not_run",
       "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'quantum_fourier_transform' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-03"
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-E05",
@@ -1481,7 +1481,7 @@
       "code_validation": "not_run",
       "integration_validation": "not_run",
       "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'quantum_phase_estimation' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-03"
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-E06",
@@ -1516,7 +1516,7 @@
       "code_validation": "not_run",
       "integration_validation": "not_run",
       "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'shors_algorithm' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-03"
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-E07",
@@ -1551,7 +1551,7 @@
       "code_validation": "not_run",
       "integration_validation": "not_run",
       "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'simons_algorithm' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-03"
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-E08",
@@ -1586,7 +1586,7 @@
       "code_validation": "not_run",
       "integration_validation": "not_run",
       "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'quantum_walks' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-03"
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-E09",
@@ -1621,7 +1621,7 @@
       "code_validation": "not_run",
       "integration_validation": "not_run",
       "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'amplitude_estimation' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-03"
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-E10",
@@ -1656,7 +1656,7 @@
       "code_validation": "not_run",
       "integration_validation": "not_run",
       "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'hhl' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-03"
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-E11",
@@ -1691,7 +1691,7 @@
       "code_validation": "not_run",
       "integration_validation": "not_run",
       "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'quantum_key_distribution' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-03"
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-F01",
@@ -1726,7 +1726,7 @@
       "code_validation": "not_run",
       "integration_validation": "not_run",
       "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'toffoli_and_multi_controlled_gates' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-03"
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-F02",
@@ -1761,7 +1761,7 @@
       "code_validation": "not_run",
       "integration_validation": "not_run",
       "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'controlled_rotations' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-03"
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-F03",
@@ -1796,7 +1796,7 @@
       "code_validation": "not_run",
       "integration_validation": "not_run",
       "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'u3_iswap_and_fsim' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-03"
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-F04",
@@ -1809,7 +1809,7 @@
       "lesson_title": "Quantum Gates",
       "proposed_slug": null,
       "content_status": "partial",
-      "rewrite_status": "not_started",
+      "rewrite_status": "verified",
       "primary_topic": "adv.quantum_universality",
       "secondary_topics": [
         "adv.quantum_universality"
@@ -1822,23 +1822,23 @@
         ]
       ],
       "difficulty": "advanced",
-      "estimated_duration_min": 2.9,
+      "estimated_duration_min": 10.7,
       "objectives": [],
-      "existing_content_review": "527 words, 6 sections, code=False, math=True, exercise=False",
+      "existing_content_review": "1926 words, 15 sections, code=True, math=True, exercise=True",
       "rewrite_scope": "Complete partial lesson to the authoring standard.",
       "mathematics_required": true,
-      "code_required": false,
+      "code_required": true,
       "simulation_required": null,
-      "exercises_required": true,
+      "exercises_required": false,
       "references_required": true,
-      "technical_review": "not_run",
-      "schema_validation": "not_run",
-      "mapping_validation": "not_run",
-      "prerequisite_validation": "not_run",
-      "code_validation": "not_run",
-      "integration_validation": "not_run",
-      "review_notes": "Existing lesson touches this item without covering the intended scope.",
-      "last_updated": "2026-10-03"
+      "technical_review": "passed",
+      "schema_validation": "passed",
+      "mapping_validation": "passed",
+      "prerequisite_validation": "passed",
+      "code_validation": "passed",
+      "integration_validation": "passed",
+      "review_notes": "Rewritten. Verified H^2=I, H|1>=|->, Z/S/T = P(pi,pi/2,pi/4) up to global phase, RY(pi/3)->(0.8660,0.5000). Platform facts checked in code: PORTABLE_BASIS rx,ry,rz,cx; param allow-list [0-9piPI+\\-*/().\\s].",
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-F05",
@@ -1873,7 +1873,7 @@
       "code_validation": "not_run",
       "integration_validation": "not_run",
       "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'circuit_identities_and_simplification' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-03"
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-F06",
@@ -1908,7 +1908,7 @@
       "code_validation": "not_run",
       "integration_validation": "not_run",
       "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'ghz_versus_w_states' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-03"
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-F07",
@@ -1943,7 +1943,7 @@
       "code_validation": "not_run",
       "integration_validation": "not_run",
       "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'transpilation' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-03"
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-F08",
@@ -1978,7 +1978,7 @@
       "code_validation": "not_run",
       "integration_validation": "not_run",
       "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'native_gates_and_connectivity' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-03"
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-F09",
@@ -2013,7 +2013,7 @@
       "code_validation": "not_run",
       "integration_validation": "not_run",
       "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'routing_and_swap_insertion' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-03"
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-F10",
@@ -2048,7 +2048,7 @@
       "code_validation": "not_run",
       "integration_validation": "not_run",
       "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'resource_estimation' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-03"
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-G01",
@@ -2091,7 +2091,7 @@
       "code_validation": "not_run",
       "integration_validation": "not_run",
       "review_notes": "Existing lesson touches this item without covering the intended scope.",
-      "last_updated": "2026-10-03"
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-G02",
@@ -2138,7 +2138,7 @@
       "code_validation": "not_run",
       "integration_validation": "not_run",
       "review_notes": "",
-      "last_updated": "2026-10-03"
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-G03",
@@ -2173,7 +2173,7 @@
       "code_validation": "not_run",
       "integration_validation": "not_run",
       "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'ansatz_construction' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-03"
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-G04",
@@ -2208,7 +2208,7 @@
       "code_validation": "not_run",
       "integration_validation": "not_run",
       "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'classical_optimization_loops' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-03"
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-G05",
@@ -2251,7 +2251,7 @@
       "code_validation": "not_run",
       "integration_validation": "not_run",
       "review_notes": "Existing lesson touches this item without covering the intended scope.",
-      "last_updated": "2026-10-03"
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-G06",
@@ -2286,7 +2286,7 @@
       "code_validation": "not_run",
       "integration_validation": "not_run",
       "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'approximation_ratios' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-03"
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-G07",
@@ -2321,7 +2321,7 @@
       "code_validation": "not_run",
       "integration_validation": "not_run",
       "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'parameter_shift_rule' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-03"
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-G08",
@@ -2356,7 +2356,7 @@
       "code_validation": "not_run",
       "integration_validation": "not_run",
       "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'barren_plateaus' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-03"
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-G09",
@@ -2391,7 +2391,7 @@
       "code_validation": "not_run",
       "integration_validation": "not_run",
       "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'quantum_machine_learning' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-03"
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-G10",
@@ -2426,7 +2426,7 @@
       "code_validation": "not_run",
       "integration_validation": "not_run",
       "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'quantum_feature_maps_and_kernels' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-03"
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-G11",
@@ -2461,7 +2461,7 @@
       "code_validation": "not_run",
       "integration_validation": "not_run",
       "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'dequantization_critiques' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-03"
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-H01",
@@ -2496,7 +2496,7 @@
       "code_validation": "not_run",
       "integration_validation": "not_run",
       "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'three_qubit_bit_flip_code' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-03"
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-H02",
@@ -2531,7 +2531,7 @@
       "code_validation": "not_run",
       "integration_validation": "not_run",
       "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'three_qubit_phase_flip_code' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-03"
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-H03",
@@ -2566,7 +2566,7 @@
       "code_validation": "not_run",
       "integration_validation": "not_run",
       "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'stabilizer_formalism' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-03"
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-H04",
@@ -2601,7 +2601,7 @@
       "code_validation": "not_run",
       "integration_validation": "not_run",
       "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'surface_codes' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-03"
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-H05",
@@ -2636,7 +2636,7 @@
       "code_validation": "not_run",
       "integration_validation": "not_run",
       "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'logical_and_physical_qubits' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-03"
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-H06",
@@ -2671,7 +2671,7 @@
       "code_validation": "not_run",
       "integration_validation": "not_run",
       "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'threshold_theorem' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-03"
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-H07",
@@ -2706,7 +2706,7 @@
       "code_validation": "not_run",
       "integration_validation": "not_run",
       "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'error_correction_overhead' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-03"
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-H08",
@@ -2741,7 +2741,7 @@
       "code_validation": "not_run",
       "integration_validation": "not_run",
       "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'fault_tolerance' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-03"
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-H09",
@@ -2776,7 +2776,7 @@
       "code_validation": "not_run",
       "integration_validation": "not_run",
       "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'zero_noise_extrapolation' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-03"
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-H10",
@@ -2811,7 +2811,7 @@
       "code_validation": "not_run",
       "integration_validation": "not_run",
       "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'probabilistic_error_cancellation' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-03"
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-H11",
@@ -2846,7 +2846,7 @@
       "code_validation": "not_run",
       "integration_validation": "not_run",
       "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'readout_mitigation' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-03"
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-I01",
@@ -2881,7 +2881,7 @@
       "code_validation": "not_run",
       "integration_validation": "not_run",
       "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'superconducting_qubits' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-03"
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-I02",
@@ -2916,7 +2916,7 @@
       "code_validation": "not_run",
       "integration_validation": "not_run",
       "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'trapped_ions' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-03"
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-I03",
@@ -2951,7 +2951,7 @@
       "code_validation": "not_run",
       "integration_validation": "not_run",
       "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'photonic_systems' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-03"
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-I04",
@@ -2986,7 +2986,7 @@
       "code_validation": "not_run",
       "integration_validation": "not_run",
       "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'neutral_atoms' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-03"
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-I05",
@@ -3021,7 +3021,7 @@
       "code_validation": "not_run",
       "integration_validation": "not_run",
       "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'spin_based_qubits' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-03"
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-I06",
@@ -3056,7 +3056,7 @@
       "code_validation": "not_run",
       "integration_validation": "not_run",
       "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'calibrated_noise_models' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-03"
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-I07",
@@ -3091,7 +3091,7 @@
       "code_validation": "not_run",
       "integration_validation": "not_run",
       "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'connectivity_topologies' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-03"
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-I08",
@@ -3126,7 +3126,7 @@
       "code_validation": "not_run",
       "integration_validation": "not_run",
       "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'nisq_limitations' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-03"
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-I09",
@@ -3161,7 +3161,7 @@
       "code_validation": "not_run",
       "integration_validation": "not_run",
       "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'bqp_p_np_and_bpp' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-03"
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-I10",
@@ -3196,7 +3196,7 @@
       "code_validation": "not_run",
       "integration_validation": "not_run",
       "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'quantum_benchmarking' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-03"
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-I11",
@@ -3231,7 +3231,7 @@
       "code_validation": "not_run",
       "integration_validation": "not_run",
       "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'quantum_ecosystem_qiskit_cirq_pennylane_cuda_q_and_braket' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-03"
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-J01",
@@ -3266,7 +3266,7 @@
       "code_validation": "not_run",
       "integration_validation": "not_run",
       "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'superdense_coding' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-03"
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-J02",
@@ -3301,7 +3301,7 @@
       "code_validation": "not_run",
       "integration_validation": "not_run",
       "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'quantum_repeaters' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-03"
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-J03",
@@ -3336,7 +3336,7 @@
       "code_validation": "not_run",
       "integration_validation": "not_run",
       "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'quantum_internet' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-03"
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-J04",
@@ -3371,7 +3371,7 @@
       "code_validation": "not_run",
       "integration_validation": "not_run",
       "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'quantum_cryptography' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-03"
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-J05",
@@ -3406,7 +3406,7 @@
       "code_validation": "not_run",
       "integration_validation": "not_run",
       "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'post_quantum_cryptography' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-03"
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-J06",
@@ -3441,7 +3441,7 @@
       "code_validation": "not_run",
       "integration_validation": "not_run",
       "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'quantum_simulation' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-03"
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-J07",
@@ -3476,7 +3476,7 @@
       "code_validation": "not_run",
       "integration_validation": "not_run",
       "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'trotterization' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-03"
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-J08",
@@ -3511,7 +3511,7 @@
       "code_validation": "not_run",
       "integration_validation": "not_run",
       "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'quantum_many_body_systems' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-03"
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-EXTRA-03_entanglement",
@@ -3524,7 +3524,7 @@
       "lesson_title": "Entanglement",
       "proposed_slug": null,
       "content_status": "existing",
-      "rewrite_status": "not_started",
+      "rewrite_status": "verified",
       "primary_topic": "qc.entanglement",
       "secondary_topics": [],
       "prerequisites": [
@@ -3534,23 +3534,23 @@
         ]
       ],
       "difficulty": "intermediate",
-      "estimated_duration_min": 1.5,
+      "estimated_duration_min": 8.8,
       "objectives": [],
-      "existing_content_review": "265 words, 4 sections, code=False, math=True, exercise=False",
+      "existing_content_review": "1584 words, 13 sections, code=True, math=True, exercise=True",
       "rewrite_scope": "Rewrite existing lesson to the authoring standard.",
       "mathematics_required": true,
-      "code_required": false,
+      "code_required": true,
       "simulation_required": null,
-      "exercises_required": true,
+      "exercises_required": false,
       "references_required": true,
-      "technical_review": "not_run",
-      "schema_validation": "not_run",
-      "mapping_validation": "not_run",
-      "prerequisite_validation": "not_run",
-      "code_validation": "not_run",
-      "integration_validation": "not_run",
-      "review_notes": "This lesson exists on disk but no target-curriculum item points at it: the 97-item target list and the 17-topic registry do not line up. M4 still requires rewriting it.",
-      "last_updated": "2026-10-03"
+      "technical_review": "passed",
+      "schema_validation": "passed",
+      "mapping_validation": "passed",
+      "prerequisite_validation": "passed",
+      "code_validation": "passed",
+      "integration_validation": "passed",
+      "review_notes": "Rewritten. Verified Bell amplitudes (0.7071,0,0,0.7071); counts 00/11 = 1022/1026 with 01/10 absent; GHZ 000/111 = 1009/1039; no-CNOT control gives 00/01.",
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-EXTRA-08_dynamic_circuits",
@@ -3593,7 +3593,7 @@
       "code_validation": "not_run",
       "integration_validation": "not_run",
       "review_notes": "This lesson exists on disk but no target-curriculum item points at it: the 97-item target list and the 17-topic registry do not line up. M4 still requires rewriting it.",
-      "last_updated": "2026-10-03"
+      "last_updated": "2026-10-04"
     },
     {
       "item_id": "M4-EXTRA-12_control_flow",
@@ -3636,7 +3636,7 @@
       "code_validation": "not_run",
       "integration_validation": "not_run",
       "review_notes": "This lesson exists on disk but no target-curriculum item points at it: the 97-item target list and the 17-topic registry do not line up. M4 still requires rewriting it.",
-      "last_updated": "2026-10-03"
+      "last_updated": "2026-10-04"
     }
   ]
 }
