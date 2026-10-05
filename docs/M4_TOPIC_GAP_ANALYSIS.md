@@ -160,7 +160,7 @@ taught the material:
 | `qiskit.composer` | The Quantum Composer | • Quantum Composer | `28_composer_guide` *(new)* |
 | `qiskit.bloch_sphere` | The Bloch Sphere | • Bloch Sphere | `01_qubits` *(exists)* |
 | `qiskit.reading_histograms` | Histograms and Shot Statistics | • Histograms | `04_measurement` *(exists)* |
-| `qiskit.primitives` | Estimator and Sampler Primitives | • Estimator | `29_primitives` *(new)* |
+| `qiskit.estimator` | The Estimator Primitive | • Estimator | `29_primitives` *(new)* |
 
 **Prerequisites**
 
@@ -169,15 +169,15 @@ taught the material:
 | `qiskit.composer` | `qc.basic_gates` (existing) | required | You must know what a gate does before placing one. |
 | `qiskit.bloch_sphere` | `qc.qubits` (existing) | required | The sphere parametrises a single-qubit state. |
 | `qiskit.reading_histograms` | `core.measurement_theory` (existing) | required | A histogram is aggregated shot outcomes; measurement comes first. |
-| `qiskit.primitives` | `qiskit.sampler` (existing) | recommended | Sampler is the other half of the primitive pair and already exists as a topic. |
-| `qiskit.primitives` | `nisq.vqe` (existing) | recommended | Estimator is motivated by expectation values in VQE. |
+| `qiskit.estimator` | `qiskit.sampler` (existing) | recommended | Sampler is the other half of the primitive pair and already exists as a topic. |
+| `qiskit.estimator` | `nisq.vqe` (existing) | recommended | Estimator is motivated by expectation values in VQE. |
 
 **Grouping rationale**
 
 - `qiskit.composer`: Platform documentation, not physics. No existing lesson covers it.
 - `qiskit.bloch_sphere`: ALREADY TAUGHT: 01_qubits has a full Bloch sphere section and 13_classical_bit_vs_qubit has a second. No new lesson needed.
 - `qiskit.reading_histograms`: ALREADY TAUGHT: 04_measurement covers shot counts and error bars.
-- `qiskit.primitives`: OVERLAP: could instead be folded into the existing qiskit.sampler topic. See open questions.
+- `qiskit.estimator`: RESOLVED (Q3): kept as its own ADDITIVE topic named qiskit.estimator, renamed from the earlier qiskit.primitives. Estimator computes expectation values while the existing qiskit.sampler returns measurement counts - genuinely different objectives - and renaming the stable qiskit.sampler ID is not authorised. Sampler is a recommended prerequisite, not a merge.
 
 ### E. Quantum Algorithms (`algo.`)
 
@@ -335,6 +335,10 @@ taught the material:
 | `hw.neutral_atoms` | `qiskit.quantum_noise` (existing) | recommended | Same per-platform metrics. |
 | `hw.spin_qubits` | `qiskit.quantum_noise` (existing) | recommended | Same per-platform metrics. |
 | `hw.platform_comparison` | `hw.superconducting_qubits` (proposed) | required | Needs at least one concrete platform to calibrate against. |
+| `hw.platform_comparison` | `hw.trapped_ions` (proposed) | recommended | A comparison that has seen only one platform compares nothing; trapped ions are the contrasting case of all-to-all connectivity. |
+| `hw.platform_comparison` | `hw.photonic_systems` (proposed) | recommended | Photonic and matter qubits differ on connectivity and loss, which is the substance of the comparison. |
+| `hw.platform_comparison` | `hw.neutral_atoms` (proposed) | recommended | Neutral atoms add a third connectivity regime (reconfigurable geometry). |
+| `hw.platform_comparison` | `hw.spin_qubits` (proposed) | recommended | Spin qubits contribute the most constrained connectivity and the smallest footprint. |
 | `hw.platform_comparison` | `adv.compilation` (proposed) | recommended | Connectivity is what routing has to work around. |
 | `hw.nisq_limitations` | `qiskit.quantum_noise` (existing) | required | NISQ limits are decoherence and gate-error limits. |
 | `hw.nisq_limitations` | `adv.resource_estimation` (proposed) | recommended | Depth budgets quantify what is feasible. |
@@ -434,7 +438,7 @@ history.
 - Proposed topics: **61**
 - Topics reusing an existing lesson: **4**
 - New lessons to author: **57**
-- Prerequisite edges proposed: **77**
+- Prerequisite edges proposed: **81**
 
 ## 8. Validation
 

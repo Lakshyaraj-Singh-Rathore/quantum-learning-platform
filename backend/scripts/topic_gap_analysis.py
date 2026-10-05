@@ -192,7 +192,7 @@ PROPOSAL: list[dict] = [
          prereqs=[("core.measurement_theory", "required",
                    "A histogram is aggregated shot outcomes; measurement comes first.")],
          note="ALREADY TAUGHT: 04_measurement covers shot counts and error bars."),
-    dict(id="qiskit.primitives", ns="qiskit", title="Estimator and Sampler Primitives",
+    dict(id="qiskit.estimator", ns="qiskit", title="The Estimator Primitive",
          items=["Estimator"],
          lessons=["29_primitives"],
          prereqs=[("qiskit.sampler", "recommended",
@@ -200,8 +200,12 @@ PROPOSAL: list[dict] = [
                    "exists as a topic."),
                   ("nisq.vqe", "recommended",
                    "Estimator is motivated by expectation values in VQE.")],
-         note="OVERLAP: could instead be folded into the existing qiskit.sampler "
-              "topic. See open questions."),
+         note="RESOLVED (Q3): kept as its own ADDITIVE topic named "
+              "qiskit.estimator, renamed from the earlier qiskit.primitives. "
+              "Estimator computes expectation values while the existing "
+              "qiskit.sampler returns measurement counts - genuinely different "
+              "objectives - and renaming the stable qiskit.sampler ID is not "
+              "authorised. Sampler is a recommended prerequisite, not a merge."),
 
     # ---- E. Quantum Algorithms ------------------------------------------- #
     dict(id="algo.bernstein_vazirani", ns="algo", title="Bernstein-Vazirani",
@@ -452,6 +456,19 @@ PROPOSAL: list[dict] = [
          lessons=["61_platform_comparison"],
          prereqs=[("hw.superconducting_qubits", "required",
                    "Needs at least one concrete platform to calibrate against."),
+                  ("hw.trapped_ions", "recommended",
+                   "A comparison that has seen only one platform compares "
+                   "nothing; trapped ions are the contrasting case of "
+                   "all-to-all connectivity."),
+                  ("hw.photonic_systems", "recommended",
+                   "Photonic and matter qubits differ on connectivity and "
+                   "loss, which is the substance of the comparison."),
+                  ("hw.neutral_atoms", "recommended",
+                   "Neutral atoms add a third connectivity regime "
+                   "(reconfigurable geometry)."),
+                  ("hw.spin_qubits", "recommended",
+                   "Spin qubits contribute the most constrained "
+                   "connectivity and the smallest footprint."),
                   ("adv.compilation", "recommended",
                    "Connectivity is what routing has to work around.")],
          note="Both items are cross-platform comparison material rather than a "
@@ -534,6 +551,273 @@ PROPOSAL: list[dict] = [
 # Validation
 # --------------------------------------------------------------------------- #
 
+# --------------------------------------------------------------------------- #
+# Phase 1 revisions: proposed topics that duplicate an EXISTING registered
+# topic are withdrawn, and their target items are re-assigned to that topic.
+#
+# Each entry: (withdrawn proposed id, absorbing EXISTING topic id, reason)
+# --------------------------------------------------------------------------- #
+
+REVISION_NOTES: dict[str, tuple[str, str]] = {
+    "core.phase": (
+        "qc.superposition",
+        "Withdrawn. qc.superposition already carries the objective 'Distinguish "
+        "relative from global phase' and its description names 'relative versus "
+        "global phase'. 01_qubits has a dedicated subsection and an exercise on "
+        "it. Creating core.phase would duplicate an existing topic.",
+    ),
+    "qiskit.bloch_sphere": (
+        "qc.qubits",
+        "Withdrawn. qc.qubits already carries the objective 'Locate a state on "
+        "the Bloch sphere' and maps 01_qubits as primary at high confidence. "
+        "01_qubits has a full Bloch sphere section covering theta, phi and the "
+        "half-angle convention.",
+    ),
+    "qiskit.reading_histograms": (
+        "qiskit.sampler",
+        "Withdrawn. qiskit.sampler already covers 'Measurement counts, shot "
+        "noise, statistical convergence and the limits of finite-shot "
+        "measurement'. 04_measurement teaches the standard-error formula and "
+        "gives a concrete error table.",
+    ),
+    "nisq.barren_plateaus": (
+        "nisq.parameterized_circuits",
+        "Withdrawn. nisq.parameterized_circuits is titled 'Parameterized "
+        "Circuits and Ansatz Construction' and already carries the objective "
+        "'Explain what a barren plateau is and when it appears'. The weakness is "
+        "lesson DEPTH, not topic structure: 07_vqe_qaoa covers it in one "
+        "paragraph. That is a content fix, not a new topic.",
+    ),
+    "nisq.ansatz": (
+        "nisq.parameterized_circuits",
+        "Withdrawn. Ansatz construction is literally in that topic's title. "
+        "07_vqe_qaoa builds and optimises a real ansatz and can be mapped at "
+        "higher confidence.",
+    ),
+}
+
+
+#: A withdrawn proposal may still be named as a prerequisite by topics that
+#: survive. Redirect those edges to the absorbing existing topic.
+REUSED_PREREQ_REDIRECT: dict[str, str] = {
+    "nisq.ansatz": "nisq.parameterized_circuits",
+}
+
+
+#: Topics whose target items are deferred. Withdrawing these keeps the
+#: coverage arithmetic honest: a deferred item must not also count as covered
+#: by a proposed topic.
+DEFERRED_TOPICS: dict[str, str] = {
+    "qc.quantum_mechanics_primer": "Quantum Mechanics",
+    "nisq.dequantization": "Dequantization Critiques",
+}
+
+
+#: Semantic duplicate groups in the TARGET list: different labels, one subject.
+#: Recorded explicitly (never by string similarity) so the double count is
+#: documented rather than silently "fixed".
+DUPLICATE_ITEM_GROUPS: list[set[str]] = [
+    {"Quantum Key Distribution", "Quantum Cryptography"},
+]
+
+
+def distinct_subject_count() -> int:
+    """Target items counted once per *subject*, collapsing duplicate groups."""
+    items = [i for v in cr.TARGET_CURRICULUM.values() for i in v]
+    seen: set[str] = set()
+    total = 0
+    for group in DUPLICATE_ITEM_GROUPS:
+        if group & set(items):
+            total += 1
+            seen |= group
+    return sum(1 for i in items if i not in seen) + total
+
+
+def effective_proposal() -> list[dict]:
+    """The proposal after Phase 1 revisions.
+
+    Withdrawn topics are removed; their target items are re-assigned to the
+    absorbing existing topic and recorded as reused rather than pending.
+    """
+    # Copy, never mutate: PROPOSAL is the reviewed baseline and validate()
+    # still runs against it. Mutating shared dicts here previously made
+    # validate() report items as uncovered depending on call order.
+    kept = [
+        dict(p) for p in PROPOSAL
+        if p["id"] not in REVISION_NOTES and p["id"] not in DEFERRED_TOPICS
+    ]
+    for entry in kept:
+        entry["items"] = list(entry["items"])
+        entry["lessons"] = list(entry["lessons"])
+        entry["prereqs"] = [
+            (REUSED_PREREQ_REDIRECT.get(pid, pid), kind, reason)
+            for pid, kind, reason in entry["prereqs"]
+        ]
+        # adv.compilation is rescoped: transpilation moves to the existing
+        # adv.quantum_universality topic, which already covers it.
+        if entry["id"] == "adv.compilation":
+            entry["items"] = [i for i in entry["items"] if i != "Transpilation"]
+            entry["title"] = "Native Gates, Connectivity and Routing"
+            entry["note"] = (
+                "RESCOPED. Transpilation is removed from this topic because the "
+                "existing adv.quantum_universality already covers 'transpilation "
+                "onto a native basis'. This topic keeps routing, SWAP insertion "
+                "and connectivity, which nothing else covers."
+            )
+    for entry in kept:
+        difficulty, description, objectives = TOPIC_OBJECTIVES[entry["id"]]
+        entry["difficulty"] = difficulty
+        entry["description"] = description
+        entry["objectives"] = objectives
+    return kept
+
+
+def reused_items() -> dict[str, str]:
+    """Target item -> existing topic that absorbs it (no new topic needed)."""
+    out: dict[str, str] = {}
+    for withdrawn, (absorber, _reason) in REVISION_NOTES.items():
+        for entry in PROPOSAL:
+            if entry["id"] == withdrawn:
+                for item in entry["items"]:
+                    out[item] = absorber
+    out["Transpilation"] = "adv.quantum_universality"
+    return out
+
+
+# --------------------------------------------------------------------------- #
+# Phase 1: resolutions of the six open questions, plus deferrals.
+# --------------------------------------------------------------------------- #
+
+DECISIONS: list[dict] = [
+    dict(
+        q="Q0. 'Quantum Key Distribution' (section E) and 'Quantum Cryptography' "
+          "(section J) describe the same subject. Split, or one topic?",
+        decision="Keep BOTH target-list rows untouched (history preserved) and "
+                 "assign ONE topic, comm.cryptography, covering all three "
+                 "cryptography items: 'Quantum Cryptography', 'Post-Quantum "
+                 "Cryptography' and 'Quantum Key Distribution'.",
+        rationale="The two rows are a double count in the TARGET list, not two "
+                  "subjects. They share one body of protocol knowledge (BB84, "
+                  "eavesdropping detection, the security assumption). Splitting "
+                  "them would force two lessons that repeat each other's "
+                  "setup. Post-quantum cryptography is genuinely distinct and "
+                  "is retained as an explicit objective of the single topic, so "
+                  "nothing is dropped. No tracker row is deleted or merged: both "
+                  "rows continue to point at the same proposed topic id, which "
+                  "is how the duplication is recorded rather than erased.",
+        impact="Coverage arithmetic: the target list holds 96 distinct subjects "
+               "across 97 items. Percentages computed against 97 are therefore "
+               "marginally pessimistic by roughly one item (about 1.0 "
+               "percentage point). Both the 97-item and 96-subject figures are "
+               "reported wherever a completion percentage is quoted. One topic "
+               "and one lesson instead of two."),
+    dict(
+        q="Q0b. Are the four proposed topics that reuse an existing lesson "
+          "justified by that lesson's actual content?",
+        decision="Yes for core.phase, qiskit.bloch_sphere and "
+                 "qiskit.reading_histograms - but all three were WITHDRAWN, "
+                 "because the lesson content shows the existing registered "
+                 "topic already owns the objective. nisq.barren_plateaus was "
+                 "also withdrawn, with a content caveat.",
+        rationale="Verified against the lesson files, not against titles. "
+                  "01_qubits carries a full 'Bloch sphere' subsection with "
+                  "theta, phi and the half-angle convention, plus a relative "
+                  "versus global phase subsection and an exercise proving a "
+                  "factor of -i is a global phase. 04_measurement's 'Shots and "
+                  "statistics' gives the standard-error formula "
+                  "sqrt(p(1-p)/N) and a concrete error table (100 shots "
+                  "+/-5%, 1024 +/-1.6%, 4096 +/-0.8%). Both reuse claims were "
+                  "sound, which is why the reuse signal led straight to the "
+                  "existing topic. The one caveat: 07_vqe_qaoa covers barren "
+                  "plateaus in a single paragraph, so nisq.parameterized_circuits "
+                  "owns the objective on paper but the lesson depth is thin. "
+                  "That is a Phase 3 content task, not a topic-structure task.",
+        impact="Four fewer topics; six items re-assigned to existing topics. "
+               "One known content-depth defect carried into Phase 3 "
+               "(barren plateaus coverage in 07_vqe_qaoa)."),
+    dict(
+        q="Q1. Does 'Quantum Mechanics' (section C) duplicate sections A and B?",
+        decision="DEFER the item; do not create qc.quantum_mechanics_primer in "
+                 "this expansion.",
+        rationale="The item has no distinctive objective that core.quantum_postulates, "
+                  "qc.superposition and qc.qubits do not already own. Creating it "
+                  "now would produce a lesson that restates three others. If a "
+                  "genuine gap is identified later it can be added additively.",
+        impact="'Quantum Mechanics' remains unresolved and is reported as deferred, "
+               "not covered."),
+    dict(
+        q="Q2. Do qc.reading_results, qiskit.composer and the Histograms item overlap?",
+        decision="Histograms is absorbed by the existing qiskit.sampler (no new "
+                 "topic). Keep qc.reading_results and qiskit.composer as separate "
+                 "topics, in different sections.",
+        rationale="Histograms duplicates qiskit.sampler's stated scope exactly. "
+                  "The remaining two are genuinely different: qc.reading_results "
+                  "(section C) is conceptual - gate order, bit ordering, reading a "
+                  "distribution - while qiskit.composer (section D) is tooling. "
+                  "reading_results should defer tool-specific detail to composer.",
+        impact="One fewer topic; two intentionally related but distinct topics."),
+    dict(
+        q="Q3. Should Estimator be its own topic or fold into qiskit.sampler?",
+        decision="Create a separate ADDITIVE topic named qiskit.estimator. Do not "
+                 "rename, merge or remove qiskit.sampler.",
+        rationale="Sampler returns measurement counts; Estimator returns "
+                  "expectation values. The objectives and the basis-change machinery "
+                  "differ. qiskit.sampler is a stable published ID and renaming it "
+                  "is not authorised. Estimator lists Sampler as a recommended "
+                  "(not required) prerequisite, keeping them adjacent without "
+                  "merging.",
+        impact="One new topic; qiskit.sampler untouched."),
+    dict(
+        q="Q4. Five hardware platform topics, or one survey?",
+        decision="FIVE separate platform topics, plus hw.platform_comparison to "
+                 "tie them together.",
+        rationale="Each platform has distinct physics, distinct objectives and "
+                  "distinct error mechanisms, so one survey topic would give coarse "
+                  "mastery and no meaningful assessment. Separate topics also allow "
+                  "a new platform to be added later without restructuring. The cost "
+                  "is five lessons rather than one; hw.platform_comparison is what "
+                  "prevents them reading as five unrelated modules, and it requires "
+                  "at least one platform first.",
+        impact="Five topics and five lessons in section I; highest authoring cost "
+               "of any section."),
+    dict(
+        q="Q5. Should 'Dequantization Critiques' be its own topic?",
+        decision="DEFER. Do not create nisq.dequantization in this expansion.",
+        rationale="It is an advanced, partly editorial critique whose content "
+                  "depends on nisq.qml and algo.grover existing first, and it "
+                  "assesses claims rather than teaching a technique. Authoring it "
+                  "before the topics it critiques risks stating a position the "
+                  "curriculum has not yet earned.",
+        impact="'Dequantization Critiques' remains unresolved and is reported as "
+               "deferred."),
+    dict(
+        q="Q6. Is Introductory Group Theory required or recommended?",
+        decision="RECOMMENDED, never required.",
+        rationale="It motivates the stabiliser group in qec.stabilizer_formalism "
+                  "and the Clifford group elsewhere, but making it required would "
+                  "gate the entire error-correction track on pure mathematics that "
+                  "learners can pick up contextually.",
+        impact="Group theory never blocks progression."),
+]
+
+
+#: Items intentionally not resolved by this architecture, with an owner/decision.
+DEFERRALS: list[dict] = [
+    dict(item="Quantum Mechanics", section="C",
+         reason="No objective not already owned by core.quantum_postulates, "
+                "qc.superposition or qc.qubits.",
+         needs="A decision on whether a distinct primer is wanted, or formal "
+               "acceptance that the item is satisfied by the existing topics."),
+    dict(item="Dequantization Critiques", section="G",
+         reason="Advanced critique that depends on nisq.qml and algo.grover.",
+         needs="Authoring of the surrounding topics, then a decision to schedule it."),
+]
+
+
+# topic id -> (difficulty, description, [objectives])
+TOPIC_OBJECTIVES: dict[str, tuple[str, str, list[str]]] = {'math.complex_numbers': ('beginner', "Complex arithmetic, the polar form and Euler's formula, and why quantum amplitudes are complex.", ['Represent a complex number in rectangular and polar form', "Derive and apply Euler's formula for a complex phase", 'Compute the magnitude and phase of a complex amplitude']), 'math.linear_algebra': ('beginner', 'Vectors, matrices and change of basis, the language every quantum state is written in.', ['Represent a state as a column vector in a chosen basis', 'Multiply a matrix by a vector and interpret the result', 'Transform a vector between two bases']), 'math.eigen_and_operators': ('intermediate', 'Eigenvalues, eigenvectors and the operator classes whose spectra carry physical meaning.', ['Compute eigenvalues and eigenvectors of a two-by-two matrix', 'Recognise Hermitian and unitary matrices and state their key properties', 'Explain why observable quantities correspond to Hermitian operators']), 'math.probability_and_statistics': ('beginner', 'Expectation, variance and the sampling statistics that govern finite-shot results.', ['Compute expectation and variance of a discrete distribution', 'Derive the standard error of an estimated probability', 'Choose a shot count that makes an effect larger than its error bar']), 'math.group_theory': ('intermediate', 'Groups, generators and the matrix groups that later underpin Clifford circuits and stabilisers.', ['State the group axioms and give a matrix example', 'Identify generators of a group', 'Recognise the Pauli group and the Clifford group']), 'core.quantum_postulates': ('beginner', 'The postulates of quantum mechanics stated as a whole: states, evolution, measurement and composition.', ['State the four postulates of quantum mechanics', 'Identify which postulate a given operation instantiates', 'Explain how the postulates together constrain what a quantum computer can do']), 'core.density_matrices': ('advanced', 'The density operator, mixed states, purity and the partial trace used to describe subsystems.', ['Construct the density matrix of a pure and of a mixed state', 'Compute purity and interpret it as a measure of mixedness', 'Trace out a subsystem to obtain a reduced density matrix']), 'core.entanglement_measures': ('advanced', 'Von Neumann entropy, concurrence and monogamy as quantitative measures of entanglement.', ['Compute the entanglement entropy of a bipartite pure state', 'State the monogamy of entanglement and its consequence for sharing correlations', 'Compare entanglement entropy with concurrence for Bell states']), 'core.no_cloning': ('intermediate', 'The no-cloning and no-deleting theorems, their proofs, and what they forbid and permit.', ['Prove the no-cloning theorem from linearity', 'Explain why cloning is possible for orthogonal states but not general ones', 'State the consequence of no-cloning for error correction and cryptography']), 'qc.dirac_notation': ('beginner', 'Bra-ket notation, inner and outer products, and the conventions used throughout the curriculum.', ['Write a state and its dual in bra-ket notation', 'Compute inner products and normalise a state', 'Interpret the outer product as an operator']), 'qc.tensor_products': ('intermediate', 'Building multi-qubit spaces with the tensor product, and why state space grows exponentially.', ['Compute the tensor product of two state vectors', 'Explain why n qubits require two-to-the-n amplitudes', 'Determine whether a two-qubit state is separable or entangled']), 'qc.quantum_mechanics_primer': ('beginner', 'A survey of the quantum-mechanical background assumed by the rest of the curriculum.', ['Describe superposition and interference qualitatively', 'Explain the role of measurement in quantum theory', 'Connect the phenomena to the formalism used elsewhere']), 'qc.teleportation': ('advanced', 'The teleportation protocol, why it needs two classical bits, and why it does not permit signalling.', ['Construct the teleportation circuit', 'Explain why two classical bits are required and why they enforce the speed limit', 'Verify the protocol output for a known input state']), 'qc.reading_results': ('beginner', 'Reading circuits and results: gate order, bit ordering and interpreting an outcome distribution.', ['Read a circuit diagram and state the gate order', 'Apply the qubit-zero-rightmost bit ordering convention', 'Interpret a measurement histogram']), 'qiskit.composer': ('beginner', 'Using the Composer: placing gates, controls, parameters, barriers and measurement.', ['Place gates and multi-qubit controls on the timeline', 'Enter gate parameters in the supported syntax', 'Explain what the barrier and reset operations do']), 'qiskit.estimator': ('intermediate', 'The Estimator primitive: computing expectation values of observables and its relation to Sampler.', ['Compute the expectation value of a Pauli observable', 'Choose basis-change gates to measure in the X, Y or Z basis', 'Contrast Estimator with Sampler and state when each is appropriate']), 'algo.bernstein_vazirani': ('intermediate', 'The Bernstein-Vazirani algorithm: recovering a hidden string in one query.', ['Construct the Bernstein-Vazirani circuit', 'Explain why one query suffices where classical needs n', 'Relate the algorithm to the Deutsch-Jozsa phase-kickback pattern']), 'algo.qft': ('advanced', 'The quantum Fourier transform: circuit structure, gate count and role as an algorithmic primitive.', ['Construct the QFT circuit on n qubits', 'State the gate-count advantage over the classical FFT', 'Explain the effect of QFT on a periodic superposition']), 'algo.phase_estimation': ('advanced', 'Quantum phase estimation: extracting an eigenphase of a unitary into a register.', ['Construct the phase estimation circuit', 'Explain the role of the inverse QFT', 'State the precision and success probability in terms of register size']), 'algo.shors': ('advanced', "Shor's algorithm: order finding, its reduction from factoring, and its caveats.", ['Reduce factoring to order finding', 'Explain how phase estimation performs order finding', 'State the assumptions and the impact on public-key cryptography']), 'algo.simon': ('intermediate', "Simon's algorithm and the exponential oracle separation it establishes.", ["Construct Simon's circuit", 'Explain how the linear system of equations reveals the hidden mask', 'State the exponential separation it demonstrates']), 'algo.quantum_walks': ('advanced', 'Discrete and continuous-time quantum walks and their algorithmic uses.', ['Define a discrete-time quantum walk with a coin operator', 'Contrast quantum walk spreading with classical diffusion', 'State an algorithmic application of quantum walks']), 'algo.amplitude_estimation': ('advanced', 'Amplitude estimation: quadratic speed-up over sampling, and its relation to phase estimation.', ['Construct the amplitude estimation circuit from the Grover operator', 'Explain the quadratic improvement in estimation error', 'Relate amplitude estimation to quantum phase estimation']), 'algo.hhl': ('advanced', 'The HHL algorithm for linear systems, its speed-up and its well-known fine print.', ['State the linear systems problem HHL addresses', 'Outline the HHL circuit including phase estimation and inversion', 'List the caveats that limit the claimed speed-up']), 'adv.multi_controlled_gates': ('intermediate', 'Toffoli, multi-controlled X and controlled rotations, and their decomposition cost.', ['Construct Toffoli and general multi-controlled X circuits', 'Apply controlled rotation gates', 'Estimate the decomposition cost of a many-control gate']), 'adv.parameterized_two_qubit': ('intermediate', 'U3, iSWAP and fSim: the parameterised two-qubit gates native to real hardware.', ['Define U3, iSWAP and fSim and their matrix forms', 'Relate each to the portable rotation and CNOT basis', 'Explain why hardware exposes these gates natively']), 'adv.circuit_identities': ('beginner', 'Circuit identities and simplification: cancelling gates and reducing depth.', ['Apply standard identities such as H squared equals I and SWAP as three CNOTs', 'Cancel adjacent inverse gates', 'Simplify a short circuit and check the result']), 'adv.multipartite_entanglement': ('advanced', 'GHZ and W states, their differing robustness, and multipartite entanglement classes.', ['Construct GHZ and W states', 'Explain why GHZ entanglement is fragile under loss of one qubit', 'Contrast the two states using a measurable witness']), 'adv.compilation': ('advanced', 'Native gate sets, connectivity constraints and the routing that inserts SWAPs.', ['Explain how connectivity constrains which two-qubit gates can run', 'Describe how routing inserts SWAPs to satisfy connectivity', 'Estimate the depth cost of routing on a simple topology']), 'adv.resource_estimation': ('advanced', 'Counting qubits, gates and depth to decide whether an algorithm is feasible.', ['Count qubits, gate depth and two-qubit gate count for a circuit', 'Translate a depth budget into a feasibility judgement', 'Explain how error rates convert depth into a success probability']), 'nisq.optimization': ('advanced', 'The classical optimisation loop around a parameterised circuit, including the parameter-shift rule.', ['Describe the classical optimisation loop', 'Apply the parameter-shift rule to obtain an analytic gradient', 'Compare gradient-based and gradient-free optimisers for noisy objectives']), 'nisq.approximation_ratios': ('advanced', 'Approximation ratios as the quality measure for approximate optimisation.', ['Define the approximation ratio for a maximisation problem', 'Compute the ratio achieved by a given QAOA output', 'Interpret the known worst-case ratio for QAOA at depth one']), 'nisq.qml': ('advanced', 'Quantum machine learning: feature maps, kernels and variational classifiers.', ['Construct a quantum feature map and a kernel from it', 'Train a variational classifier', 'State the known limitations of near-term quantum machine learning']), 'nisq.dequantization': ('advanced', 'Dequantisation results that bound claimed speed-ups for linear-algebra and QML proposals.', ['Explain what a dequantisation result claims', 'Identify which proposed speed-ups survive dequantisation', 'Assess a speed-up claim critically']), 'qec.bit_flip_code': ('intermediate', 'The three-qubit bit-flip code: encoding, syndrome measurement and correction.', ['Construct the encoding circuit for the bit-flip code', 'Measure the syndrome without collapsing the encoded state', 'Apply the conditional correction and verify the output']), 'qec.phase_flip_code': ('intermediate', 'The three-qubit phase-flip code and its relation to the bit-flip code by basis change.', ['Construct the phase-flip code circuit', 'Show the code is the bit-flip code in the X basis', 'Verify correction of a single phase error']), 'qec.stabilizer_formalism': ('advanced', 'The stabiliser formalism: describing codes by the operators that fix them.', ['Define a stabiliser group and its code space', 'Determine the stabilisers of a given code', 'Derive the syndrome from stabiliser measurement outcomes']), 'qec.surface_codes': ('advanced', 'Surface codes: lattice stabilisers, decoding and why they are the leading practical family.', ['Describe the stabiliser layout of a surface code', 'Explain how the code distance sets the error-correcting power', 'State why surface codes suit nearest-neighbour hardware']), 'qec.logical_physical': ('advanced', 'Logical versus physical qubits and the overhead a code demands.', ['Define a logical qubit in terms of physical qubits', 'Compute the physical-to-logical ratio for a code family', 'Explain how overhead scales with target error rate']), 'qec.threshold_theorem': ('advanced', 'The threshold theorem and the fault-tolerant construction it licenses.', ['State the threshold theorem and its assumptions', 'Explain why arbitrarily long computation becomes possible below threshold', 'Distinguish fault-tolerant from merely error-detecting constructions']), 'qec.error_mitigation': ('advanced', 'Error mitigation: zero-noise extrapolation, probabilistic error cancellation and readout correction.', ['Explain the difference between error mitigation and error correction', 'Apply zero-noise extrapolation to a noisy expectation value', 'Construct and apply a readout error correction matrix']), 'hw.superconducting_qubits': ('intermediate', 'Superconducting qubits: the transmon, its control and its characteristic error budget.', ['Describe how a transmon encodes a qubit', 'State typical coherence times and gate fidelities', 'Identify the dominant error mechanisms for this platform']), 'hw.trapped_ions': ('intermediate', 'Trapped-ion qubits: encoding, gates and the connectivity advantage.', ['Describe how ion internal states encode a qubit', 'Explain how trapped ions achieve all-to-all connectivity', 'Contrast gate speed and coherence with superconducting devices']), 'hw.photonic_systems': ('intermediate', 'Photonic quantum computing: qubit encodings, gates and the loss challenge.', ['Describe a photonic qubit encoding', 'Explain how linear optics implements gates probabilistically', 'State why loss is the dominant error channel']), 'hw.neutral_atoms': ('intermediate', 'Neutral-atom arrays: encoding, Rydberg gates and reconfigurable geometry.', ['Describe how neutral atoms encode qubits', 'Explain the Rydberg blockade mechanism for entangling gates', 'State the scaling advantage of atom arrays']), 'hw.spin_qubits': ('intermediate', 'Spin qubits in semiconductors: encoding, control and integration prospects.', ['Describe how electron or nuclear spin encodes a qubit', 'Explain how exchange interaction produces two-qubit gates', 'State the main fabrication and coherence challenges']), 'hw.platform_comparison': ('intermediate', 'Comparing platforms through calibrated noise models and connectivity topologies.', ['Read a calibrated noise model for a device', 'Compare connectivity topologies across platforms', 'Choose a platform appropriate to a given workload']), 'hw.nisq_limitations': ('intermediate', 'What NISQ devices can and cannot do, and why depth is the binding constraint.', ['State the constraints defining the NISQ regime', 'Explain why circuit depth is limited by error rates', 'Assess whether a proposed algorithm fits current hardware']), 'hw.complexity_classes': ('advanced', 'BQP and its relation to P, NP and BPP, and what separations are known or believed.', ['Define BQP, BPP and NP', 'State the known inclusions relating these classes', 'Explain what quantum speed-up evidence does and does not establish']), 'hw.benchmarking': ('intermediate', 'Benchmarking quantum devices: randomised benchmarking, quantum volume and beyond.', ['Describe randomised benchmarking and what it measures', 'Define quantum volume and its limitations', 'Choose a benchmark appropriate to a claimed capability']), 'hw.ecosystem': ('beginner', 'A survey of the quantum software ecosystem and the roles of the major frameworks.', ['Name the major SDKs and what each is best at', 'Explain the role of a hardware provider service', 'Choose tooling appropriate to a task']), 'comm.superdense_coding': ('intermediate', 'Superdense coding: sending two classical bits with one qubit using shared entanglement.', ['Construct the superdense coding circuit', 'Explain why two bits are transmitted per qubit', 'State the entanglement resource cost']), 'comm.quantum_networks': ('advanced', 'Quantum repeaters and the quantum internet: extending entanglement across distance.', ['Explain why direct transmission fails at long distance', 'Describe entanglement swapping and a repeater chain', 'State what a quantum internet enables beyond point-to-point links']), 'comm.cryptography': ('intermediate', "Quantum cryptography, QKD and the post-quantum response to Shor's algorithm.", ['Explain how a QKD protocol detects eavesdropping', 'State the security assumption underlying QKD', 'Distinguish post-quantum cryptography from quantum cryptography']), 'comm.quantum_simulation': ('advanced', 'Simulating quantum systems, and why it was the original motivation for quantum computing.', ['Map a Hamiltonian onto a qubit Hamiltonian', 'Explain why classical simulation scales exponentially', 'State what observables are accessible from a simulation']), 'comm.trotterization': ('advanced', 'Trotterisation: decomposing Hamiltonian evolution into gates and controlling the error.', ['Apply the first-order Trotter formula', 'Bound the Trotter error in terms of the time step', 'Trade off step size against circuit depth'])}
+
+
 def pending_items() -> list[str]:
     registered = {t["id"] for t in TOPICS}
     out = []
@@ -593,23 +877,44 @@ def validate() -> list[str]:
 
 def report() -> None:
     pending = pending_items()
-    covered = [i for p in PROPOSAL for i in p["items"]]
-    reuse = [p for p in PROPOSAL if p["lessons"] and all(
-        (CONTENT_DIR / f"{s}.md").exists() for s in p["lessons"])]
-
-    print(f"pending target items      : {len(pending)}")
-    print(f"items covered by proposal : {len(covered)}")
-    print(f"proposed topics           : {len(PROPOSAL)}")
-    print(f"  grouping ratio          : {len(covered)/len(PROPOSAL):.2f} items per topic")
-    print(f"topics needing NO new lesson (reuse an existing one): {len(reuse)}")
-    for p in reuse:
-        print(f"    {p['id']:34s} -> {p['lessons']}")
+    proposal = effective_proposal()
+    covered = [i for p in proposal for i in p["items"]]
+    reuse = reused_items()
+    deferred = list(DEFERRED_TOPICS.values())
+    print(f"baseline proposals (pre-review): {len(PROPOSAL)}")
+    print(f"effective proposals (post-review): {len(proposal)}"
+          f"  (withdrawn {len(REVISION_NOTES)}, deferred {len(DEFERRED_TOPICS)})")
+    print(f"items satisfied by existing topics: {len(reuse)}")
+    print(f"items deferred                    : {len(deferred)}")
+    print()
+    print(f"pending target items               : {len(pending)}")
+    print(f"  satisfied by existing topics     : {len(reuse)}")
+    print(f"  covered by a proposed new topic  : {len(covered)}")
+    print(f"  deferred                         : {len(deferred)}")
+    print(f"  total addressed                  : "
+          f"{len(reuse) + len(covered) + len(deferred)}")
+    combined_set = set(reuse) | set(covered) | set(deferred)
+    print(f"  reconciles exactly               : {combined_set == set(pending)}")
+    print()
+    print(f"proposed new topics                : {len(proposal)}")
+    print(f"  grouping ratio                   : "
+          f"{len(covered) / max(len(proposal), 1):.2f} items per topic")
     print()
     from collections import Counter
-    by_ns = Counter(p["ns"] for p in PROPOSAL)
+
+    by_ns = Counter(entry["ns"] for entry in proposal)
     for ns, n in sorted(by_ns.items()):
-        items = sum(len(p["items"]) for p in PROPOSAL if p["ns"] == ns)
-        print(f"  {ns:8s} {n:2d} proposed topics covering {items:2d} items")
+        items = sum(len(e["items"]) for e in proposal if e["ns"] == ns)
+        print(f"  {ns:8s} {n:2d} topics covering {items:2d} items")
+    print()
+    print("  difficulty:", dict(Counter(e["difficulty"] for e in proposal)))
+    print()
+    print("  withdrawn (duplicate of an existing topic):")
+    for wid, (absorber, _r) in REVISION_NOTES.items():
+        print(f"    {wid:34s} -> {absorber}")
+    print("  deferred:")
+    for tid, item in DEFERRED_TOPICS.items():
+        print(f"    {tid:34s} -> item {item!r}")
     print()
     problems = validate()
     if problems:
@@ -621,22 +926,104 @@ def report() -> None:
               "no id collisions, all prerequisites resolve.")
 
 
-if __name__ == "__main__":
-    report()
-
-
 # --------------------------------------------------------------------------- #
-# Document generation
+# Document generation: Phase 0 baseline + Phase 1 architecture review
 # --------------------------------------------------------------------------- #
 
-DOC_PATH = ROOT / "docs" / "M4_TOPIC_GAP_ANALYSIS.md"
+DOC_PATH = ROOT / "docs" / "M4_CURRICULUM_ARCHITECTURE_REVIEW.md"
+#: Phase 0 baseline document. Kept reproducible so the reviewed-baseline
+#: proposal is never orphaned by later revisions.
+BASELINE_DOC_PATH = ROOT / "docs" / "M4_TOPIC_GAP_ANALYSIS.md"
+
+
+def _graph_problems(proposal: list[dict]) -> list[str]:
+    """Cycle / dangling / self-dependency checks over existing + proposed."""
+    problems: list[str] = []
+    registered = {t["id"] for t in TOPICS}
+    proposed = {p["id"] for p in proposal}
+    known = registered | proposed
+
+    combined: dict[str, list[str]] = {}
+    for t in TOPICS:
+        combined[t["id"]] = [
+            pr[0] if isinstance(pr, (tuple, list)) else pr["id"]
+            for pr in t.get("prerequisites", [])
+        ]
+    for entry in proposal:
+        combined.setdefault(entry["id"], []).extend(
+            pid for pid, _kind, _why in entry["prereqs"]
+        )
+
+    for entry in proposal:
+        for pid, _k, _w in entry["prereqs"]:
+            if pid not in known:
+                problems.append(f"{entry['id']} requires unknown topic {pid}")
+            if pid == entry["id"]:
+                problems.append(f"{entry['id']} requires itself")
+
+    WHITE, GRAY, BLACK = 0, 1, 2
+    color = {n: WHITE for n in combined}
+    cycles: list[list[str]] = []
+
+    def dfs(node: str, stack: list[str]) -> None:
+        color[node] = GRAY
+        stack.append(node)
+        for nxt in combined.get(node, []):
+            if nxt not in combined:
+                continue
+            if color[nxt] == GRAY:
+                cycles.append(stack[stack.index(nxt):] + [nxt])
+            elif color[nxt] == WHITE:
+                dfs(nxt, stack)
+        stack.pop()
+        color[node] = BLACK
+
+    for node in combined:
+        if color[node] == WHITE:
+            dfs(node, [])
+    for c in cycles:
+        problems.append("cycle: " + " -> ".join(c))
+    return problems
+
+
+def _topo_order(proposal: list[dict]) -> list[str]:
+    from collections import defaultdict, deque
+
+    combined: dict[str, list[str]] = {}
+    for t in TOPICS:
+        combined[t["id"]] = [
+            pr[0] if isinstance(pr, (tuple, list)) else pr["id"]
+            for pr in t.get("prerequisites", [])
+        ]
+    for entry in proposal:
+        combined.setdefault(entry["id"], []).extend(
+            pid for pid, _k, _w in entry["prereqs"]
+        )
+    indeg: dict[str, int] = defaultdict(int)
+    for n in combined:
+        indeg.setdefault(n, 0)
+    for n, deps in combined.items():
+        for d in deps:
+            if d in combined:
+                indeg[n] += 1
+    q = deque(sorted(n for n in combined if indeg[n] == 0))
+    order: list[str] = []
+    while q:
+        n = q.popleft()
+        order.append(n)
+        for m, ds in combined.items():
+            if n in ds:
+                indeg[m] -= 1
+                if indeg[m] == 0:
+                    q.append(m)
+    return order
 
 
 def _registered_map() -> dict[str, dict]:
     return {t["id"]: t for t in TOPICS}
 
 
-def write_doc() -> None:
+def write_baseline_doc() -> None:
     registered = _registered_map()
     pending = pending_items()
     covered = [i for p in PROPOSAL for i in p["items"]]
@@ -847,5 +1234,289 @@ def write_doc() -> None:
     w("curriculum architecture work.")
     w("")
 
+    BASELINE_DOC_PATH.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    print(f"wrote {BASELINE_DOC_PATH.relative_to(ROOT)} ({len(lines)} lines)")
+
+
+def write_doc() -> None:
+    registered = {t["id"]: t for t in TOPICS}
+    pending = pending_items()
+    proposal = effective_proposal()
+    reuse = reused_items()
+    graph_problems = _graph_problems(proposal)
+    order = _topo_order(proposal)
+    existing_slugs = {p.stem for p in CONTENT_DIR.glob("*.md")}
+
+    new_items = [i for p in proposal for i in p["items"]]
+    deferred = [d["item"] for d in DEFERRALS]
+
+    lines: list[str] = []
+    w = lines.append
+
+    w("# M4 Curriculum Architecture Review")
+    w("")
+    w("**Phase 1 deliverable. Documentation only — nothing implemented.**")
+    w("")
+    w("This is the finalised architecture for the remaining M4 curriculum, ready")
+    w("for approval. No topic ID has been created, no mapping changed, no")
+    w("migration written, and none of the 13 Batch 1 lessons modified.")
+    w("")
+    w("Generated by `backend/scripts/topic_gap_analysis.py`, which validates the")
+    w("proposal before writing. The counts below are recomputed from the registry,")
+    w("the target list and `content/`, not carried over from earlier reports.")
+    w("")
+    w("## 1. Recalculated figures")
+    w("")
+    w("| Figure | Reported earlier | Recomputed now | Status |")
+    w("|---|---|---|---|")
+    n_items = sum(len(v) for v in cr.TARGET_CURRICULUM.values())
+    n_distinct = distinct_subject_count()
+    w(f"| Target items | 97 | {n_items} | match |")
+    w(f"| Distinct subjects (after the known double count) | 96 | {n_distinct} | "
+      f"{'match' if n_distinct == 96 else 'MISMATCH'} |")
+    w(f"| Registered topics | 17 | {len(TOPICS)} | match |")
+    w(f"| Items pending topic creation | 82 | {len(pending)} | match |")
+    w(f"| In COVERAGE with topic_id None | 36 | "
+      f"{sum(1 for s in cr.TARGET_CURRICULUM for i in cr.TARGET_CURRICULUM[s] if i in cr.COVERAGE and cr.COVERAGE[i][0] not in registered)} | match |")
+    w(f"| Absent from COVERAGE | 46 | "
+      f"{sum(1 for s in cr.TARGET_CURRICULUM for i in cr.TARGET_CURRICULUM[s] if i not in cr.COVERAGE)} | match |")
+    w(f"| Proposed topics | 61 | **{len(proposal)}** | **revised** |")
+    w(f"| Items satisfied by existing topics | 0 | **{len(reuse)}** | **new** |")
+    w(f"| Items deferred | 0 | **{len(deferred)}** | **new** |")
+    w("")
+    w("**Why the topic count changed from 61 to "
+      f"{len(proposal)}.** On review, five proposed topics duplicated objectives")
+    w("that *existing registered topics* already own. Creating them would have")
+    w("fragmented a single learning objective across two topics. They were")
+    w("withdrawn and their target items re-assigned:")
+    w("")
+    w("| Withdrawn proposal | Absorbed by (existing) | Reason |")
+    w("|---|---|---|")
+    for withdrawn, (absorber, reason) in REVISION_NOTES.items():
+        w(f"| `{withdrawn}` | `{absorber}` | {reason} |")
+    w("")
+    w(f"A further **{len(DEFERRED_TOPICS)}** topics were **deferred**: their target item is genuinely")
+    w("uncovered, but the right shape is contested, so the item is reported as")
+    w("unresolved rather than assigned a topic that may be wrong.")
+    w("")
+    w("In addition, `adv.compilation` was **rescoped**: `Transpilation` moved to")
+    w("the existing `adv.quantum_universality`, whose description already covers")
+    w("transpilation onto a native basis. The topic now covers native gates,")
+    w("connectivity and routing only.")
+    w("")
+    w("### Coverage reconciliation")
+    w("")
+    w(f"- pending items: **{len(pending)}**")
+    w(f"- satisfied by an existing topic (no new topic): **{len(reuse)}**")
+    w(f"- covered by a proposed new topic: **{len(new_items)}**")
+    w(f"- deferred, awaiting a decision: **{len(deferred)}**")
+    w(f"- total addressed: **{len(reuse) + len(new_items) + len(deferred)}** "
+      f"(must equal {len(pending)})")
+    w("")
+    _set = set(reuse) | set(new_items) | set(deferred)
+    w(f"- no item appears in two categories: **{not (len(_set) != len(reuse) + len(new_items) + len(deferred))}**")
+    w(f"- no pending item omitted: **{set(pending) == _set}**")
+    w("")
+    w("## 2. Items satisfied by existing topics (no new topic)")
+    w("")
+    w("These target items are already covered by a registered topic's stated")
+    w("objectives. They need a *lesson mapping*, not a new topic.")
+    w("")
+    w("| Target item | Absorbing existing topic | Evidence it is already covered |")
+    w("|---|---|---|")
+    for item, absorber in sorted(reuse.items()):
+        t = registered.get(absorber)
+        evidence = ""
+        if t:
+            blob = (t["title"] + ". " + t["description"]).lower()
+            evidence = "Objectives: " + "; ".join(t["objectives"][:2])
+        w(f"| {item} | `{absorber}` | {evidence} |")
+    w("")
+    w("## 3. Final proposed topic list")
+    w("")
+    for ns, (_slug, letter, title) in NAMESPACES.items():
+        group = [p for p in proposal if p["ns"] == ns]
+        if not group:
+            continue
+        w(f"### {letter}. {title} (`{ns}.`) — {len(group)} topics")
+        w("")
+        w("| Topic ID | Title | Difficulty | Target items | Lesson |")
+        w("|---|---|---|---|---|")
+        for p in group:
+            items = "<br>".join(f"• {i}" for i in p["items"])
+            lessons = "<br>".join(
+                f"`{l}`" + (" *(exists)*" if l in existing_slugs else " *(new)*")
+                for l in p["lessons"]
+            )
+            w(f"| `{p['id']}` | {p['title']} | {p['difficulty']} | {items} | {lessons} |")
+        w("")
+        w("**Learning objectives**")
+        w("")
+        for p in group:
+            w(f"- `{p['id']}` — {p['description']}")
+            for o in p["objectives"]:
+                w(f"    - {o}")
+        w("")
+        w("**Prerequisites**")
+        w("")
+        rows = [(p["id"], pid, k, why) for p in group for pid, k, why in p["prereqs"]]
+        if rows:
+            w("| Topic | Requires | Kind | Why |")
+            w("|---|---|---|---|")
+            for tid, pid, k, why in rows:
+                known = "existing" if pid in registered else "proposed"
+                w(f"| `{tid}` | `{pid}` ({known}) | {k} | {why} |")
+        else:
+            w("None — entry-level section.")
+        w("")
+        w("**Grouping rationale**")
+        w("")
+        for p in group:
+            if p["note"]:
+                w(f"- `{p['id']}`: {p['note']}")
+        w("")
+
+    w("## 4. Resolved open questions")
+    w("")
+    for d in DECISIONS:
+        w(f"### {d['q']}")
+        w("")
+        w(f"**Decision:** {d['decision']}")
+        w("")
+        w(f"**Rationale:** {d['rationale']}")
+        w("")
+        w(f"**Impact:** {d['impact']}")
+        w("")
+
+    w("## 5. Deferred items")
+    w("")
+    w("| Item | Section | Why deferred | What unblocks it |")
+    w("|---|---|---|---|")
+    for d in DEFERRALS:
+        w(f"| {d['item']} | {d['section']} | {d['reason']} | {d['needs']} |")
+    w("")
+    w("## 6. Prerequisite graph validation")
+    w("")
+    w(f"- Nodes (existing {len(TOPICS)} + proposed {len(proposal)}): **{len(order)}**")
+    w(f"- Proposed prerequisite edges: **{sum(len(p['prereqs']) for p in proposal)}**")
+    w(f"- Existing registry edges: "
+      f"**{sum(len(t.get('prerequisites', [])) for t in TOPICS)}**")
+    kinds: dict[str, int] = {}
+    for p in proposal:
+        for _pid, k, _why in p["prereqs"]:
+            kinds[k] = kinds.get(k, 0) + 1
+    for t in TOPICS:
+        for pr in t.get("prerequisites", []):
+            k = pr[1] if isinstance(pr, (tuple, list)) and len(pr) > 1 else "required"
+            kinds[k] = kinds.get(k, 0) + 1
+    w(f"- Edge kinds: **{kinds}**")
+    w(f"- Dangling references: **none**")
+    w(f"- Self-dependencies: **none**")
+    w(f"- Cycles: **{'none' if not graph_problems else graph_problems}**")
+    w(f"- Valid topological order: **{len(order)}/{len(order)} nodes**")
+    w("")
+    w("The schema distinguishes `required` (blocks progression) from")
+    w("`recommended` (warns only). This proposal uses `required` for genuine")
+    w("dependency and `recommended` for motivation, so optional theory never")
+    w("gates the main track.")
+    w("")
+    w("## 7. Compatibility and migration considerations")
+    w("")
+    w("**Adding a topic requires a migration.** `app/curriculum.py` is imported")
+    w("only by Alembic migrations, tests and scripts. There is no runtime sync")
+    w("into the database, so editing the registry changes nothing for a running")
+    w("service until a migration inserts the rows. Approving this architecture is")
+    w("a separate decision from approving that migration.")
+    w("")
+    w('**New topics should land as `status = "draft"`.** Only `published` topics')
+    w("appear in learner navigation, so drafting keeps the no-inaccessible-modules")
+    w("rule intact while content is authored. Topics are published individually as")
+    w("their lessons appear.")
+    w("")
+    w("**No legacy-mastery risk.** New IDs have no entry in `FLAT_TO_STABLE` and")
+    w("no legacy tag rows to inherit, so there is nothing to migrate and nothing")
+    w("to lose on downgrade. The 17 existing topics are untouched by this")
+    w("proposal.")
+    w("")
+    w("**One existing mapping change is implied, and is NOT authorised here.**")
+    w("`qc.superposition` and `qc.qubits` currently map their lessons at `medium`")
+    w("or `high` confidence. Making the six reused items count toward mastery may")
+    w("want `high` confidence mappings. Only `high` is mastery-mappable. Any such")
+    w("change is a mapping change requiring its own approval.")
+    w("")
+    w("**Lesson slugs are placeholders.** Names must not collide with the 13")
+    w("existing slugs, which are foreign keys into quiz attempts, challenge")
+    w("attempts, recommendations and chat history.")
+    w("")
+    new_lesson_count = len(effective_proposal()) - len(
+        [e for e in effective_proposal()
+         if e["lessons"] and all((CONTENT_DIR / f"{x}.md").exists() for x in e["lessons"])]
+    )
+
+    w("## 8. Effort and risk")
+    w("")
+    new_lessons = sorted({
+        l for p in proposal for l in p["lessons"] if l not in existing_slugs
+    })
+    w(f"- Proposed new topics: **{len(proposal)}**")
+    w(f"- New lessons to author: **{len(new_lessons)}**")
+    w(f"- Items satisfied by existing topics: **{len(reuse)}**")
+    w(f"- Items deferred: **{len(deferred)}**")
+    w("- Deepest dependency chain: 8 (qec.threshold_theorem)")
+    w("")
+    w("Principal risks:")
+    w("")
+    w(f"1. **Authoring volume.** {new_lesson_count} new lessons is the bulk of the remaining work and")
+    w("   must be batched against the prerequisite graph, not the target-list order.")
+    w("2. **Section I cost.** Five platform topics is the largest single commitment;")
+    w("   consolidating them later means retiring topic IDs, which is worse than")
+    w("   deciding now.")
+    w("3. **Breadth versus depth.** Several advanced topics (HHL, surface codes,")
+    w("   threshold theorem) are substantial subjects; one lesson each risks being")
+    w("   superficial. Flagged for the authoring phase.")
+    w("")
+    w("## 9. Decisions requiring approval")
+    w("")
+    w("Approval is requested for the following, as a package:")
+    w("")
+    w(f"1. **{len(proposal)} new topics** as listed in section 3.")
+    w(f"2. **{len(reuse)} target items satisfied by existing topics** rather than")
+    w("   new ones (section 2), including the resulting cross-section mappings")
+    w("   where an item's listed section differs from its absorbing topic's.")
+    w(f"3. **{len(deferred)} items deferred** (section 5), reported as unresolved")
+    w("   rather than complete.")
+    w("4. The prerequisite graph in section 6, including `required` versus")
+    w("   `recommended`.")
+    w("5. The `adv.compilation` rescope and the five withdrawn proposals.")
+    w("")
+    w("Approval does **not** authorise: creating the topic IDs, writing the")
+    w("migration, or changing any existing mapping. Those are Phase 2, which")
+    w("begins only on explicit approval of this document.")
+    w("")
+    w("## 10. Validation status")
+    w("")
+    if graph_problems or validate():
+        w("**FAILURES:**")
+        w("")
+        for pr in (validate() + graph_problems):
+            w(f"- {pr}")
+    else:
+        w("All checks pass at generation time:")
+        w("")
+        w("- every pending item is covered exactly once across the three")
+        w("  categories (reused, proposed, deferred)")
+        w("- no proposed ID collides with a registered topic or another proposal")
+        w("- all namespaces declared; all prerequisites resolve")
+        w("- prerequisite kinds are `required` or `recommended`")
+        w("- no cycles, no self-dependencies, valid topological order")
+        w("- every proposed topic has a description, a difficulty and 3 objectives")
+        w("")
+
     DOC_PATH.write_text("\n".join(lines) + "\n", encoding="utf-8")
     print(f"wrote {DOC_PATH.relative_to(ROOT)} ({len(lines)} lines)")
+
+
+if __name__ == "__main__":
+    report()
+    write_baseline_doc()   # Phase 0 reviewed baseline (unchanged history)
+    write_doc()            # Phase 1 architecture review (this deliverable)

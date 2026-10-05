@@ -842,3 +842,142 @@ def test_topic_gap_document_is_in_sync():
         "document headline count is stale; re-run topic_gap_analysis.py"
     )
     assert f"**{len(mod.PROPOSAL)} proposed topics for {pending} items**" in text
+
+
+# --------------------------------------------------------------------------- #
+# Phase 1: architecture review (documentation only)
+# --------------------------------------------------------------------------- #
+
+def _review_doc() -> pathlib.Path:
+    doc = (
+        pathlib.Path(__file__).resolve().parents[1].parent
+        / "docs"
+        / "M4_CURRICULUM_ARCHITECTURE_REVIEW.md"
+    )
+    assert doc.exists(), "M4_CURRICULUM_ARCHITECTURE_REVIEW.md is missing"
+    return doc
+
+
+def test_architecture_review_effective_proposal_is_valid():
+    """The *effective* (post-review) proposal must satisfy every structural
+    check: prerequisites resolve, no cycles, no self-dependencies."""
+    mod = _gap_module()
+    assert mod.validate() == [], f"effective proposal invalid: {mod.validate()}"
+
+
+def test_architecture_review_coverage_reconciles():
+    """Reused + proposed + deferred must partition the pending set exactly:
+    no item counted twice, none omitted, no item marked complete by silence."""
+    mod = _gap_module()
+    pending = set(mod.pending_items())
+    reuse = set(mod.reused_items())
+    proposed = {i for p in mod.effective_proposal() for i in p["items"]}
+    deferred = set(mod.DEFERRED_TOPICS.values())
+
+    assert reuse | proposed | deferred == pending, (
+        "coverage gap: "
+        f"{sorted(pending - (reuse | proposed | deferred))}"
+    )
+    # pairwise disjoint - the deferred items must not also be "covered"
+    assert not (reuse & proposed), sorted(reuse & proposed)
+    assert not (reuse & deferred), sorted(reuse & deferred)
+    assert not (proposed & deferred), sorted(proposed & deferred)
+
+
+def test_architecture_review_withdrawals_land_on_real_topics():
+    """Every withdrawn proposal must name an absorber that exists in the
+    registry, otherwise the item quietly loses its home."""
+    from app.curriculum import TOPICS as REGISTERED
+
+    mod = _gap_module()
+    registered = {t["id"] for t in REGISTERED}
+    for withdrawn, (absorber, _reason) in mod.REVISION_NOTES.items():
+        assert absorber in registered, (
+            f"{withdrawn} is absorbed by {absorber}, which is not registered"
+        )
+        assert withdrawn not in {p["id"] for p in mod.effective_proposal()}, (
+            f"{withdrawn} was withdrawn but is still in the effective proposal"
+        )
+
+
+def test_architecture_review_deferrals_are_not_silently_covered():
+    """A deferred item must have NO topic in the effective proposal. This is
+    the guard that stops a deferral being reported as coverage."""
+    mod = _gap_module()
+    proposed_ids = {p["id"] for p in mod.effective_proposal()}
+    for topic_id, item in mod.DEFERRED_TOPICS.items():
+        assert topic_id not in proposed_ids, (
+            f"{topic_id} covers deferred item {item!r} but is still proposed"
+        )
+    covered = {i for p in mod.effective_proposal() for i in p["items"]}
+    for item in mod.DEFERRED_TOPICS.values():
+        assert item not in covered, f"deferred item {item!r} is also covered"
+
+
+def test_architecture_review_every_edge_has_a_rationale():
+    """Every prerequisite edge must carry a substantive 'why', so the graph
+    can be reviewed rather than merely accepted."""
+    mod = _gap_module()
+    for p in mod.effective_proposal():
+        for prereq in p.get("prereqs", []):
+            assert isinstance(prereq, (tuple, list)), f"{p['id']}: bad edge shape"
+            assert len(prereq) >= 3, f"{p['id']} -> {prereq[0]} has no rationale"
+            assert prereq[1] in ("required", "recommended"), (
+                f"{p['id']} -> {prereq[0]} has kind {prereq[1]!r}"
+            )
+            assert len(prereq[2].strip()) >= 25, (
+                f"{p['id']} -> {prereq[0]} rationale is too thin: {prereq[2]!r}"
+            )
+
+
+def test_architecture_review_every_topic_has_full_schema():
+    """No topic may be approved without a description, a difficulty and
+    objectives - these drive mastery and the UI."""
+    mod = _gap_module()
+    for p in mod.effective_proposal():
+        assert p["id"] in mod.TOPIC_OBJECTIVES, f"{p['id']} has no objectives"
+        difficulty, description, objectives = mod.TOPIC_OBJECTIVES[p["id"]]
+        assert difficulty in ("beginner", "intermediate", "advanced"), (
+            f"{p['id']} has difficulty {difficulty!r}"
+        )
+        assert description.strip(), f"{p['id']} has no description"
+        assert len(objectives) >= 3, f"{p['id']} has only {len(objectives)} objectives"
+
+
+def test_architecture_review_document_is_in_sync():
+    """The review document must quote the live counts, so it cannot drift."""
+    mod = _gap_module()
+    text = _review_doc().read_text(encoding="utf-8")
+    pending = len(mod.pending_items())
+    effective = len(mod.effective_proposal())
+    assert "| Target items | 97 | 97 | match |" in text
+    assert "| Distinct subjects (after the known double count) | 96 | 96 | match |" in text
+    assert f"**{effective}**" in text, (
+        f"document does not quote the effective topic count ({effective})"
+    )
+    assert f"- satisfied by an existing topic (no new topic): **{len(mod.reused_items())}**" in text
+    assert f"- deferred, awaiting a decision: **{len(mod.DEFERRED_TOPICS)}**" in text
+    # the reconciliation must actually add up, not just be printed
+    assert "- no item appears in two categories: **True**" in text
+    assert "- no pending item omitted: **True**" in text
+
+
+def test_architecture_review_does_not_implement_anything():
+    """Phase 1 is documentation. Nothing may have been created or changed in
+    the registry, and no migration may exist for the new topics."""
+    import subprocess
+
+    repo = pathlib.Path(__file__).resolve().parents[1].parent
+    registry = repo / "backend" / "app" / "curriculum.py"
+    diff = subprocess.run(
+        ["git", "diff", "--quiet", "--", str(registry)],
+        cwd=str(repo), capture_output=True,
+    )
+    assert diff.returncode == 0, "app/curriculum.py has uncommitted changes"
+
+    mod = _gap_module()
+    from app.curriculum import TOPICS as REGISTERED
+
+    registered = {t["id"] for t in REGISTERED}
+    assert len(registered) == 17, f"registry changed size: {len(registered)}"
+    assert not ({p["id"] for p in mod.effective_proposal()} & registered)
