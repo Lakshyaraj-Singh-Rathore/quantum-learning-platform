@@ -762,9 +762,23 @@ Approval is requested for the following, as a package:
    `recommended`.
 5. The `adv.compilation` rescope and the five withdrawn proposals.
 
-Approval does **not** authorise: creating the topic IDs, writing the
-migration, or changing any existing mapping. Those are Phase 2, which
-begins only on explicit approval of this document.
+### Scope of this approval (Gate 1 only)
+
+Approving this document is **Gate 1: architecture approval**. It
+authorises nothing beyond accepting the architecture described here.
+Specifically, Gate 1 does **not** authorise:
+
+- **Gate 2** - creating the topic IDs in `app/curriculum.py`, updating
+  lesson mappings or prerequisites, or writing the migration.
+- **Gate 3** - running that migration against any database, including
+  a staging or local one.
+- **Gate 4** - running any migration against production. This remains
+  unauthorised and is not requested.
+- **Gate 5** - authoring lesson content.
+
+Each gate requires its own explicit, separately stated authorisation.
+Gate 1 approval must not be read as approval of any later gate. The
+full gate definitions are in `M4_APPROVAL_CHECKLIST.md`.
 
 ## 10. Validation status
 

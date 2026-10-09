@@ -981,3 +981,82 @@ def test_architecture_review_does_not_implement_anything():
     registered = {t["id"] for t in REGISTERED}
     assert len(registered) == 17, f"registry changed size: {len(registered)}"
     assert not ({p["id"] for p in mod.effective_proposal()} & registered)
+
+
+# --------------------------------------------------------------------------- #
+# Approval gate separation (documentation only)
+# --------------------------------------------------------------------------- #
+
+def _checklist_doc() -> pathlib.Path:
+    doc = (
+        pathlib.Path(__file__).resolve().parents[1].parent
+        / "docs"
+        / "M4_APPROVAL_CHECKLIST.md"
+    )
+    assert doc.exists(), "M4_APPROVAL_CHECKLIST.md is missing"
+    return doc
+
+
+def test_approval_checklist_defines_five_separate_gates():
+    """M4 approval is five independent gates. The checklist must name all
+    five and must never collapse them into a single 'approval'."""
+    text = _checklist_doc().read_text(encoding="utf-8")
+    for gate in ("Gate 1", "Gate 2", "Gate 3", "Gate 4", "Gate 5"):
+        assert gate in text, f"checklist does not define {gate}"
+    # the table that declares the gates and their status
+    assert "Architecture approval" in text
+    assert "Implementation authorisation" in text
+    assert "Non-production migration execution" in text
+    assert "Production migration" in text
+    assert "Phase 3 lesson authoring" in text
+
+
+def test_approval_checklist_production_migration_is_unauthorised():
+    """Gate 4 must be stated as unauthorised and not requested. This is the
+    standing production-migration gate, asserted in the deliverable itself."""
+    text = _checklist_doc().read_text(encoding="utf-8")
+    gate4 = text.split("## Gate 4")[1].split("## Gate 5")[0]
+    assert "not authorised" in gate4.lower() or "not authorized" in gate4.lower()
+    assert "not requested" in gate4.lower()
+
+
+def test_approval_checklist_gate1_does_not_authorise_implementation():
+    """Gate 1 must not be described as authorising topic creation, mapping
+    changes, migrations or content authoring. This is the specific
+    contradiction this checklist exists to prevent."""
+    text = _checklist_doc().read_text(encoding="utf-8")
+    gate1 = text.split("## Gate 1")[1].split("## Gate 2")[0]
+
+    # Gate 1 must positively disclaim each later gate's subject matter.
+    for forbidden in (
+        "creating any topic ID",
+        "lesson→topic mapping",
+        "Alembic migration",
+        "lesson content",
+    ):
+        assert forbidden in gate1, f"Gate 1 does not disclaim: {forbidden}"
+
+    # and it must not claim to authorise Phase 2
+    lowered = gate1.lower()
+    assert "authorises phase 2" not in lowered, (
+        "Gate 1 still claims to authorise Phase 2"
+    )
+    assert "authorizes phase 2" not in lowered
+
+
+def test_approval_checklist_gate3_requires_identified_environment():
+    """Gate 3 must require the environment to be named, and must not be
+    satisfied by a test run alone."""
+    text = _checklist_doc().read_text(encoding="utf-8")
+    gate3 = text.split("## Gate 3")[1].split("## Gate 4")[0]
+    assert "identify the environment" in gate3.lower()
+    assert "tested" in gate3.lower() and "approved" in gate3.lower()
+
+
+def test_architecture_review_states_gate1_scope():
+    """The generated review must carry the same Gate 1 scope limitation, so
+    the two documents cannot disagree about what is being approved."""
+    text = _review_doc().read_text(encoding="utf-8")
+    assert "Gate 1: architecture approval" in text
+    assert "Gate 2" in text and "Gate 3" in text and "Gate 4" in text
+    assert "Gate 1 approval must not be read as approval of any later gate" in text
