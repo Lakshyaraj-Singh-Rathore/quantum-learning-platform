@@ -236,6 +236,11 @@
       "rewrite_status": "verified",
       "last_updated": "2026-10-10",
       "notes": "Authored per the M4 standard. Encoding verified to map alpha|0>+beta|1> onto alpha|000>+beta|111> with alpha=cos(0.35)=0.9394, beta=e^{1.1i}sin(0.35), |alpha|^2=0.8824. Syndrome extraction verified deterministic: for each of the four error cases the entire five-qubit amplitude sits in ONE ancilla block (norm 1.000000), so the syndrome reveals the error location and nothing about alpha/beta. Recovery verified to fidelity 1.000000000000 for every single-error case, and end-to-end on Aer with if_test at 4000 shots (identical 3540:460 outputs for all four cases, spare qubits always 00). P_correct=(1-p)^2(1+2p), P_fail=3p^2-2p^3; crossover at exactly p=1/2; Monte-Carlo 200k trials reproduces the table. Weight>=2 errors all produce the SAME logical X (fidelity 1.000000000 against X|psi>); off-diagonal 0.085389 = |2Re(alpha* beta)|^2 confirmed. 266/266 KaTeX expressions compile. 21 RAG chunks, 0 unbalanced fences, max 1730."
+    },
+    "50_phase_flip_code": {
+      "rewrite_status": "verified",
+      "last_updated": "2026-10-10",
+      "notes": "Authored per the M4 standard. Encoder (bit-flip CNOTs then H^3) verified to produce alpha|+++>+beta|---> at fidelity 1.000000000000, and verified to equal H^3 applied to the bit-flip codeword at 1.000000000000. Basis identities verified by matrix multiplication: HZH==X, HXH==Z, H3(Z0Z1)H3==X0X1, H3(Z1Z2)H3==X1X2, all True. Stabilisers X0X1/X1X2 give +1.000000000000 on the codeword; Z0Z1/Z1Z2 give exactly 0.000000000 (not eigenvectors). Syndrome table identical to the bit-flip code, verified via expectation values. Conditional-Z recovery verified to F(q0,|psi>)=1.000000000 for all four cases and end-to-end on Aer at 4000 shots (identical 3540:460, spares 00 every shot). Uncorrected Z on q0 gives decoded q0 = X|psi> (F 0.085389) with spares |11>; Z on q1/q2 leave q0 correct but spares |10>/|01>. X errors invisible (syndrome (0,0)) yet damage to F=0.584984 = (|alpha|^2-|beta|^2)^2 = logical Z. Two/three Z flips all fail as a logical X (F 1.000000000 vs X|psi>) because X_L = Z0Z1Z2 and Z_L = X0 for this code, both verified. 310/310 KaTeX compile. 20 RAG chunks, 0 unbalanced fences, max 1378."
     }
   },
   "items": [
@@ -2880,11 +2885,11 @@
       "topic_state": "PENDING_TOPIC_CREATION",
       "proposed_topic_id": "qec.phase_flip_code",
       "analysis_status": "proposed_topic",
-      "lesson_slug": null,
-      "lesson_title": null,
+      "lesson_slug": "50_phase_flip_code",
+      "lesson_title": "The Three-Qubit Phase-Flip Code",
       "proposed_slug": "three_qubit_phase_flip_code",
-      "content_status": "missing",
-      "rewrite_status": "not_started",
+      "content_status": "existing",
+      "rewrite_status": "verified",
       "primary_topic": null,
       "secondary_topics": [],
       "additional_existing_lessons": [],
@@ -2899,14 +2904,14 @@
       "simulation_required": null,
       "exercises_required": true,
       "references_required": true,
-      "technical_review": "not_run",
-      "schema_validation": "not_run",
-      "mapping_validation": "not_run",
-      "prerequisite_validation": "not_run",
-      "code_validation": "not_run",
-      "integration_validation": "not_run",
-      "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'three_qubit_phase_flip_code' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-04"
+      "technical_review": "passed",
+      "schema_validation": "passed",
+      "mapping_validation": "passed",
+      "prerequisite_validation": "passed",
+      "code_validation": "passed",
+      "integration_validation": "passed",
+      "review_notes": "Authored per the M4 standard. Encoder (bit-flip CNOTs then H^3) verified to produce alpha|+++>+beta|---> at fidelity 1.000000000000, and verified to equal H^3 applied to the bit-flip codeword at 1.000000000000. Basis identities verified by matrix multiplication: HZH==X, HXH==Z, H3(Z0Z1)H3==X0X1, H3(Z1Z2)H3==X1X2, all True. Stabilisers X0X1/X1X2 give +1.000000000000 on the codeword; Z0Z1/Z1Z2 give exactly 0.000000000 (not eigenvectors). Syndrome table identical to the bit-flip code, verified via expectation values. Conditional-Z recovery verified to F(q0,|psi>)=1.000000000 for all four cases and end-to-end on Aer at 4000 shots (identical 3540:460, spares 00 every shot). Uncorrected Z on q0 gives decoded q0 = X|psi> (F 0.085389) with spares |11>; Z on q1/q2 leave q0 correct but spares |10>/|01>. X errors invisible (syndrome (0,0)) yet damage to F=0.584984 = (|alpha|^2-|beta|^2)^2 = logical Z. Two/three Z flips all fail as a logical X (F 1.000000000 vs X|psi>) because X_L = Z0Z1Z2 and Z_L = X0 for this code, both verified. 310/310 KaTeX compile. 20 RAG chunks, 0 unbalanced fences, max 1378.",
+      "last_updated": "2026-10-10"
     },
     {
       "item_id": "M4-H03",
