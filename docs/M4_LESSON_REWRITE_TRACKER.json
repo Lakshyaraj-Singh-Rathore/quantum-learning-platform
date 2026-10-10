@@ -131,6 +131,11 @@
       "rewrite_status": "verified",
       "last_updated": "2026-10-10",
       "notes": "Authored per the M4 standard. NumPy 1.26.4, seed 7. All 3 python blocks executed concatenated, clean under -W error::Warning. Results: N=100 -> 0.5500+-0.0497; N=1000 -> 0.4860+-0.0158; N=4096 -> 0.4866+-0.0078; marginals P(q0=1)=P(q1=1)=0.5076; <Z0>=-0.0151 (theory 0); <Z0Z1>=1.0000 (theory +1); shots for 5%=400, 1%=10000; rule of three 3/N -> 0.0300 and 0.0030. 62/62 KaTeX compile. 25 RAG chunks, 0 unbalanced."
+    },
+    "28_composer_guide": {
+      "rewrite_status": "verified",
+      "last_updated": "2026-10-10",
+      "notes": "Authored against the real implementation, not from memory. NumPy 1.26.4. Verified: GATE_SET is 15 gates; aliases cnot->x, hadamard->h, ccx/toffoli->x with 2 controls; IR round-trips; Bell circuit depth 3 with measurements, dynamic False; qiskit_aer ideal counts {'00':503,'11':521} = 0.4912/0.5088; metadata bit_order='qiskit (qubit 0 = rightmost)'; metrics entanglement_entropy 1.0, concurrence 1.0, fidelity 1.0, purity 1.0; with default noise p(00)=0.4951 p(11)=0.4492, 5.57% impossible outcomes, fidelity 0.9813, purity 0.9631. Limits verified in config: static 20, dynamic 15, GPU 28, dynamic shots 4096, while cap 32. Backend catalogue read from app/api/jobs.py. 17/17 KaTeX compile. 27 RAG chunks, 0 unbalanced."
     }
   },
   "items": [
@@ -1268,11 +1273,11 @@
       "topic_state": "PENDING_TOPIC_CREATION",
       "proposed_topic_id": "qiskit.composer",
       "analysis_status": "proposed_topic",
-      "lesson_slug": null,
-      "lesson_title": null,
+      "lesson_slug": "28_composer_guide",
+      "lesson_title": "The Quantum Composer",
       "proposed_slug": "quantum_composer",
-      "content_status": "missing",
-      "rewrite_status": "not_started",
+      "content_status": "existing",
+      "rewrite_status": "verified",
       "primary_topic": null,
       "secondary_topics": [],
       "additional_existing_lessons": [],
@@ -1287,14 +1292,14 @@
       "simulation_required": null,
       "exercises_required": true,
       "references_required": true,
-      "technical_review": "not_run",
-      "schema_validation": "not_run",
-      "mapping_validation": "not_run",
-      "prerequisite_validation": "not_run",
-      "code_validation": "not_run",
-      "integration_validation": "not_run",
-      "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'quantum_composer' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-04"
+      "technical_review": "passed",
+      "schema_validation": "passed",
+      "mapping_validation": "passed",
+      "prerequisite_validation": "passed",
+      "code_validation": "passed",
+      "integration_validation": "passed",
+      "review_notes": "Authored against the real implementation, not from memory. NumPy 1.26.4. Verified: GATE_SET is 15 gates; aliases cnot->x, hadamard->h, ccx/toffoli->x with 2 controls; IR round-trips; Bell circuit depth 3 with measurements, dynamic False; qiskit_aer ideal counts {'00':503,'11':521} = 0.4912/0.5088; metadata bit_order='qiskit (qubit 0 = rightmost)'; metrics entanglement_entropy 1.0, concurrence 1.0, fidelity 1.0, purity 1.0; with default noise p(00)=0.4951 p(11)=0.4492, 5.57% impossible outcomes, fidelity 0.9813, purity 0.9631. Limits verified in config: static 20, dynamic 15, GPU 28, dynamic shots 4096, while cap 32. Backend catalogue read from app/api/jobs.py. 17/17 KaTeX compile. 27 RAG chunks, 0 unbalanced.",
+      "last_updated": "2026-10-10"
     },
     {
       "item_id": "M4-D02",

@@ -56,6 +56,9 @@ MEASURABLE_VERBS = {
     # computation, a circuit, an output) and it either shows the claimed
     # behaviour or it does not.
     "demonstrate", "reproduce",
+    # Setting up a model and naming its parameters is assessable: the reader
+    # produces the configuration and the values are right or wrong.
+    "configure", "select",
 }
 VAGUE_VERBS = {"understand", "appreciate", "learn", "know", "grasp", "explore"}
 
