@@ -223,6 +223,44 @@ progress rather than by the rebuild:
 React has no unit-test suite; the `render:*`/`a11y`/`states`/`curriculum`
 tsx scripts need a live API and remain deferred to Batch 6.
 
+### Batch 3 continued - core quantum theory block
+
+| # | Lesson | Topic | KaTeX | RAG | Commit |
+|---|---|---|---|---|---|
+| 19 | `19_quantum_postulates.md` | `core.quantum_postulates` | 78/78 | 22 | `2d785c2` |
+| 20 | `20_density_matrices.md` | `core.density_matrices` | 96/96 | 26 | `82a6bf8` |
+| 21 | `21_entanglement_measures.md` | `core.entanglement_measures` | 86/86 | 25 | `4098dde` |
+| 22 | `22_no_cloning.md` | `core.no_cloning` | 76/76 | 30 | `5495215` |
+
+Ordering was verified topologically against the registry's *required*
+prerequisite edges, not assumed from lesson numbers. The resulting order
+matches the numbering in the core block, and lesson 19 is correctly first
+(it has only a recommended prereq).
+
+#### Authoring notes carried forward
+
+- **Verify the proof, not just the arithmetic.** The first pass at lesson 22's
+  inner-product argument used |+> and |->, which are orthogonal, so both sides
+  of the contradiction were zero and the argument was vacuous. Reworked with
+  the genuinely non-orthogonal pair |0> and |+>, giving 0.707 vs 0.5.
+- **Keep inline `$...$` on one line.** `test_content_markdown.py` checks
+  delimiters line by line; the KaTeX checker does not, so a wrapped inline
+  expression passes KaTeX and fails the content test. Hit four times on
+  lesson 22.
+- **Split long `## Practical example` sections with `###` subheadings.** The
+  RAG chunker targets 1200 chars. Lessons 21 and 22 both needed this. When a
+  code block is split, verify all blocks concatenated, since later blocks
+  depend on earlier ones.
+- `MEASURABLE_VERBS` extended again with `demonstrate` and `reproduce`; the
+  `VAGUE_VERBS` guard was re-proven with a probe file.
+
+### Current verified baselines
+
+| Suite | Result |
+|---|---|
+| Backend | **617 passed, 5 skipped** |
+| Frontend | 418 passed, 77 skipped (unchanged; not re-run this batch) |
+
 ### Commits
 
 | Hash | Contents |
