@@ -271,6 +271,11 @@
       "rewrite_status": "verified",
       "last_updated": "2026-10-10",
       "notes": "Authored per the M4 standard. All three registered objectives covered: describe how a transmon encodes a qubit; state typical coherence times and gate fidelities; identify the dominant error mechanisms. Physics verified by direct numerical diagonalisation of the transmon Hamiltonian H = 4 E_C (n - n_g)^2 - E_J cos(phi) in the charge basis (|n| <= 25), not quoted from memory. Three results verified at E_C/h = 250 MHz across E_J/E_C = 1, 5, 20, 50, 100: (1) the anharmonicity alpha = w12 - w01 converges to -E_C (numerical -0.2739 GHz vs -E_C = -0.2500 GHz at ratio 100); (2) the transition frequency follows sqrt(8 E_J E_C) - E_C (numerical 4.7355 vs analytic 4.7500 GHz at ratio 50, and 6.8113 vs 6.8211 at ratio 100), landing at ~4.7 GHz which is inside the real 4-6 GHz band; (3) the charge dispersion collapses by EIGHT orders of magnitude, from 7.8e-01 GHz at ratio 1 to 6.3e-09 GHz at ratio 100 - this is the whole point of the transmon and it is computed, not asserted. Device parameters (T1 100-300 us, T2 100-350 us, 1q error 1e-4 to 1e-3, 2q error 1e-3 to 1e-2, 2q gate 25-300 ns, readout error 5e-3 to 2e-2) taken from published 2024-2026 sources including a 2025 EPJ Quantum Technology review (IBM medians T1=288us, T2=127us, mean 1q EPG 6.75e-4, mean 2q EPG 1.15e-2), Toshiba/RIKEN 2024 (T1=230us, 99.90% 2q over 12 hours), Aalto 2025 (T1 median 425us, max 666us), and Google Willow (1.1 us surface-code cycle). The 17x gap between one-qubit and two-qubit error is highlighted as the platform's defining characteristic. Coherence-limited error floor verified by execution: epsilon ~ t_g/3T1 + t_g/3T2 across four parameter sets gives a depth budget T2/t_g of only 600 to 1200 two-qubit gates, and the best achieved 2q errors (~1e-3) are within a factor of 2-3 of that floor, so coherence rather than control is the binding constraint. Error mechanisms organised by category with the physics named: TLS defects, quasiparticles, Purcell decay, dielectric loss (relaxation); flux noise, photon shot noise, residual charge noise (dephasing); control error, leakage to |2>, residual ZZ (gates); crosstalk, cosmic rays (correlated). Correlated mechanisms are explicitly tied back to the independence assumption of the threshold theorem. 185/185 KaTeX compile. 20 RAG chunks, 0 unbalanced fences, max 1819."
+    },
+    "57_trapped_ions": {
+      "rewrite_status": "verified",
+      "last_updated": "2026-10-10",
+      "notes": "Authored per the M4 standard against the registered spec (title 'Trapped Ions', topic hw.trapped_ions, prereq qiskit.quantum_noise recommended). All three registered objectives covered: describe how ion internal states encode a qubit; explain how trapped ions achieve all-to-all connectivity; contrast gate speed and coherence with superconducting devices. ESTABLISHED PHYSICS verified by computation, not quoted. (1) Phonon bus: the Coulomb-plus-trap potential f(u) = sum u_i^2 + sum_{i != j} 1/|u_i-u_j| is minimised numerically and its Hessian diagonalised to give the axial normal modes. Verified for N = 2,3,4,5: N=2 gives [1.0, 1.73205] matching the hand-derived sqrt(3); N=3 gives [1.0, 1.73205, 2.40832] against the exact sqrt(29/5) = 2.408319, max error 4.65e-09. Spacing/l computed as 1.25992 for N=2, matching 2^(1/3) = 1.259921 from the closed-form worked example. (2) All-to-all connectivity: the centre-of-mass eigenvector is uniform - verified to 1e-16 for N = 2,3,4,5,8,10,15, with every entry equal to 1/sqrt(N) (N=5 gives 0.447214 = 1/sqrt(5)). That uniformity is the physical origin of all-to-all connectivity and is stated as the reason, not just asserted. (3) Molmer-Sorensen gate: H(t) = g S_x (a^dag e^{i dt} + a e^{-i dt}) integrated numerically over a truncated Fock space. Verified that U = exp(-i theta S_x^2) with theta = 2 pi (g/delta)^2, and that the concurrence from |gg> equals |sin(8 pi (g/delta)^2)| to within 1.15e-07 across g/delta = 0.05 to 0.25. Maximally entangling at g/delta = 1/4 (theta = pi/8), where concurrence = 1.00000000 and the motional state returns with F = 1.00000000, identically for initial n = 0,1,2,3,4 - demonstrating the gate's insensitivity to thermal motion. Output is the Bell state (|gg> - i|ee>)/sqrt(2) with relative phase -90 degrees. The breakdown outside the Lamb-Dicke regime is reported honestly: at g/delta = 0.56 with n = 5 the concurrence falls to 0.60. (4) Speed/coherence contrast: computed depth budget T2/t_g gives 10^4 for ions against 10^3 for superconducting - ions are ~1000x slower per gate but ~10^4x longer-lived, netting roughly 10x more sequential gates. DEVICE-SPECIFIC figures explicitly labelled as vendor snapshots rather than platform constants: Quantinuum Helios (98 Ba-137 ions, 48 logical qubits, 99.921% all-pairs 2q, 99.9975% 1q, Nov 2025), IonQ EQC prototype (99.99%, Oct 2025), Oxford Ionics (99.97%, 2024). 246/246 KaTeX compile. 29 RAG chunks, 0 unbalanced fences, max 1698. Validator 55/55."
     }
   },
   "items": [
@@ -3322,11 +3327,11 @@
       "topic_state": "PENDING_TOPIC_CREATION",
       "proposed_topic_id": "hw.trapped_ions",
       "analysis_status": "proposed_topic",
-      "lesson_slug": null,
-      "lesson_title": null,
+      "lesson_slug": "57_trapped_ions",
+      "lesson_title": "Trapped Ions",
       "proposed_slug": "trapped_ions",
-      "content_status": "missing",
-      "rewrite_status": "not_started",
+      "content_status": "existing",
+      "rewrite_status": "verified",
       "primary_topic": null,
       "secondary_topics": [],
       "additional_existing_lessons": [],
@@ -3341,14 +3346,14 @@
       "simulation_required": null,
       "exercises_required": true,
       "references_required": true,
-      "technical_review": "not_run",
-      "schema_validation": "not_run",
-      "mapping_validation": "not_run",
-      "prerequisite_validation": "not_run",
-      "code_validation": "not_run",
-      "integration_validation": "not_run",
-      "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'trapped_ions' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-04"
+      "technical_review": "passed",
+      "schema_validation": "passed",
+      "mapping_validation": "passed",
+      "prerequisite_validation": "passed",
+      "code_validation": "passed",
+      "integration_validation": "passed",
+      "review_notes": "Authored per the M4 standard against the registered spec (title 'Trapped Ions', topic hw.trapped_ions, prereq qiskit.quantum_noise recommended). All three registered objectives covered: describe how ion internal states encode a qubit; explain how trapped ions achieve all-to-all connectivity; contrast gate speed and coherence with superconducting devices. ESTABLISHED PHYSICS verified by computation, not quoted. (1) Phonon bus: the Coulomb-plus-trap potential f(u) = sum u_i^2 + sum_{i != j} 1/|u_i-u_j| is minimised numerically and its Hessian diagonalised to give the axial normal modes. Verified for N = 2,3,4,5: N=2 gives [1.0, 1.73205] matching the hand-derived sqrt(3); N=3 gives [1.0, 1.73205, 2.40832] against the exact sqrt(29/5) = 2.408319, max error 4.65e-09. Spacing/l computed as 1.25992 for N=2, matching 2^(1/3) = 1.259921 from the closed-form worked example. (2) All-to-all connectivity: the centre-of-mass eigenvector is uniform - verified to 1e-16 for N = 2,3,4,5,8,10,15, with every entry equal to 1/sqrt(N) (N=5 gives 0.447214 = 1/sqrt(5)). That uniformity is the physical origin of all-to-all connectivity and is stated as the reason, not just asserted. (3) Molmer-Sorensen gate: H(t) = g S_x (a^dag e^{i dt} + a e^{-i dt}) integrated numerically over a truncated Fock space. Verified that U = exp(-i theta S_x^2) with theta = 2 pi (g/delta)^2, and that the concurrence from |gg> equals |sin(8 pi (g/delta)^2)| to within 1.15e-07 across g/delta = 0.05 to 0.25. Maximally entangling at g/delta = 1/4 (theta = pi/8), where concurrence = 1.00000000 and the motional state returns with F = 1.00000000, identically for initial n = 0,1,2,3,4 - demonstrating the gate's insensitivity to thermal motion. Output is the Bell state (|gg> - i|ee>)/sqrt(2) with relative phase -90 degrees. The breakdown outside the Lamb-Dicke regime is reported honestly: at g/delta = 0.56 with n = 5 the concurrence falls to 0.60. (4) Speed/coherence contrast: computed depth budget T2/t_g gives 10^4 for ions against 10^3 for superconducting - ions are ~1000x slower per gate but ~10^4x longer-lived, netting roughly 10x more sequential gates. DEVICE-SPECIFIC figures explicitly labelled as vendor snapshots rather than platform constants: Quantinuum Helios (98 Ba-137 ions, 48 logical qubits, 99.921% all-pairs 2q, 99.9975% 1q, Nov 2025), IonQ EQC prototype (99.99%, Oct 2025), Oxford Ionics (99.97%, 2024). 246/246 KaTeX compile. 29 RAG chunks, 0 unbalanced fences, max 1698. Validator 55/55.",
+      "last_updated": "2026-10-10"
     },
     {
       "item_id": "M4-I03",
