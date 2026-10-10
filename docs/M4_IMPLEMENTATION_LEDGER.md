@@ -108,6 +108,57 @@ Migration `g2a5b8c1d4e7` verified on that database:
 | Destructive-downgrade guard | refuses with a count when `topic_mastery` references an M4 topic |
 | Service-layer load | `build_curriculum` returns 17 topics (drafts hidden), 10 sections, 4 empty as designed |
 
+## Batch 3 — lesson authoring
+
+### Completed lessons (verified, tracker updated)
+
+| # | Lesson | Topic | KaTeX | RAG chunks | Commit |
+|---|---|---|---|---|---|
+| 14 | `14_complex_numbers.md` | `math.complex_numbers` | 141/141 | 22 | `9d68277` |
+| 15 | `15_linear_algebra.md` | `math.linear_algebra` | 107/107 | 26 | `352fe99` |
+| 16 | `16_eigen_and_operators.md` | `math.eigen_and_operators` | 145/145 | 26 | `742a9e9` |
+| 17 | `17_probability_and_statistics.md` | `math.probability_and_statistics` | 85/85 | 20 | `ca05149` |
+| 18 | `18_group_theory.md` | `math.group_theory` | 97/97 | 23 | `033161f` |
+
+Math foundations block (14-18) is complete. All five authored against the
+authoring standard, all code blocks executed before writing, all RAG chunking
+fence-balanced.
+
+### Authoring pipeline (run per lesson, in order)
+
+1. Execute the Python block; diff every stated number against real output. On
+   mismatch, fix the **content**, never the expected output.
+2. `cd backend/scripts && /home/user/.venv-ql/bin/python validate_lesson.py`
+3. `node /tmp/katex_check.mjs content/<slug>.md`
+4. `split_on_headings` RAG check: chunk count, unbalanced fences, fence parity.
+5. `/home/user/.venv-ql/bin/python backend/scripts/m4_mark_lesson.py <slug> <topic_id> verified "<notes>"`
+6. `git add` + `git commit` + `git push -q origin arena/01a0d874-quantum-learning-platform`
+
+### Supporting changes during Batch 3
+
+- `backend/scripts/m4_mark_lesson.py` — new helper (committed `9d68277`).
+- `backend/scripts/validate_lesson.py` — `MEASURABLE_VERBS` extended with
+  assessable verbs (represent, multiply, transform, determine, recognise,
+  simulate, design, prove, justify, combine, estimate, solve, find,
+  maximise/minimise, translate, express, expand, factor, sketch). Guard
+  re-proven: a temp file using "Understand"/"Appreciate" still warns.
+
+### Content defect found and fixed (lesson 14)
+
+Prose claimed the global-phase rows print `0.640000`; the real value is
+`1.000000` because the chosen amplitude had unit norm (`0.6^2 + 0.8^2 = 1`),
+which makes the invariance claim vacuous. Fixed the *content*: amplitude
+changed to `0.3 + 0.4j` so `|z|^2 = 0.25` exactly, prose reworded to
+`0.250000`. Re-executed and confirmed.
+
+### PUSH BLOCKED — GitHub credentials expired
+
+`git push` fails with `fatal: could not read Username for 'https://github.com'`
+and `gh auth status` reports the `GH_TOKEN` is no longer valid. Commits
+`9d68277`, `352fe99`, `742a9e9` and `ca05149` are already on the remote;
+`033161f` (lesson 18) is committed locally but **not pushed** pending the user
+reconnecting GitHub in Arena. Work continues locally in the meantime.
+
 ## 8. Remaining tasks / genuine blockers
 
 - React rendering / RAG verification deferred to Batch 6, since it needs a

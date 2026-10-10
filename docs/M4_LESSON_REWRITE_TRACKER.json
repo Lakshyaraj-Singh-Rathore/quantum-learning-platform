@@ -86,6 +86,11 @@
       "rewrite_status": "verified",
       "last_updated": "2026-10-10",
       "notes": "Authored per the M4 standard. NumPy 1.26.4, seed 1234. Executed: sigma=0.050000/0.015625/0.007812 for N=100/1024/4096 at p=0.5; 95% CI 0.09800/0.03062/0.01531; simulation sd 0.050439/0.015494/0.007742 vs theory; E[X]=1.0, Var=0.5 both routes; 10000 shots for sigma<=0.005. 85/85 KaTeX compile. 20 RAG chunks, 0 unbalanced fences."
+    },
+    "18_group_theory": {
+      "rewrite_status": "verified",
+      "last_updated": "2026-10-10",
+      "notes": "Authored per the M4 standard. NumPy 1.26.4. Executed: Pauli products XY=iZ, XZ=-iY, YX=-iZ, YZ=iX, ZX=iY, ZY=-iX; all squares give I; all three anticommutators vanish; |P_1|=16 with closure confirmed; H X H^dag=Z, H Z H^dag=X, S X S^dag=Y, S Z S^dag=Z; orders I=1, X=Y=Z=2. 97/97 KaTeX compile. 23 RAG chunks, 0 unbalanced fences."
     }
   },
   "items": [
@@ -394,11 +399,11 @@
       "topic_state": "PENDING_TOPIC_CREATION",
       "proposed_topic_id": "math.group_theory",
       "analysis_status": "proposed_topic",
-      "lesson_slug": null,
-      "lesson_title": null,
+      "lesson_slug": "18_group_theory",
+      "lesson_title": "Introductory Group Theory",
       "proposed_slug": "introductory_group_theory",
-      "content_status": "missing",
-      "rewrite_status": "not_started",
+      "content_status": "existing",
+      "rewrite_status": "verified",
       "primary_topic": null,
       "secondary_topics": [],
       "additional_existing_lessons": [],
@@ -413,14 +418,14 @@
       "simulation_required": null,
       "exercises_required": true,
       "references_required": true,
-      "technical_review": "not_run",
-      "schema_validation": "not_run",
-      "mapping_validation": "not_run",
-      "prerequisite_validation": "not_run",
-      "code_validation": "not_run",
-      "integration_validation": "not_run",
-      "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'introductory_group_theory' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-04"
+      "technical_review": "passed",
+      "schema_validation": "passed",
+      "mapping_validation": "passed",
+      "prerequisite_validation": "passed",
+      "code_validation": "passed",
+      "integration_validation": "passed",
+      "review_notes": "Authored per the M4 standard. NumPy 1.26.4. Executed: Pauli products XY=iZ, XZ=-iY, YX=-iZ, YZ=iX, ZX=iY, ZY=-iX; all squares give I; all three anticommutators vanish; |P_1|=16 with closure confirmed; H X H^dag=Z, H Z H^dag=X, S X S^dag=Y, S Z S^dag=Z; orders I=1, X=Y=Z=2. 97/97 KaTeX compile. 23 RAG chunks, 0 unbalanced fences.",
+      "last_updated": "2026-10-10"
     },
     {
       "item_id": "M4-B01",
