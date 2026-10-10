@@ -223,60 +223,82 @@ progress rather than by the rebuild:
 React has no unit-test suite; the `render:*`/`a11y`/`states`/`curriculum`
 tsx scripts need a live API and remain deferred to Batch 6.
 
-### Batch 3 - core quantum theory block COMPLETE
+### Batch 3 - Qiskit block COMPLETE (Batch 3 finished)
 
 | # | Lesson | Topic | KaTeX | RAG | Commit |
 |---|---|---|---|---|---|
-| 19 | `19_quantum_postulates.md` | `core.quantum_postulates` | 78/78 | 22 | `2d785c2` |
-| 20 | `20_density_matrices.md` | `core.density_matrices` | 96/96 | 26 | `82a6bf8` |
-| 21 | `21_entanglement_measures.md` | `core.entanglement_measures` | 86/86 | 25 | `4098dde` |
-| 22 | `22_no_cloning.md` | `core.no_cloning` | 76/76 | 30 | `5495215` |
-| 23 | `23_dirac_notation.md` | `qc.dirac_notation` | 101/101 | 28 | `220e251` |
-| 24 | `24_tensor_products.md` | `qc.tensor_products` | 98/98 | 29 | `cec6643` |
-| 26 | `26_teleportation.md` | `qc.teleportation` | 50/50 | 21 | `fc7ae81` |
-| 27 | `27_reading_results.md` | `qc.reading_results` | 62/62 | 25 | `52922f1` |
+| 28 | `28_composer_guide.md` | `qiskit.composer` | 17/17 | 27 | `c37c447` |
+| 29 | `29_primitives.md` | `qiskit.estimator` | 121/121 | 27 | `e17ceb7` |
 
-Lesson 25 is not the primary lesson of any topic in the registry, so it is
-not authored. Registry order was verified topologically against *required*
-prerequisite edges.
+**Batch 3 is complete: 15 of 15 lessons (14-29, excluding the unassigned 25).**
+18/18 lessons now pass validation.
 
-#### Two authoring errors caught before shipping
+#### Lesson 28 was written against the implementation, not from memory
 
-1. **Lesson 22's proof was initially vacuous.** The inner-product argument
-   used |+> and |->, which are orthogonal, so both sides were zero and the
-   "contradiction" proved nothing while looking correct. Reworked with the
-   genuinely non-orthogonal pair |0> and |+>, giving 0.707 against 0.5.
-2. **Lesson 26's first simulation omitted the Hadamard** that creates the
-   Bell pair, producing fidelities of 0.36 and 0.64. Caught because the
-   printed numbers contradicted the claim being made about them.
+Every fact was read from source: the 15-gate set and alias table from
+`app/quantum/ir.py`, the backend catalogue from `app/api/jobs.py`, the qubit
+and shot limits from `app/config.py` (static 20, dynamic 15, GPU 28, dynamic
+shots 4096, while cap 32, for cap 1024), and the bit-order convention from
+the run metadata itself, which reports
+`bit_order: qiskit (qubit 0 = rightmost)` - independently confirming what
+lesson 27 asserts.
 
-#### Practices that keep catching real problems
+Running a Bell circuit with the default noise model puts **5.57% of shots on
+outcomes the ideal circuit cannot produce**, reported as `shot_leakage`. For a
+circuit whose ideal answer has zero weight on some outcomes, that leakage is
+a direct readout of how noisy the run was.
 
-- **Execute the code and diff every number against the prose.** Both errors
-  above were visible only in the executed output.
-- **Keep inline `$...$` on one line.** `test_content_markdown.py` checks
-  delimiters line by line; the KaTeX checker does not. Hit four times on
-  lesson 22.
-- **Split long `## Practical example` sections with `###` subheadings** so
-  RAG chunks stay near the 1200-character target.
-- **Run lesson code under `-W error::Warning`.** Lesson 24 initially cast
-  complex arrays straight to `int`, emitting a ComplexWarning.
+The lesson also documents that Z/S/T/RZ are virtual and pick up no thermal
+error - not a simulation shortcut but how real superconducting hardware
+behaves.
 
-#### Tooling
+#### Lesson 29 states plainly that this project has no Estimator
 
-- `backend/scripts/check_lesson_math.mjs` (commit `1101e73`) - compiles every
-  LaTeX expression with KaTeX across all lessons. Lives in the repository
-  because the sandbox is periodically rebuilt and only committed files
-  survive. Current status: all 26 lessons, 1741 expressions, 0 failures.
-- `validate_lesson.py` - `MEASURABLE_VERBS` extended with `demonstrate` and
-  `reproduce`; the raw-HTML check now skips inline code spans as well as
-  fenced blocks (both render as code, so a tag inside them is program text
-  such as bra-ket output, not markup). Both guards re-proven with probe
-  files.
+There is no Estimator class in this codebase; only a Sampler-style counts
+interface. The lesson says so at the top and builds everything from counts,
+rather than documenting an API that does not exist here.
+
+#### Tracker reconciliation (commit `5d8f4c8`)
+
+Row `M4-D03` still held the pre-rename id `qiskit.primitives`. The
+architecture review resolved Q3 by keeping this as an additive topic named
+`qiskit.estimator` (renaming the stable `qiskit.sampler` id was not
+authorised), and the registry records `qiskit.estimator`.
+
+Because the row held the old id, marking lesson 29 verified updated **zero**
+rows - the tracker had silently lost the association. The id was updated and
+the rename recorded in the row's review notes. Same target item, one row,
+corrected identifier.
+
+Verified afterwards:
+- All **54** M4 draft topics now have a tracker row (was 53).
+- The **7** tracker ids with no registry entry are exactly the 5 documented
+  withdrawals (`core.phase`, `qiskit.bloch_sphere`, `qiskit.reading_histograms`,
+  `nisq.barren_plateaus`, `nisq.ansatz`) plus the 2 deferrals.
+- Both deferrals (`qc.quantum_mechanics_primer`, `nisq.dequantization`) remain
+  `not_started` / `missing` and are **not** marked complete.
+
+#### Supporting
+
+- `MEASURABLE_VERBS` extended with `configure` and `select`; the VAGUE_VERBS
+  guard re-proven with a probe file.
+- Lesson 28's draft said depth 2; the real depth with measurements is 3.
+  Caught by executing the code and comparing against the prose.
 
 ### Current verified baselines
 
 | Suite | Result |
 |---|---|
-| Backend | **625 passed, 5 skipped** |
+| Backend | **629 passed, 5 skipped** |
 | Frontend | 418 passed, 77 skipped (not re-run this batch) |
+
+### Remaining: Batches 4, 5, 6
+
+- **Batch 4** - algorithms, advanced circuits, variational/NISQ. The barren
+  plateaus depth gap in `nisq.parameterized_circuits` must be genuinely
+  corrected; the review flagged 07_vqe_qaoa as covering it in one paragraph.
+- **Batch 5** - error correction, fault tolerance, hardware, communication,
+  ecosystem, simulation. The hardware platform comparison must meaningfully
+  compare, not list.
+- **Batch 6** - integration and final validation: navigation, rendering, RAG,
+  tracker, full suites, fixes.
