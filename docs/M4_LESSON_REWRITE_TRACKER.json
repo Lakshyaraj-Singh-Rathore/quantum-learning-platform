@@ -181,6 +181,11 @@
       "rewrite_status": "verified",
       "last_updated": "2026-10-10",
       "notes": "NumPy. All 3 python blocks executed concatenated, clean under -W error::Warning. VERIFIED: phi=5/8 gives j=5 at t=3 and j=10 at t=4, both P=1.0000 (exactly representable). phi=1/3: best j=3/11/85 for t=3/5/8 with P(best)=0.6878/0.6842/0.6839. P(within 2^-t) = 0.8628 (t=3), 0.8549 (t=8) for phi=1/3, and 0.9065 for phi=0.21 at t=8 - all above the 4/pi^2=0.4053 lower bound. Documents the MSB-first convention: estimation qubit q must control U^(2^(t-1-q)), not U^(2^q); getting this wrong silently yields bit-reversed answers (this bug was caught during verification). 144/144 KaTeX (caught 2 stray delimiters in Summary). 28 RAG chunks, 0 unbalanced."
+    },
+    "30_bernstein_vazirani": {
+      "rewrite_status": "verified",
+      "last_updated": "2026-10-10",
+      "notes": "NumPy. Both python blocks executed concatenated, clean under -W error::Warning. VERIFIED: ALL 28 secret strings recovered exactly for n=2 (4), n=3 (8), n=4 (16) - deterministic, no sampling. Worked example n=3, s=5 (101): after H^n uniform 1/sqrt8; after oracle signs flip, magnitudes unchanged; after H^n all amplitude on index 5 = |101>. 99/99 KaTeX (caught 2 stray delimiters). 23 RAG chunks, 0 unbalanced, max 1118. Lesson states the separation is n-vs-1 in the QUERY model (linear, not exponential) and notes that if you know the oracle form the task is trivial classically."
     }
   },
   "items": [
@@ -1555,11 +1560,11 @@
       "topic_state": "PENDING_TOPIC_CREATION",
       "proposed_topic_id": "algo.bernstein_vazirani",
       "analysis_status": "proposed_topic",
-      "lesson_slug": null,
-      "lesson_title": null,
+      "lesson_slug": "30_bernstein_vazirani",
+      "lesson_title": "Bernstein-Vazirani",
       "proposed_slug": "bernstein_vazirani",
-      "content_status": "missing",
-      "rewrite_status": "not_started",
+      "content_status": "existing",
+      "rewrite_status": "verified",
       "primary_topic": null,
       "secondary_topics": [],
       "additional_existing_lessons": [],
@@ -1574,14 +1579,14 @@
       "simulation_required": null,
       "exercises_required": true,
       "references_required": true,
-      "technical_review": "not_run",
-      "schema_validation": "not_run",
-      "mapping_validation": "not_run",
-      "prerequisite_validation": "not_run",
-      "code_validation": "not_run",
-      "integration_validation": "not_run",
-      "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'bernstein_vazirani' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-04"
+      "technical_review": "passed",
+      "schema_validation": "passed",
+      "mapping_validation": "passed",
+      "prerequisite_validation": "passed",
+      "code_validation": "passed",
+      "integration_validation": "passed",
+      "review_notes": "NumPy. Both python blocks executed concatenated, clean under -W error::Warning. VERIFIED: ALL 28 secret strings recovered exactly for n=2 (4), n=3 (8), n=4 (16) - deterministic, no sampling. Worked example n=3, s=5 (101): after H^n uniform 1/sqrt8; after oracle signs flip, magnitudes unchanged; after H^n all amplitude on index 5 = |101>. 99/99 KaTeX (caught 2 stray delimiters). 23 RAG chunks, 0 unbalanced, max 1118. Lesson states the separation is n-vs-1 in the QUERY model (linear, not exponential) and notes that if you know the oracle form the task is trivial classically.",
+      "last_updated": "2026-10-10"
     },
     {
       "item_id": "M4-E02",
