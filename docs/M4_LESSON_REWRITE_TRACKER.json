@@ -66,6 +66,11 @@
       "rewrite_status": "verified",
       "last_updated": "2026-10-04",
       "notes": "Rewritten. Ran a real VQE: for H = 1.0 ZZ + 0.5 XI + 0.3 ZI the exact ground energy is -1.392839 and COBYLA converged to -1.392838, approaching from above as the variational principle requires. Verified the basis-change recipes: X = H before measuring; Y = Sdg then H (Y eigenstates become deterministic). Documented that the platform's numeric-only parameters limit the Composer to single landscape points rather than full loops."
+    },
+    "14_complex_numbers": {
+      "rewrite_status": "verified",
+      "last_updated": "2026-10-10",
+      "notes": "Authored per the M4 standard. Python 3.11, cmath. All identities verified numerically: |1+i|=1.41421356, arg=45 deg, four Euler checks True, global-phase invariance |z|^2=0.250000, relative-phase interference 2.0/1.0/0.0. 141/141 KaTeX expressions compile. 22 RAG chunks, 0 unbalanced fences."
     }
   },
   "items": [
@@ -78,11 +83,11 @@
       "topic_state": "PENDING_TOPIC_CREATION",
       "proposed_topic_id": "math.complex_numbers",
       "analysis_status": "proposed_topic",
-      "lesson_slug": null,
-      "lesson_title": null,
+      "lesson_slug": "14_complex_numbers",
+      "lesson_title": "Complex Numbers and Euler's Formula",
       "proposed_slug": "complex_numbers_and_eulers_formula",
-      "content_status": "missing",
-      "rewrite_status": "not_started",
+      "content_status": "existing",
+      "rewrite_status": "verified",
       "primary_topic": null,
       "secondary_topics": [],
       "additional_existing_lessons": [],
@@ -97,14 +102,14 @@
       "simulation_required": null,
       "exercises_required": true,
       "references_required": true,
-      "technical_review": "not_run",
-      "schema_validation": "not_run",
-      "mapping_validation": "not_run",
-      "prerequisite_validation": "not_run",
-      "code_validation": "not_run",
-      "integration_validation": "not_run",
-      "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'complex_numbers_and_eulers_formula' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-04"
+      "technical_review": "passed",
+      "schema_validation": "passed",
+      "mapping_validation": "passed",
+      "prerequisite_validation": "passed",
+      "code_validation": "passed",
+      "integration_validation": "passed",
+      "review_notes": "Authored per the M4 standard. Python 3.11, cmath. All identities verified numerically: |1+i|=1.41421356, arg=45 deg, four Euler checks True, global-phase invariance |z|^2=0.250000, relative-phase interference 2.0/1.0/0.0. 141/141 KaTeX expressions compile. 22 RAG chunks, 0 unbalanced fences.",
+      "last_updated": "2026-10-10"
     },
     {
       "item_id": "M4-A02",
