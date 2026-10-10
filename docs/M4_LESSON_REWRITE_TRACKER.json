@@ -206,6 +206,11 @@
       "rewrite_status": "verified",
       "last_updated": "2026-10-10",
       "notes": "NumPy. Both python blocks executed concatenated, clean under -W error::Warning. VERIFIED: quantum walk sigma/t = 0.5657/0.5473/0.5422/0.5415/0.5413 at t=5/10/20/40/60 (converging to ~0.54, BALLISTIC); classical sigma/sqrt(t) = 1.0000 EXACTLY at every t (DIFFUSIVE). At t=60 quantum sigma 32.479 vs classical 7.746 = 4.2x. Quantum distribution at t=40 peaks at x=+-26 (P=0.1235) with centre only 0.0155 - weight at the EDGES not the centre. 62/62 KaTeX. 28 RAG chunks, 0 unbalanced, max 1516. Two defects caught and fixed: inline math split across lines (x approx +-27), and a literal double-backslash before ! in bra-ket spacing commands."
+    },
+    "37_hhl": {
+      "rewrite_status": "verified",
+      "last_updated": "2026-10-10",
+      "notes": "NumPy. Both python blocks executed concatenated, clean under -W error::Warning. VERIFIED on A=[[1,-1/3],[-1/3,1]], b=[1,0]: eigenvalues 2/3 and 4/3; b in eigenbasis [-0.707107, -0.707107]; after inversion the HHL state is [0.948683, 0.316228] which matches the normalised classical solution [1.125,0.375]/||.|| EXACTLY with fidelity 1.0. Inversion amplitudes C/lambda = 1.0 and 0.5 for C=2/3. Condition number: success ~1/kappa^2 = 2.5e-1 / 1e-2 / 1e-4 / 1e-6 for kappa=2/10/100/1000. 92/92 KaTeX, 0 odd-dollar lines, no warnings. Lesson leads with the caveat that HHL outputs |x> not x, and lists all five load-bearing conditions."
     }
   },
   "items": [
@@ -1927,11 +1932,11 @@
       "topic_state": "PENDING_TOPIC_CREATION",
       "proposed_topic_id": "algo.hhl",
       "analysis_status": "proposed_topic",
-      "lesson_slug": null,
-      "lesson_title": null,
+      "lesson_slug": "37_hhl",
+      "lesson_title": "HHL Linear Systems",
       "proposed_slug": "hhl",
-      "content_status": "missing",
-      "rewrite_status": "not_started",
+      "content_status": "existing",
+      "rewrite_status": "verified",
       "primary_topic": null,
       "secondary_topics": [],
       "additional_existing_lessons": [],
@@ -1946,14 +1951,14 @@
       "simulation_required": null,
       "exercises_required": true,
       "references_required": true,
-      "technical_review": "not_run",
-      "schema_validation": "not_run",
-      "mapping_validation": "not_run",
-      "prerequisite_validation": "not_run",
-      "code_validation": "not_run",
-      "integration_validation": "not_run",
-      "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'hhl' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-04"
+      "technical_review": "passed",
+      "schema_validation": "passed",
+      "mapping_validation": "passed",
+      "prerequisite_validation": "passed",
+      "code_validation": "passed",
+      "integration_validation": "passed",
+      "review_notes": "NumPy. Both python blocks executed concatenated, clean under -W error::Warning. VERIFIED on A=[[1,-1/3],[-1/3,1]], b=[1,0]: eigenvalues 2/3 and 4/3; b in eigenbasis [-0.707107, -0.707107]; after inversion the HHL state is [0.948683, 0.316228] which matches the normalised classical solution [1.125,0.375]/||.|| EXACTLY with fidelity 1.0. Inversion amplitudes C/lambda = 1.0 and 0.5 for C=2/3. Condition number: success ~1/kappa^2 = 2.5e-1 / 1e-2 / 1e-4 / 1e-6 for kappa=2/10/100/1000. 92/92 KaTeX, 0 odd-dollar lines, no warnings. Lesson leads with the caveat that HHL outputs |x> not x, and lists all five load-bearing conditions.",
+      "last_updated": "2026-10-10"
     },
     {
       "item_id": "M4-E11",
