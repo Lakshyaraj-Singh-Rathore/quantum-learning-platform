@@ -121,6 +121,11 @@
       "rewrite_status": "verified",
       "last_updated": "2026-10-10",
       "notes": "Authored per the M4 standard. NumPy 1.26.4. All 3 python blocks executed concatenated, clean under -W error::Warning. Results: basis vectors |00>,|01>,|10>,|11> = [1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1]; Kronecker top-left block == A[0,0]*B; mixed-product rule True; (X(x)I)|00>=|10> and (I(x)X)|00>=|01> True; (H(x)H)|00>=[0.5]*4 == |++>; rank test: |++> rank 1 singular [1,0] product, Bell rank 2 singular [0.707107]*2 entangled; CNOT matrix correct, |10>->|11>, |00>->|00>; |010> has 8 amplitudes. 98/98 KaTeX compile. 29 RAG chunks, 0 unbalanced."
+    },
+    "26_teleportation": {
+      "rewrite_status": "verified",
+      "last_updated": "2026-10-10",
+      "notes": "Authored per the M4 standard. NumPy 1.26.4. All 3 python blocks executed concatenated, clean under -W error::Warning. Results: all four outcomes (00,01,10,11) give fidelity 1.000000, with (1,1) differing by a global sign; outcome distribution [0.25]*4 uniform; Bob's reduced state before the bits is I/2 (no-signalling) confirmed True; protocol verified for a complex-amplitude state too. 50/50 KaTeX compile. 21 RAG chunks, 0 unbalanced."
     }
   },
   "items": [
@@ -1221,11 +1226,11 @@
       "topic_state": "PENDING_TOPIC_CREATION",
       "proposed_topic_id": "qc.teleportation",
       "analysis_status": "proposed_topic",
-      "lesson_slug": null,
-      "lesson_title": null,
+      "lesson_slug": "26_teleportation",
+      "lesson_title": "Quantum Teleportation",
       "proposed_slug": "quantum_teleportation",
-      "content_status": "missing",
-      "rewrite_status": "not_started",
+      "content_status": "existing",
+      "rewrite_status": "verified",
       "primary_topic": null,
       "secondary_topics": [],
       "additional_existing_lessons": [],
@@ -1240,14 +1245,14 @@
       "simulation_required": null,
       "exercises_required": true,
       "references_required": true,
-      "technical_review": "not_run",
-      "schema_validation": "not_run",
-      "mapping_validation": "not_run",
-      "prerequisite_validation": "not_run",
-      "code_validation": "not_run",
-      "integration_validation": "not_run",
-      "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'quantum_teleportation' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-04"
+      "technical_review": "passed",
+      "schema_validation": "passed",
+      "mapping_validation": "passed",
+      "prerequisite_validation": "passed",
+      "code_validation": "passed",
+      "integration_validation": "passed",
+      "review_notes": "Authored per the M4 standard. NumPy 1.26.4. All 3 python blocks executed concatenated, clean under -W error::Warning. Results: all four outcomes (00,01,10,11) give fidelity 1.000000, with (1,1) differing by a global sign; outcome distribution [0.25]*4 uniform; Bob's reduced state before the bits is I/2 (no-signalling) confirmed True; protocol verified for a complex-amplitude state too. 50/50 KaTeX compile. 21 RAG chunks, 0 unbalanced.",
+      "last_updated": "2026-10-10"
     },
     {
       "item_id": "M4-D01",
