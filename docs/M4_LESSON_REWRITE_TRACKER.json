@@ -266,6 +266,11 @@
       "rewrite_status": "verified",
       "last_updated": "2026-10-10",
       "notes": "Authored per the M4 standard. All three registered objectives covered: explain the difference between error mitigation and error correction; apply zero-noise extrapolation to a noisy expectation value; construct and apply a readout error correction matrix. Core distinction stated up front with a 7-row comparison table: correction returns a corrected QUANTUM STATE, mitigation returns a corrected EXPECTATION VALUE (classical number) and therefore cannot be applied mid-circuit or scaled arbitrarily. ZNE verified by execution on a 2-qubit circuit (2 RY, 1 RX, 2 CX) against O = 1.0 ZI + 0.6 IZ + 0.4 ZZ with 1% depolarising on single-qubit gates and 3% on CX, using exact density-matrix expectation values so the improvement is pure bias correction: ideal 1.085661, raw 1.011469 (err -0.074192), ZNE linear 1.078276 (10.05x), quadratic 1.084856 (92.15x), cubic 1.085571 (817x), exponential 1.085719 (1289x). Underlying noisy values decay 1.011469 (lambda=1) to 0.660987 (lambda=7). Silent failure mode documented and hit in practice: folding then transpiling lets the optimiser cancel C^dagger C, removing the noise scaling entirely - transpile first, then fold. Variance cost verified: sum of squared Lagrange coefficients is 2.50 (linear) and 5.22 (quadratic), i.e. 1.58x and 2.28x the standard error. PEC verified: coefficients derived in the Pauli transfer matrix basis, a_I = 1 + 3p/(4(1-p)), a_P = -p/(4(1-p)), gamma = 1 + 3p/(2(1-p)); verified numerically that Lambda^-1 Lambda = I to machine precision for p=0.01,0.05,0.10. Monte Carlo with 2 million shot-level samples at p=0.05: bias removed from -0.032011 to -0.000004 and variance ratio 1.192 against the theoretical (gamma^2 - <O>^2)/(1 - <O>_noisy^2) = 1.194. Exponential cost verified: gamma^(2N) at p=0.01 is 1.16 (N=10), 4.50 (N=100), 3.40e6 (N=1000). Readout correction verified on 2 qubits with P(1|0)=0.03, P(0|1)=0.05, 40000 shots per calibration circuit: columns sum to 1, tensor-product prediction matches the full calibrated matrix to 0.0017 (shot noise), Bell-state total variation distance from ideal cut from 0.0767 to 0.00087 (88x improvement). The expected failure mode is reported honestly: the corrected 01 entry came out NEGATIVE at -0.0009 because M^-1 is not a stochastic map. Calibration cost table verified: 2^n circuits and 4^n matrix entries, 1.05e6 circuits at 20 qubits. 192/192 KaTeX compile. 23 RAG chunks, 0 unbalanced fences, max 1741."
+    },
+    "56_superconducting_qubits": {
+      "rewrite_status": "verified",
+      "last_updated": "2026-10-10",
+      "notes": "Authored per the M4 standard. All three registered objectives covered: describe how a transmon encodes a qubit; state typical coherence times and gate fidelities; identify the dominant error mechanisms. Physics verified by direct numerical diagonalisation of the transmon Hamiltonian H = 4 E_C (n - n_g)^2 - E_J cos(phi) in the charge basis (|n| <= 25), not quoted from memory. Three results verified at E_C/h = 250 MHz across E_J/E_C = 1, 5, 20, 50, 100: (1) the anharmonicity alpha = w12 - w01 converges to -E_C (numerical -0.2739 GHz vs -E_C = -0.2500 GHz at ratio 100); (2) the transition frequency follows sqrt(8 E_J E_C) - E_C (numerical 4.7355 vs analytic 4.7500 GHz at ratio 50, and 6.8113 vs 6.8211 at ratio 100), landing at ~4.7 GHz which is inside the real 4-6 GHz band; (3) the charge dispersion collapses by EIGHT orders of magnitude, from 7.8e-01 GHz at ratio 1 to 6.3e-09 GHz at ratio 100 - this is the whole point of the transmon and it is computed, not asserted. Device parameters (T1 100-300 us, T2 100-350 us, 1q error 1e-4 to 1e-3, 2q error 1e-3 to 1e-2, 2q gate 25-300 ns, readout error 5e-3 to 2e-2) taken from published 2024-2026 sources including a 2025 EPJ Quantum Technology review (IBM medians T1=288us, T2=127us, mean 1q EPG 6.75e-4, mean 2q EPG 1.15e-2), Toshiba/RIKEN 2024 (T1=230us, 99.90% 2q over 12 hours), Aalto 2025 (T1 median 425us, max 666us), and Google Willow (1.1 us surface-code cycle). The 17x gap between one-qubit and two-qubit error is highlighted as the platform's defining characteristic. Coherence-limited error floor verified by execution: epsilon ~ t_g/3T1 + t_g/3T2 across four parameter sets gives a depth budget T2/t_g of only 600 to 1200 two-qubit gates, and the best achieved 2q errors (~1e-3) are within a factor of 2-3 of that floor, so coherence rather than control is the binding constraint. Error mechanisms organised by category with the physics named: TLS defects, quasiparticles, Purcell decay, dielectric loss (relaxation); flux noise, photon shot noise, residual charge noise (dephasing); control error, leakage to |2>, residual ZZ (gates); crosstalk, cosmic rays (correlated). Correlated mechanisms are explicitly tied back to the independence assumption of the threshold theorem. 185/185 KaTeX compile. 20 RAG chunks, 0 unbalanced fences, max 1819."
     }
   },
   "items": [
@@ -3280,11 +3285,11 @@
       "topic_state": "PENDING_TOPIC_CREATION",
       "proposed_topic_id": "hw.superconducting_qubits",
       "analysis_status": "proposed_topic",
-      "lesson_slug": null,
-      "lesson_title": null,
+      "lesson_slug": "56_superconducting_qubits",
+      "lesson_title": "Superconducting Qubits",
       "proposed_slug": "superconducting_qubits",
-      "content_status": "missing",
-      "rewrite_status": "not_started",
+      "content_status": "existing",
+      "rewrite_status": "verified",
       "primary_topic": null,
       "secondary_topics": [],
       "additional_existing_lessons": [],
@@ -3299,14 +3304,14 @@
       "simulation_required": null,
       "exercises_required": true,
       "references_required": true,
-      "technical_review": "not_run",
-      "schema_validation": "not_run",
-      "mapping_validation": "not_run",
-      "prerequisite_validation": "not_run",
-      "code_validation": "not_run",
-      "integration_validation": "not_run",
-      "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'superconducting_qubits' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-04"
+      "technical_review": "passed",
+      "schema_validation": "passed",
+      "mapping_validation": "passed",
+      "prerequisite_validation": "passed",
+      "code_validation": "passed",
+      "integration_validation": "passed",
+      "review_notes": "Authored per the M4 standard. All three registered objectives covered: describe how a transmon encodes a qubit; state typical coherence times and gate fidelities; identify the dominant error mechanisms. Physics verified by direct numerical diagonalisation of the transmon Hamiltonian H = 4 E_C (n - n_g)^2 - E_J cos(phi) in the charge basis (|n| <= 25), not quoted from memory. Three results verified at E_C/h = 250 MHz across E_J/E_C = 1, 5, 20, 50, 100: (1) the anharmonicity alpha = w12 - w01 converges to -E_C (numerical -0.2739 GHz vs -E_C = -0.2500 GHz at ratio 100); (2) the transition frequency follows sqrt(8 E_J E_C) - E_C (numerical 4.7355 vs analytic 4.7500 GHz at ratio 50, and 6.8113 vs 6.8211 at ratio 100), landing at ~4.7 GHz which is inside the real 4-6 GHz band; (3) the charge dispersion collapses by EIGHT orders of magnitude, from 7.8e-01 GHz at ratio 1 to 6.3e-09 GHz at ratio 100 - this is the whole point of the transmon and it is computed, not asserted. Device parameters (T1 100-300 us, T2 100-350 us, 1q error 1e-4 to 1e-3, 2q error 1e-3 to 1e-2, 2q gate 25-300 ns, readout error 5e-3 to 2e-2) taken from published 2024-2026 sources including a 2025 EPJ Quantum Technology review (IBM medians T1=288us, T2=127us, mean 1q EPG 6.75e-4, mean 2q EPG 1.15e-2), Toshiba/RIKEN 2024 (T1=230us, 99.90% 2q over 12 hours), Aalto 2025 (T1 median 425us, max 666us), and Google Willow (1.1 us surface-code cycle). The 17x gap between one-qubit and two-qubit error is highlighted as the platform's defining characteristic. Coherence-limited error floor verified by execution: epsilon ~ t_g/3T1 + t_g/3T2 across four parameter sets gives a depth budget T2/t_g of only 600 to 1200 two-qubit gates, and the best achieved 2q errors (~1e-3) are within a factor of 2-3 of that floor, so coherence rather than control is the binding constraint. Error mechanisms organised by category with the physics named: TLS defects, quasiparticles, Purcell decay, dielectric loss (relaxation); flux noise, photon shot noise, residual charge noise (dephasing); control error, leakage to |2>, residual ZZ (gates); crosstalk, cosmic rays (correlated). Correlated mechanisms are explicitly tied back to the independence assumption of the threshold theorem. 185/185 KaTeX compile. 20 RAG chunks, 0 unbalanced fences, max 1819.",
+      "last_updated": "2026-10-10"
     },
     {
       "item_id": "M4-I02",
