@@ -696,8 +696,28 @@ def test_tracker_counts_reconcile_with_the_gap_report():
         "partial": sum(1 for i in items if i["content_status"] == "partial"),
         "missing": sum(1 for i in items if i["content_status"] == "missing"),
     }
-    assert counts == {"existing": 7, "partial": 8, "missing": 82}, counts
     assert len(items) == 97
+    # The counts are not frozen: authoring a lesson moves its row from
+    # "missing" to "existing", so the split must be derived, not hardcoded.
+    # What must hold is that the three buckets partition the 97 rows, and
+    # that "covered" rows are exactly those whose lesson file is on disk.
+    assert (
+        counts["existing"] + counts["partial"] + counts["missing"] == 97
+    ), counts
+    content = pathlib.Path(__file__).resolve().parents[2] / "content"
+    on_disk = {p.stem for p in content.glob("*.md")}
+    covered = sum(
+        1 for i in items if i["lesson_slug"] and i["lesson_slug"] in on_disk
+    )
+    assert counts["existing"] + counts["partial"] == covered, (
+        f"tracker coverage disagrees with content/: {counts} vs {covered} "
+        "rows whose lesson file exists"
+    )
+    # The eight rows whose lesson exists but does not fully cover the target
+    # topic stay partial; they are a stable judgement, not a moving number.
+    assert counts["partial"] == 8, counts
+    # Never regress below the baseline measured before any M4 lesson existed.
+    assert counts["existing"] >= 7, counts
 
 
 def test_tracker_sections_are_the_canonical_ten():
