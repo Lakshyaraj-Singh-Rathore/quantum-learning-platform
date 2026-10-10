@@ -59,6 +59,9 @@ MEASURABLE_VERBS = {
     # Setting up a model and naming its parameters is assessable: the reader
     # produces the configuration and the values are right or wrong.
     "configure", "select",
+    # Producing a count or a decomposition is assessable: the result is right
+    # or wrong.
+    "count", "decompose", "classify",
 }
 VAGUE_VERBS = {"understand", "appreciate", "learn", "know", "grasp", "explore"}
 
