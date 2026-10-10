@@ -139,8 +139,15 @@ def build_curriculum(db: Session, user_id: int | None) -> dict[str, object]:
     sections = db.scalars(
         select(CurriculumSection).order_by(CurriculumSection.position)
     ).all()
+    # Only *published* topics reach learners. A draft topic is registered so
+    # the curriculum has a stable identity to author against, but it has no
+    # content yet; showing it would put an unopenable module in navigation,
+    # which the roadmap forbids. M4 adds 54 topics as drafts and publishes
+    # each one when its lesson is authored and validated.
     topics = db.scalars(
-        select(CurriculumTopic).order_by(CurriculumTopic.position)
+        select(CurriculumTopic)
+        .where(CurriculumTopic.status == "published")
+        .order_by(CurriculumTopic.position)
     ).all()
     lessons = db.scalars(select(Lesson).order_by(Lesson.position)).all()
     lesson_meta = {lesson.slug: lesson for lesson in lessons}

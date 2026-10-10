@@ -1,8 +1,16 @@
 # M4 Curriculum Architecture — Approval Checklist
 
-**Status: Gate 1 decision pending.** Nothing has been implemented. No topic
-ID created, no mapping changed, no migration written or run, no lesson
-rewritten.
+> **Authorization update (2026-10-10).** The owner has since approved
+> **Gate 2** (implementation), **Gate 3** (migration execution, restricted to
+> newly created disposable local databases with synthetic data) and **Gate 5**
+> (lesson authoring). **Gate 4 (production) remains NOT authorised**, and
+> **P8/P9 Streamlit cutover remains blocked.** Gate 1 was approved at
+> `c8f7144`. This record is updated in the first substantive implementation
+> commit rather than in a separate approval-only commit; the approved
+> architecture itself is unchanged. See
+> [`M4_IMPLEMENTATION_LEDGER.md`](./M4_IMPLEMENTATION_LEDGER.md) for progress.
+
+**Status: Gates 1, 2, 3 (limited) and 5 authorised. Gate 4 not authorised.**
 
 **Approval in M4 is five separate gates.** Each requires its own explicit,
 separately stated authorisation. Approval of an earlier gate must never be
@@ -10,11 +18,11 @@ read as approval of a later one.
 
 | Gate | Name | What it authorises | Status |
 |---|---|---|---|
-| **1** | Architecture approval | Accepting the 54-topic architecture and prerequisite design **as a design only** | **Requested now** |
-| **2** | Implementation authorisation | Creating topic IDs, updating curriculum mappings and prerequisites, writing the required migration | Not requested |
-| **3** | Non-production migration execution | Running that migration against an identified non-production environment | Not requested |
-| **4** | Production migration | Running any migration against production learner data | **Not authorised. Not requested.** |
-| **5** | Phase 3 lesson authoring | Writing and validating the remaining lesson content | Not requested |
+| **1** | Architecture approval | Accepting the 54-topic architecture and prerequisite design **as a design only** | **Approved** at `c8f7144` |
+| **2** | Implementation authorisation | Creating topic IDs, updating curriculum mappings and prerequisites, writing the required migration | **Approved** |
+| **3** | Non-production migration execution | Running that migration against an identified non-production environment | **Approved with limits** — new disposable local DBs + synthetic data only |
+| **4** | Production migration | Running any migration against production learner data | **NOT authorised. Not requested.** |
+| **5** | Phase 3 lesson authoring | Writing and validating the remaining lesson content | **Approved** |
 
 ---
 
@@ -56,7 +64,7 @@ authorise writing those edges into the registry — that is Gate 2.
 
 ---
 
-## Gate 2 — Implementation authorisation *(not yet requested)*
+## Gate 2 — Implementation authorisation *(approved)*
 
 Separate, explicit authorisation will be requested before any of:
 
@@ -70,7 +78,7 @@ decision, with its own review of the diff.
 
 ---
 
-## Gate 3 — Non-production migration execution *(not yet requested)*
+## Gate 3 — Non-production migration execution *(approved, limited)*
 
 Running the migration — even on a local or staging database — requires its
 own clearly stated authorisation and **must identify the environment by
@@ -99,13 +107,14 @@ downgrade review and the migration report.
 
 ---
 
-## Gate 5 — Phase 3 lesson authoring *(not yet requested)*
+## Gate 5 — Phase 3 lesson authoring *(approved)*
 
 Authoring the remaining lesson content stays gated **until Phase 2
 implementation and its validation are complete**, unless you explicitly
 authorise it earlier as a separate decision.
 
-Gate 1 approval does not start Phase 3.
+Gate 1 approval does not start Phase 3. Gates 2 and 5 have since been
+authorised separately.
 
 ---
 
@@ -171,14 +180,15 @@ decision.
 
 Reply with one of:
 
-- **"Gate 1 approved"** — the architecture is accepted as a design. I stop
-  and wait for a separate Gate 2 request. No topic, mapping, migration or
-  lesson is touched.
-- **"Gate 1 approved with changes: …"** — I update the review document,
-  re-run validation, and come back for approval of the identified revision.
-- **"Gate 1 rejected: …"** — I stop and await direction.
-- **"Gate 1 and Gate 2 approved"** — only if you explicitly intend both. I
-  will then begin implementation.
+- **"Gate 1 approved"** — the architecture is accepted as a design.
+  *(Issued 2026-10-10, at `c8f7144`.)*
+- **"Gate 2 approved"** — implementation of the registry, mappings,
+  prerequisites and migration. *(Issued 2026-10-10.)*
+- **"Gate 3 approved with limits"** — migration execution against disposable
+  local databases with synthetic data. *(Issued 2026-10-10.)*
+- **"Gate 5 approved"** — lesson authoring. *(Issued 2026-10-10.)*
+- **"Gate 4 approved"** — production migration. **Not issued, not requested.
+  Any production migration still requires separate explicit authorisation.**
 
 Approval must apply to an identified version. If you approve, please quote
 the commit so the approved architecture is unambiguous.

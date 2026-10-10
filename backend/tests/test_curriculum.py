@@ -162,7 +162,31 @@ def test_every_existing_lesson_is_mapped():
     on_disk = {os.path.basename(p)[:-3] for p in glob.glob(os.path.join(CONTENT_DIR, "*.md"))}
     assert on_disk, "no content found to check against"
     mapped = {slug for slug, _t, _c, _p in all_lesson_topics()}
-    assert on_disk == mapped, f"unmapped lessons: {sorted(on_disk - mapped)}"
+    # Subset, not equality: M4 registers 54 topics before their lessons are
+    # authored, so the registry legitimately maps slugs whose files do not
+    # exist yet. The invariant this test actually promises is that no lesson
+    # on disk is left without a topic. The converse -- that a mapping must
+    # point at a real lesson -- is enforced for published topics below,
+    # because that is where an unreachable module would actually hurt.
+    assert on_disk <= mapped, f"unmapped lessons: {sorted(on_disk - mapped)}"
+
+
+def test_no_published_topic_points_at_a_missing_lesson():
+    """The safety the equality check above used to provide incidentally.
+
+    A published topic is reachable in navigation, so every lesson it maps to
+    must exist. Draft topics are exempt: they are registered ahead of their
+    content by design and are hidden from learners.
+    """
+    on_disk = {os.path.basename(p)[:-3] for p in glob.glob(os.path.join(CONTENT_DIR, "*.md"))}
+    offenders = [
+        f"{topic['id']} -> {slug}"
+        for topic in TOPICS
+        if topic["status"] == "published"
+        for slug, _conf, _primary in topic["lessons"]  # type: ignore[misc]
+        if slug not in on_disk
+    ]
+    assert not offenders, f"published topics with missing lessons: {offenders}"
 
 
 def test_no_lesson_has_multiple_primary_topics():
@@ -796,32 +820,93 @@ def _gap_module():
     return module
 
 
+#: Once the approved topics are registered, the proposal's own collision check
+#: reports them by design. Those are the *expected* problems; anything else is
+#: a real defect.
+EXPECTED_POST_IMPLEMENTATION_PROBLEM = "collides with a registered topic"
+
+
 def test_topic_gap_proposal_validates():
     """Every unmapped item is covered exactly once, ids are unique, and every
-    prerequisite resolves."""
+    prerequisite resolves.
+
+    Collisions with registered topics are expected now that Gate 2 is
+    implemented: that is the proposal landing, not a defect. Every other
+    class of problem still fails.
+    """
     mod = _gap_module()
-    assert mod.validate() == [], f"proposal is invalid: {mod.validate()}"
+    unexpected = [x for x in mod.validate()
+                  if EXPECTED_POST_IMPLEMENTATION_PROBLEM not in x]
+    assert unexpected == [], f"proposal is invalid: {unexpected}"
 
 
-def test_topic_gap_proposal_creates_no_topics():
-    """The proposal must not touch the registry. This is the guard that keeps a
-    documentation phase from becoming an unapproved implementation."""
-    import subprocess
+def test_every_approved_topic_is_registered():
+    """Gate 2: all 54 approved topics exist in the registry, and only those.
 
+    Supersedes the Phase 1 guard that asserted the *opposite* (no proposal may
+    touch the registry). That guard existed to prevent an unapproved
+    implementation; the implementation is now authorized at c8f7144, so the
+    inverse invariant applies.
+    """
     mod = _gap_module()
-    proposed = {p["id"] for p in mod.PROPOSAL}
+    approved = {p["id"] for p in mod.effective_proposal()}
     registered = {t["id"] for t in TOPICS}
-    assert not (proposed & registered), (
-        f"proposal collides with registered topics: {sorted(proposed & registered)}"
+    missing = approved - registered
+    assert not missing, f"approved topics not registered: {sorted(missing)}"
+    assert len(registered) == 17 + 54, (
+        f"registry should hold 17 original + 54 new = 71 topics, "
+        f"got {len(registered)}"
     )
-    # The registry file itself must be unmodified by importing/running the script.
-    registry = pathlib.Path(__file__).resolve().parents[1] / "app" / "curriculum.py"
-    diff = subprocess.run(
-        ["git", "diff", "--quiet", "--", str(registry)],
-        cwd=str(registry.parents[2]),
-        capture_output=True,
-    )
-    assert diff.returncode == 0, "app/curriculum.py has uncommitted changes"
+
+
+def test_registered_topics_match_the_approved_architecture():
+    """The registry must be a faithful materialisation of the approved source,
+    not a hand-typed approximation."""
+    mod = _gap_module()
+    by_id = {t["id"]: t for t in TOPICS}
+
+    for entry in mod.effective_proposal():
+        tid = entry["id"]
+        assert tid in by_id, f"{tid} missing from the registry"
+        topic = by_id[tid]
+        difficulty, description, objectives = mod.TOPIC_OBJECTIVES[tid]
+
+        assert topic["title"] == entry["title"], f"{tid}: title drift"
+        assert topic["difficulty"] == difficulty, f"{tid}: difficulty drift"
+        assert str(topic["description"]).strip() == description.strip(), (
+            f"{tid}: description drift"
+        )
+        assert list(topic["objectives"]) == list(objectives), f"{tid}: objectives drift"
+        assert [x for x, _c, _p in topic["lessons"]] == list(entry["lessons"]), (
+            f"{tid}: lesson drift"
+        )
+        # Draft until its lesson exists and is validated: an unauthored topic
+        # must never be reachable as a finished module.
+        assert topic["status"] == "draft", (
+            f"{tid}: expected draft until authored, got {topic['status']}"
+        )
+        expected = {(q[0], q[1]) for q in entry["prereqs"]}
+        actual = {(q[0], q[1]) for q in topic["prerequisites"]}
+        assert actual == expected, (
+            f"{tid}: prerequisite drift "
+            f"(missing {expected - actual}, extra {actual - expected})"
+        )
+
+
+def test_prerequisite_rationales_are_preserved():
+    """Every approved edge carries the rationale it was reviewed with."""
+    mod = _gap_module()
+    by_id = {t["id"]: t for t in TOPICS}
+    for entry in mod.effective_proposal():
+        for q in entry["prereqs"]:
+            why = q[2] if len(q) > 2 else ""
+            rows = [x for x in by_id[entry["id"]]["prerequisites"] if x[0] == q[0]]
+            assert rows, f"{entry['id']} -> {q[0]} missing from the registry"
+            assert rows[0][1] == q[1], f"{entry['id']} -> {q[0]}: kind drift"
+            stored = rows[0][2] if len(rows[0]) > 2 else ""
+            assert stored.strip() == why.strip(), (
+                f"{entry['id']} -> {q[0]}: rationale drift"
+            )
 
 
 def test_topic_gap_document_is_in_sync():
@@ -860,9 +945,15 @@ def _review_doc() -> pathlib.Path:
 
 def test_architecture_review_effective_proposal_is_valid():
     """The *effective* (post-review) proposal must satisfy every structural
-    check: prerequisites resolve, no cycles, no self-dependencies."""
+    check: prerequisites resolve, no cycles, no self-dependencies.
+
+    Collisions with the registry are expected post-implementation and are
+    filtered here; everything else still fails.
+    """
     mod = _gap_module()
-    assert mod.validate() == [], f"effective proposal invalid: {mod.validate()}"
+    unexpected = [x for x in mod.validate()
+                  if EXPECTED_POST_IMPLEMENTATION_PROBLEM not in x]
+    assert unexpected == [], f"effective proposal invalid: {unexpected}"
 
 
 def test_architecture_review_coverage_reconciles():
@@ -962,25 +1053,53 @@ def test_architecture_review_document_is_in_sync():
     assert "- no pending item omitted: **True**" in text
 
 
-def test_architecture_review_does_not_implement_anything():
-    """Phase 1 is documentation. Nothing may have been created or changed in
-    the registry, and no migration may exist for the new topics."""
-    import subprocess
+#: The 17 topics that existed before M4. All must survive untouched.
+ORIGINAL_TOPIC_IDS = {
+    "core.measurement_theory", "core.quantum_interference", "core.quantum_channels",
+    "qc.qubits", "qc.superposition", "qc.basic_gates", "qc.bell_states",
+    "qc.entanglement", "qiskit.sampler", "qiskit.quantum_noise",
+    "algo.deutsch_jozsa", "algo.grover", "adv.dynamic_circuits",
+    "adv.quantum_universality", "nisq.vqe", "nisq.qaoa",
+    "nisq.parameterized_circuits",
+}
 
-    repo = pathlib.Path(__file__).resolve().parents[1].parent
-    registry = repo / "backend" / "app" / "curriculum.py"
-    diff = subprocess.run(
-        ["git", "diff", "--quiet", "--", str(registry)],
-        cwd=str(repo), capture_output=True,
-    )
-    assert diff.returncode == 0, "app/curriculum.py has uncommitted changes"
 
-    mod = _gap_module()
+def test_original_topics_are_preserved_unchanged():
+    """Gate 2 must be purely additive with respect to the existing 17.
+
+    Supersedes the Phase 1 guard that asserted the registry file was
+    unmodified. Now the registry *is* modified, by authorization; what must
+    hold is that nothing already there was renamed, retargeted or degraded.
+    """
     from app.curriculum import TOPICS as REGISTERED
 
+    registered = {t["id"]: t for t in REGISTERED}
+    for tid in ORIGINAL_TOPIC_IDS:
+        assert tid in registered, f"original topic {tid} was removed or renamed"
+        assert registered[tid]["status"] == "published", (
+            f"original topic {tid} is no longer published"
+        )
+
+    # The stable sampler id in particular must not have been folded into the
+    # new Estimator topic.
+    assert "qiskit.sampler" in registered
+    assert "qiskit.estimator" in registered
+
+
+def test_withdrawn_and_deferred_topics_were_not_reintroduced():
+    """The five withdrawn duplicates and two deferred topics stay out of the
+    registry: reintroducing them would either fragment an existing objective
+    or silently mark a deferred item complete."""
+    from app.curriculum import TOPICS as REGISTERED
+
+    mod = _gap_module()
     registered = {t["id"] for t in REGISTERED}
-    assert len(registered) == 17, f"registry changed size: {len(registered)}"
-    assert not ({p["id"] for p in mod.effective_proposal()} & registered)
+    for withdrawn in mod.REVISION_NOTES:
+        assert withdrawn not in registered, (
+            f"withdrawn proposal {withdrawn} was reintroduced"
+        )
+    for deferred in mod.DEFERRED_TOPICS:
+        assert deferred not in registered, f"deferred topic {deferred} was created"
 
 
 # --------------------------------------------------------------------------- #

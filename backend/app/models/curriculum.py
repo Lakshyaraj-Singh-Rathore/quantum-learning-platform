@@ -81,6 +81,9 @@ class TopicPrerequisite(Base):
     )
     #: required blocks progression; recommended only warns.
     kind: Mapped[str] = mapped_column(String(20), default="required")
+    #: Why the edge exists. Added by the M4 expansion so a prerequisite can be
+    #: reviewed rather than merely accepted; empty for edges that predate it.
+    rationale: Mapped[str] = mapped_column(Text, default="")
 
     __table_args__ = (UniqueConstraint("topic_id", "prerequisite_id", name="uq_topic_prereq"),)
 
