@@ -223,7 +223,7 @@ progress rather than by the rebuild:
 React has no unit-test suite; the `render:*`/`a11y`/`states`/`curriculum`
 tsx scripts need a live API and remain deferred to Batch 6.
 
-### Batch 3 continued - core quantum theory block
+### Batch 3 - core quantum theory block COMPLETE
 
 | # | Lesson | Topic | KaTeX | RAG | Commit |
 |---|---|---|---|---|---|
@@ -231,46 +231,52 @@ tsx scripts need a live API and remain deferred to Batch 6.
 | 20 | `20_density_matrices.md` | `core.density_matrices` | 96/96 | 26 | `82a6bf8` |
 | 21 | `21_entanglement_measures.md` | `core.entanglement_measures` | 86/86 | 25 | `4098dde` |
 | 22 | `22_no_cloning.md` | `core.no_cloning` | 76/76 | 30 | `5495215` |
+| 23 | `23_dirac_notation.md` | `qc.dirac_notation` | 101/101 | 28 | `220e251` |
+| 24 | `24_tensor_products.md` | `qc.tensor_products` | 98/98 | 29 | `cec6643` |
+| 26 | `26_teleportation.md` | `qc.teleportation` | 50/50 | 21 | `fc7ae81` |
+| 27 | `27_reading_results.md` | `qc.reading_results` | 62/62 | 25 | `52922f1` |
 
-Ordering was verified topologically against the registry's *required*
-prerequisite edges, not assumed from lesson numbers. The resulting order
-matches the numbering in the core block, and lesson 19 is correctly first
-(it has only a recommended prereq).
+Lesson 25 is not the primary lesson of any topic in the registry, so it is
+not authored. Registry order was verified topologically against *required*
+prerequisite edges.
 
-#### Authoring notes carried forward
+#### Two authoring errors caught before shipping
 
-- **Verify the proof, not just the arithmetic.** The first pass at lesson 22's
-  inner-product argument used |+> and |->, which are orthogonal, so both sides
-  of the contradiction were zero and the argument was vacuous. Reworked with
-  the genuinely non-orthogonal pair |0> and |+>, giving 0.707 vs 0.5.
+1. **Lesson 22's proof was initially vacuous.** The inner-product argument
+   used |+> and |->, which are orthogonal, so both sides were zero and the
+   "contradiction" proved nothing while looking correct. Reworked with the
+   genuinely non-orthogonal pair |0> and |+>, giving 0.707 against 0.5.
+2. **Lesson 26's first simulation omitted the Hadamard** that creates the
+   Bell pair, producing fidelities of 0.36 and 0.64. Caught because the
+   printed numbers contradicted the claim being made about them.
+
+#### Practices that keep catching real problems
+
+- **Execute the code and diff every number against the prose.** Both errors
+  above were visible only in the executed output.
 - **Keep inline `$...$` on one line.** `test_content_markdown.py` checks
-  delimiters line by line; the KaTeX checker does not, so a wrapped inline
-  expression passes KaTeX and fails the content test. Hit four times on
+  delimiters line by line; the KaTeX checker does not. Hit four times on
   lesson 22.
-- **Split long `## Practical example` sections with `###` subheadings.** The
-  RAG chunker targets 1200 chars. Lessons 21 and 22 both needed this. When a
-  code block is split, verify all blocks concatenated, since later blocks
-  depend on earlier ones.
-- `MEASURABLE_VERBS` extended again with `demonstrate` and `reproduce`; the
-  `VAGUE_VERBS` guard was re-proven with a probe file.
+- **Split long `## Practical example` sections with `###` subheadings** so
+  RAG chunks stay near the 1200-character target.
+- **Run lesson code under `-W error::Warning`.** Lesson 24 initially cast
+  complex arrays straight to `int`, emitting a ComplexWarning.
+
+#### Tooling
+
+- `backend/scripts/check_lesson_math.mjs` (commit `1101e73`) - compiles every
+  LaTeX expression with KaTeX across all lessons. Lives in the repository
+  because the sandbox is periodically rebuilt and only committed files
+  survive. Current status: all 26 lessons, 1741 expressions, 0 failures.
+- `validate_lesson.py` - `MEASURABLE_VERBS` extended with `demonstrate` and
+  `reproduce`; the raw-HTML check now skips inline code spans as well as
+  fenced blocks (both render as code, so a tag inside them is program text
+  such as bra-ket output, not markup). Both guards re-proven with probe
+  files.
 
 ### Current verified baselines
 
 | Suite | Result |
 |---|---|
-| Backend | **617 passed, 5 skipped** |
-| Frontend | 418 passed, 77 skipped (unchanged; not re-run this batch) |
-
-### Commits
-
-| Hash | Contents |
-|---|---|
-| `5d28ae9` | M4 batches 1-2: 54 topics, associations, migration |
-| `9d68277` | lesson 14 Complex Numbers |
-| `352fe99` | lesson 15 Linear Algebra |
-| `742a9e9` | lesson 16 Eigenvalues and Operators |
-| `ca05149` | lesson 17 Probability and Statistics |
-| `e99ee29` | lesson 18 Group Theory (re-committed after the rebuild) |
-| `671a469` | migration: downgrade no longer orphans M4 lessons |
-| `e01f1e6` | test: derive tracker counts instead of freezing them |
-| `3e4e996` | ledger: Batch 3 progress |
+| Backend | **625 passed, 5 skipped** |
+| Frontend | 418 passed, 77 skipped (not re-run this batch) |
