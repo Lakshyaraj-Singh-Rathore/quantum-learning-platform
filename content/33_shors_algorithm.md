@@ -121,7 +121,11 @@ Verified for $r = 4$:
 
 When $k$ and $r$ share a factor, the fraction reduces and you recover a proper
 **divisor** of $r$. This is not a bug to hide — it is a real feature of the
-algorithm and it is handled in two ways:
+algorithm.
+
+### Handling the common-factor case
+
+It is handled in two ways:
 
 - **Repeat.** For a uniformly random $k \in \{0,\ldots,r-1\}$, the probability
   that $\gcd(k,r) = 1$ is $\varphi(r)/r$. Measured values: $0.5$ for $r = 4$,
@@ -271,6 +275,11 @@ for rr in (4, 6, 12, 1024):
     good = sum(1 for k in range(1, rr + 1) if gcd(k, rr) == 1)
     print(f"    r={rr:5d}: {good}/{rr} = {good / rr:.4f}")
 
+```
+
+### Combining several runs
+
+```python
 def lcm_recover(order_r, samples):
     l = 1
     for k in samples:
