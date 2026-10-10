@@ -91,6 +91,11 @@
       "rewrite_status": "verified",
       "last_updated": "2026-10-10",
       "notes": "Authored per the M4 standard. NumPy 1.26.4. Executed: Pauli products XY=iZ, XZ=-iY, YX=-iZ, YZ=iX, ZX=iY, ZY=-iX; all squares give I; all three anticommutators vanish; |P_1|=16 with closure confirmed; H X H^dag=Z, H Z H^dag=X, S X S^dag=Y, S Z S^dag=Z; orders I=1, X=Y=Z=2. 97/97 KaTeX compile. 23 RAG chunks, 0 unbalanced fences."
+    },
+    "19_quantum_postulates": {
+      "rewrite_status": "verified",
+      "last_updated": "2026-10-10",
+      "notes": "Authored per the M4 standard. NumPy 1.26.4. Executed: norm=1.0000; R(0.7) unitary True; norm preserved 1.0000->1.0000; P0^2=P0, P0P1=0, P0+P1=I all True; p(0)=0.3600, p(1)=0.6400, sum=1.0000; collapse gives [1,0]; <Z>=-0.2800 by both routes; global phase check True; Bell state 4 amplitudes. 78/78 KaTeX compile. 22 RAG chunks, 0 unbalanced fences."
     }
   },
   "items": [
@@ -436,11 +441,11 @@
       "topic_state": "PENDING_TOPIC_CREATION",
       "proposed_topic_id": "core.quantum_postulates",
       "analysis_status": "proposed_topic",
-      "lesson_slug": null,
-      "lesson_title": null,
+      "lesson_slug": "19_quantum_postulates",
+      "lesson_title": "The Quantum Postulates",
       "proposed_slug": "quantum_postulates",
-      "content_status": "missing",
-      "rewrite_status": "not_started",
+      "content_status": "existing",
+      "rewrite_status": "verified",
       "primary_topic": null,
       "secondary_topics": [],
       "additional_existing_lessons": [],
@@ -455,14 +460,14 @@
       "simulation_required": null,
       "exercises_required": true,
       "references_required": true,
-      "technical_review": "not_run",
-      "schema_validation": "not_run",
-      "mapping_validation": "not_run",
-      "prerequisite_validation": "not_run",
-      "code_validation": "not_run",
-      "integration_validation": "not_run",
-      "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'quantum_postulates' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-04"
+      "technical_review": "passed",
+      "schema_validation": "passed",
+      "mapping_validation": "passed",
+      "prerequisite_validation": "passed",
+      "code_validation": "passed",
+      "integration_validation": "passed",
+      "review_notes": "Authored per the M4 standard. NumPy 1.26.4. Executed: norm=1.0000; R(0.7) unitary True; norm preserved 1.0000->1.0000; P0^2=P0, P0P1=0, P0+P1=I all True; p(0)=0.3600, p(1)=0.6400, sum=1.0000; collapse gives [1,0]; <Z>=-0.2800 by both routes; global phase check True; Bell state 4 amplitudes. 78/78 KaTeX compile. 22 RAG chunks, 0 unbalanced fences.",
+      "last_updated": "2026-10-10"
     },
     {
       "item_id": "M4-B02",
