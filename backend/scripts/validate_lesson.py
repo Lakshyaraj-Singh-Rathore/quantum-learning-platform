@@ -164,7 +164,12 @@ def validate(slug: str, text: str) -> LessonReport:
     # -- raw HTML is not rendered -------------------------------------------- #
     # The renderer is react-markdown with remark-gfm/remark-math/rehype-katex
     # and no rehype-raw, so any literal tag is escaped and shown as text.
+    #
+    # Fenced blocks and inline code spans are both rendered as code, so a tag
+    # inside them is *meant* to be shown literally -- bra-ket output such as
+    # <phi|psi> is program text, not markup. Only prose is checked.
     body = re.sub(r"```.*?```", "", text, flags=re.S)
+    body = re.sub(r"`[^`\n]*`", "", body)
     html_tags = sorted({m.group(1).lower() for m in re.finditer(r"</?([a-zA-Z][a-zA-Z0-9-]*)\b[^>]*>", body)})
     if html_tags:
         rep.errors.append(
