@@ -201,6 +201,11 @@
       "rewrite_status": "verified",
       "last_updated": "2026-10-10",
       "notes": "NumPy. Both python blocks executed concatenated, clean under -W error::Warning. VERIFIED: with Q = -A S0 A^dag S_good the eigenphases are EXACTLY +-2*theta (ratios -1.0000/+1.0000 for theta = 0.3, 0.7, 1.1). Amplitude recovery via exact QPE outcome distribution: theta=0.3 (a=0.087332) errors 0.059114/0.003067/0.003067/0.000373 at t=4/6/8/10; theta=0.7 (a=0.415016) errors 0.084984/0.012562/0.000497/0.000497; theta=1.1 (a=0.794251) errors 0.059303/0.016465/0.003599/0.001129. Query comparison 1/eps^2 classical vs 1/eps quantum: 100 vs 10, 10000 vs 100, 1000000 vs 1000. 136/136 KaTeX. 27 RAG chunks, 0 unbalanced, max 1436. NOTE: lesson states the caveat that controlled-Q^(2^k) makes depth O(2^t), which is why phase-estimation-free variants are studied."
+    },
+    "35_quantum_walks": {
+      "rewrite_status": "verified",
+      "last_updated": "2026-10-10",
+      "notes": "NumPy. Both python blocks executed concatenated, clean under -W error::Warning. VERIFIED: quantum walk sigma/t = 0.5657/0.5473/0.5422/0.5415/0.5413 at t=5/10/20/40/60 (converging to ~0.54, BALLISTIC); classical sigma/sqrt(t) = 1.0000 EXACTLY at every t (DIFFUSIVE). At t=60 quantum sigma 32.479 vs classical 7.746 = 4.2x. Quantum distribution at t=40 peaks at x=+-26 (P=0.1235) with centre only 0.0155 - weight at the EDGES not the centre. 62/62 KaTeX. 28 RAG chunks, 0 unbalanced, max 1516. Two defects caught and fixed: inline math split across lines (x approx +-27), and a literal double-backslash before ! in bra-ket spacing commands."
     }
   },
   "items": [
@@ -1848,11 +1853,11 @@
       "topic_state": "PENDING_TOPIC_CREATION",
       "proposed_topic_id": "algo.quantum_walks",
       "analysis_status": "proposed_topic",
-      "lesson_slug": null,
-      "lesson_title": null,
+      "lesson_slug": "35_quantum_walks",
+      "lesson_title": "Quantum Walks",
       "proposed_slug": "quantum_walks",
-      "content_status": "missing",
-      "rewrite_status": "not_started",
+      "content_status": "existing",
+      "rewrite_status": "verified",
       "primary_topic": null,
       "secondary_topics": [],
       "additional_existing_lessons": [],
@@ -1867,14 +1872,14 @@
       "simulation_required": null,
       "exercises_required": true,
       "references_required": true,
-      "technical_review": "not_run",
-      "schema_validation": "not_run",
-      "mapping_validation": "not_run",
-      "prerequisite_validation": "not_run",
-      "code_validation": "not_run",
-      "integration_validation": "not_run",
-      "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'quantum_walks' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-04"
+      "technical_review": "passed",
+      "schema_validation": "passed",
+      "mapping_validation": "passed",
+      "prerequisite_validation": "passed",
+      "code_validation": "passed",
+      "integration_validation": "passed",
+      "review_notes": "NumPy. Both python blocks executed concatenated, clean under -W error::Warning. VERIFIED: quantum walk sigma/t = 0.5657/0.5473/0.5422/0.5415/0.5413 at t=5/10/20/40/60 (converging to ~0.54, BALLISTIC); classical sigma/sqrt(t) = 1.0000 EXACTLY at every t (DIFFUSIVE). At t=60 quantum sigma 32.479 vs classical 7.746 = 4.2x. Quantum distribution at t=40 peaks at x=+-26 (P=0.1235) with centre only 0.0155 - weight at the EDGES not the centre. 62/62 KaTeX. 28 RAG chunks, 0 unbalanced, max 1516. Two defects caught and fixed: inline math split across lines (x approx +-27), and a literal double-backslash before ! in bra-ket spacing commands.",
+      "last_updated": "2026-10-10"
     },
     {
       "item_id": "M4-E09",
