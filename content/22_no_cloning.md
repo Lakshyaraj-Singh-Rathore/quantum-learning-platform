@@ -101,8 +101,8 @@ $0.707107 = 0.5$. That is false, so the cloner cannot exist.
 
 ### The Bell state that appears instead
 
-A cloner must be linear. Apply it to $|+\rangle|0\rangle =
-\tfrac{1}{\sqrt{2}}(|0\rangle + |1\rangle)|0\rangle$:
+A cloner must be linear. Apply it to $|+\rangle|0\rangle$: since
+$|+\rangle = \tfrac{1}{\sqrt{2}}(|0\rangle + |1\rangle)$, linearity gives
 
 $$\tfrac{1}{\sqrt{2}}\big(|0\rangle|0\rangle + |1\rangle|1\rangle\big)$$
 
@@ -130,8 +130,8 @@ necessarily degrades it.
 
 ### What CNOT does
 
-CNOT with control $|c\rangle$ and target $|0\rangle$ maps $|c\rangle|0\rangle
-\mapsto |c\rangle|c\rangle$ for $c \in \{0, 1\}$:
+CNOT with control $|c\rangle$ and target $|0\rangle$ maps
+$|c\rangle|0\rangle \mapsto |c\rangle|c\rangle$, for $c \in \{0, 1\}$:
 
 $$\text{CNOT}|0\rangle|0\rangle = |0\rangle|0\rangle \quad \checkmark$$
 
@@ -259,8 +259,8 @@ measure-and-prepare manages `fidelity = 0.5000`.
 
 1. Verify numerically that $\langle 0|+\rangle \neq \langle 00|{+}{+}\rangle$,
    and explain which step of the proof this contradicts.
-2. Show that a unitary *can* clone the orthogonal pair $\{|0\rangle,
-   |1\rangle\}$, and write down a circuit that does it.
+2. Show that a unitary *can* clone the orthogonal pair
+   $\{|0\rangle, |1\rangle\}$, and write down a circuit that does it.
 3. Solve $x = x^2$ over the reals and confirm the only solutions are 0 and 1.
    What does each mean for the two states?
 4. Compute $\text{CNOT}|-\rangle|0\rangle$ and compare it with
@@ -277,8 +277,8 @@ measure-and-prepare manages `fidelity = 0.5000`.
 - The proof needs only linearity and unitarity: a cloner forces
   $\langle\psi|\phi\rangle = \langle\psi|\phi\rangle^2$, whose only solutions
   are 0 (orthogonal) and 1 (identical).
-- Concretely, $\langle 0|+\rangle = 0.707$ but $\langle 00|{+}{+}\rangle =
-  0.5$, so a cloner contradicts unitarity.
+- Concretely, $\langle 0|+\rangle = 0.707$ but $\langle 00|{+}{+}\rangle = 0.5$,
+  so a cloner contradicts unitarity.
 - Linearity gives the Bell state $\tfrac{1}{\sqrt{2}}(|00\rangle + |11\rangle)$
   rather than $|+\rangle|+\rangle$; each register is then maximally mixed.
 - CNOT copies basis states but not superpositions, and no-cloning is what makes
