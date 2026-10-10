@@ -231,6 +231,11 @@
       "rewrite_status": "verified",
       "last_updated": "2026-10-10",
       "notes": "NumPy. Both python blocks executed concatenated, clean under -W error::Warning. VERIFIED: quantum kernel K(x,x')=|<\\phi(x)|\\phi(x')>|^2 from Ry angle encoding + CZ entangler. K(x,x)=1.000000 for all tested points. Kernel matrix symmetric True, unit diagonal True, PSD True (eigenvalues 0.050849, 0.101988, 0.817286, 3.029877). Toy kernel-ridge classifier on 6 points: training fit correct True; held-out tests [0.3,0.2]->0 and [1.6,1.3]->1, both correct. 27/27 KaTeX, 0 odd-dollar lines. Lesson states six limitations explicitly including no proven advantage, kernel concentration, the input (data-loading) problem, the output problem, barren plateaus, and shot noise; and warns that a 2-qubit 6-point demo establishes nothing about scale."
+    },
+    "49_bit_flip_code": {
+      "rewrite_status": "verified",
+      "last_updated": "2026-10-10",
+      "notes": "Authored per the M4 standard. Encoding verified to map alpha|0>+beta|1> onto alpha|000>+beta|111> with alpha=cos(0.35)=0.9394, beta=e^{1.1i}sin(0.35), |alpha|^2=0.8824. Syndrome extraction verified deterministic: for each of the four error cases the entire five-qubit amplitude sits in ONE ancilla block (norm 1.000000), so the syndrome reveals the error location and nothing about alpha/beta. Recovery verified to fidelity 1.000000000000 for every single-error case, and end-to-end on Aer with if_test at 4000 shots (identical 3540:460 outputs for all four cases, spare qubits always 00). P_correct=(1-p)^2(1+2p), P_fail=3p^2-2p^3; crossover at exactly p=1/2; Monte-Carlo 200k trials reproduces the table. Weight>=2 errors all produce the SAME logical X (fidelity 1.000000000 against X|psi>); off-diagonal 0.085389 = |2Re(alpha* beta)|^2 confirmed. 266/266 KaTeX expressions compile. 21 RAG chunks, 0 unbalanced fences, max 1730."
     }
   },
   "items": [
@@ -2838,11 +2843,11 @@
       "topic_state": "PENDING_TOPIC_CREATION",
       "proposed_topic_id": "qec.bit_flip_code",
       "analysis_status": "proposed_topic",
-      "lesson_slug": null,
-      "lesson_title": null,
+      "lesson_slug": "49_bit_flip_code",
+      "lesson_title": "The Three-Qubit Bit-Flip Code",
       "proposed_slug": "three_qubit_bit_flip_code",
-      "content_status": "missing",
-      "rewrite_status": "not_started",
+      "content_status": "existing",
+      "rewrite_status": "verified",
       "primary_topic": null,
       "secondary_topics": [],
       "additional_existing_lessons": [],
@@ -2857,14 +2862,14 @@
       "simulation_required": null,
       "exercises_required": true,
       "references_required": true,
-      "technical_review": "not_run",
-      "schema_validation": "not_run",
-      "mapping_validation": "not_run",
-      "prerequisite_validation": "not_run",
-      "code_validation": "not_run",
-      "integration_validation": "not_run",
-      "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'three_qubit_bit_flip_code' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-04"
+      "technical_review": "passed",
+      "schema_validation": "passed",
+      "mapping_validation": "passed",
+      "prerequisite_validation": "passed",
+      "code_validation": "passed",
+      "integration_validation": "passed",
+      "review_notes": "Authored per the M4 standard. Encoding verified to map alpha|0>+beta|1> onto alpha|000>+beta|111> with alpha=cos(0.35)=0.9394, beta=e^{1.1i}sin(0.35), |alpha|^2=0.8824. Syndrome extraction verified deterministic: for each of the four error cases the entire five-qubit amplitude sits in ONE ancilla block (norm 1.000000), so the syndrome reveals the error location and nothing about alpha/beta. Recovery verified to fidelity 1.000000000000 for every single-error case, and end-to-end on Aer with if_test at 4000 shots (identical 3540:460 outputs for all four cases, spare qubits always 00). P_correct=(1-p)^2(1+2p), P_fail=3p^2-2p^3; crossover at exactly p=1/2; Monte-Carlo 200k trials reproduces the table. Weight>=2 errors all produce the SAME logical X (fidelity 1.000000000 against X|psi>); off-diagonal 0.085389 = |2Re(alpha* beta)|^2 confirmed. 266/266 KaTeX expressions compile. 21 RAG chunks, 0 unbalanced fences, max 1730.",
+      "last_updated": "2026-10-10"
     },
     {
       "item_id": "M4-H02",
