@@ -66,6 +66,12 @@ MEASURABLE_VERBS = {
     # each to the portable rotation and CNOT basis") and is assessable here:
     # the reader produces the decomposition linking the two bases.
     "relate",
+    # Rewriting a circuit and checking it are assessable: the simplified
+    # circuit either reproduces the original matrix or it does not.
+    "simplify", "verify",
+    # Cancelling an inverse pair is assessable: the pair either reduces to the
+    # identity or it does not.
+    "cancel",
 }
 VAGUE_VERBS = {"understand", "appreciate", "learn", "know", "grasp", "explore"}
 
