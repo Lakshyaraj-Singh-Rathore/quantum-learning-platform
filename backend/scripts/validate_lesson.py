@@ -46,6 +46,12 @@ MEASURABLE_VERBS = {
     "write", "enter", "build", "predict", "report", "verify", "use", "run",
     "choose", "decide", "select", "set", "match", "contrast", "trace",
     "give", "name", "read", "record",
+    # Added for the M4 expansion. Each is directly assessable: the reader can
+    # be asked to perform the action and the result is right or wrong.
+    "represent", "multiply", "transform", "determine", "recognise",
+    "recognize", "simulate", "design", "prove", "justify", "combine",
+    "estimate", "solve", "find", "maximise", "maximize", "minimise",
+    "minimize", "translate", "express", "expand", "factor", "sketch",
 }
 VAGUE_VERBS = {"understand", "appreciate", "learn", "know", "grasp", "explore"}
 
