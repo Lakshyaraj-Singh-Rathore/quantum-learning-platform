@@ -276,6 +276,11 @@
       "rewrite_status": "verified",
       "last_updated": "2026-10-10",
       "notes": "Authored per the M4 standard against the registered spec (title 'Trapped Ions', topic hw.trapped_ions, prereq qiskit.quantum_noise recommended). All three registered objectives covered: describe how ion internal states encode a qubit; explain how trapped ions achieve all-to-all connectivity; contrast gate speed and coherence with superconducting devices. ESTABLISHED PHYSICS verified by computation, not quoted. (1) Phonon bus: the Coulomb-plus-trap potential f(u) = sum u_i^2 + sum_{i != j} 1/|u_i-u_j| is minimised numerically and its Hessian diagonalised to give the axial normal modes. Verified for N = 2,3,4,5: N=2 gives [1.0, 1.73205] matching the hand-derived sqrt(3); N=3 gives [1.0, 1.73205, 2.40832] against the exact sqrt(29/5) = 2.408319, max error 4.65e-09. Spacing/l computed as 1.25992 for N=2, matching 2^(1/3) = 1.259921 from the closed-form worked example. (2) All-to-all connectivity: the centre-of-mass eigenvector is uniform - verified to 1e-16 for N = 2,3,4,5,8,10,15, with every entry equal to 1/sqrt(N) (N=5 gives 0.447214 = 1/sqrt(5)). That uniformity is the physical origin of all-to-all connectivity and is stated as the reason, not just asserted. (3) Molmer-Sorensen gate: H(t) = g S_x (a^dag e^{i dt} + a e^{-i dt}) integrated numerically over a truncated Fock space. Verified that U = exp(-i theta S_x^2) with theta = 2 pi (g/delta)^2, and that the concurrence from |gg> equals |sin(8 pi (g/delta)^2)| to within 1.15e-07 across g/delta = 0.05 to 0.25. Maximally entangling at g/delta = 1/4 (theta = pi/8), where concurrence = 1.00000000 and the motional state returns with F = 1.00000000, identically for initial n = 0,1,2,3,4 - demonstrating the gate's insensitivity to thermal motion. Output is the Bell state (|gg> - i|ee>)/sqrt(2) with relative phase -90 degrees. The breakdown outside the Lamb-Dicke regime is reported honestly: at g/delta = 0.56 with n = 5 the concurrence falls to 0.60. (4) Speed/coherence contrast: computed depth budget T2/t_g gives 10^4 for ions against 10^3 for superconducting - ions are ~1000x slower per gate but ~10^4x longer-lived, netting roughly 10x more sequential gates. DEVICE-SPECIFIC figures explicitly labelled as vendor snapshots rather than platform constants: Quantinuum Helios (98 Ba-137 ions, 48 logical qubits, 99.921% all-pairs 2q, 99.9975% 1q, Nov 2025), IonQ EQC prototype (99.99%, Oct 2025), Oxford Ionics (99.97%, 2024). 246/246 KaTeX compile. 29 RAG chunks, 0 unbalanced fences, max 1698. Validator 55/55."
+    },
+    "58_photonic_systems": {
+      "rewrite_status": "verified",
+      "last_updated": "2026-10-10",
+      "notes": "Authored per the M4 standard against the registered spec (title 'Photonic Systems', topic hw.photonic_systems, prereq qiskit.quantum_noise recommended). All three registered objectives covered: describe a photonic qubit encoding; explain how linear optics implements gates probabilistically; state why loss is the dominant error channel. ESTABLISHED PHYSICS verified by exact Fock-space simulation, not quoted. (1) Single-qubit gates are DETERMINISTIC: built the exact bosonic Fock-space operator U_Fock = exp(sum_ij (log U)_ij a_i^dag a_j) for a two-mode beam splitter and verified that leakage from the one-photon subspace is 0 to numerical precision (0.0e+00 to 4.4e-16) at reflectivity R = 0.0, 0.25, 0.5, 0.75, 1.0, and that the induced 2x2 matrix on the dual-rail qubit is unitary at every R. At R = 1 it gives i sigma_x. This is the reason single-qubit gates need no post-selection, and it is stated as the contrast with two-qubit gates. (2) Hong-Ou-Mandel interference verified over the full Fock space: the |1,1> output amplitude is t^2 - r^2 = 1 - 2R, confirmed against the closed form (1-2R)^2 at R = 0, 0.25, 0.5, 0.75, 1.0 with exact agreement. At R = 1/2 the |1,1> amplitude is exactly 0 (perfect bunching), with the output (i/sqrt2)(|2,0> + |0,2>) in the stated convention; the convention dependence of the phase and the convention independence of the vanishing |1,1> amplitude are both noted. (3) KLM success-probability scaling p = n^2/(n+1)^2 verified arithmetically: n=1 reproduces the original KLM figure of exactly 1/4, rising to 0.980 at n=100, with the ancilla cost (2n photons) tabulated. (4) Loss verified as exponential: survival eta^N through N components at eta=0.99 gives 0.366 at N=100 and 4.3e-5 at N=1000; fibre at 0.2 dB/km gives transmission 10^(-0.02L), i.e. 0.955 over 1 km, 0.631 over 10 km, 0.010 over 100 km. Objective 3 argues from these numbers that loss is worse than an equivalent gate error for three stated reasons: exponential rather than linear accumulation, leakage rather than a Pauli error, and destruction rather than perturbation of the qubit. Heralded versus unheralded loss is distinguished, with erasure correction identified as the reason heralding helps. DEVICE-SPECIFIC figures explicitly labelled as vendor snapshots rather than platform constants: PsiQuantum Omega (Nature Feb 2025) SPAM 99.98%+-0.01%, two-photon interference visibility 99.50%+-0.25%, two-qubit fusion fidelity 99.22%+-0.12%, loss threshold ~2.7% per photon with advanced adaptive schemes modelled to 18.8%; Xanadu Borealis (2022) 216 squeezed modes at r~1.1 (~9.6 dB) and on-chip GKP (Nature 2025) with symmetric effective squeezing 0.62+-0.02 dB against a 9.75 dB fault-tolerance threshold. Both achieved-versus-required gaps are reported. 157/157 KaTeX compile. 23 RAG chunks, 0 unbalanced fences, max 1670. Validator 56/56."
     }
   },
   "items": [
@@ -3364,11 +3369,11 @@
       "topic_state": "PENDING_TOPIC_CREATION",
       "proposed_topic_id": "hw.photonic_systems",
       "analysis_status": "proposed_topic",
-      "lesson_slug": null,
-      "lesson_title": null,
+      "lesson_slug": "58_photonic_systems",
+      "lesson_title": "Photonic Systems",
       "proposed_slug": "photonic_systems",
-      "content_status": "missing",
-      "rewrite_status": "not_started",
+      "content_status": "existing",
+      "rewrite_status": "verified",
       "primary_topic": null,
       "secondary_topics": [],
       "additional_existing_lessons": [],
@@ -3383,14 +3388,14 @@
       "simulation_required": null,
       "exercises_required": true,
       "references_required": true,
-      "technical_review": "not_run",
-      "schema_validation": "not_run",
-      "mapping_validation": "not_run",
-      "prerequisite_validation": "not_run",
-      "code_validation": "not_run",
-      "integration_validation": "not_run",
-      "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'photonic_systems' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-04"
+      "technical_review": "passed",
+      "schema_validation": "passed",
+      "mapping_validation": "passed",
+      "prerequisite_validation": "passed",
+      "code_validation": "passed",
+      "integration_validation": "passed",
+      "review_notes": "Authored per the M4 standard against the registered spec (title 'Photonic Systems', topic hw.photonic_systems, prereq qiskit.quantum_noise recommended). All three registered objectives covered: describe a photonic qubit encoding; explain how linear optics implements gates probabilistically; state why loss is the dominant error channel. ESTABLISHED PHYSICS verified by exact Fock-space simulation, not quoted. (1) Single-qubit gates are DETERMINISTIC: built the exact bosonic Fock-space operator U_Fock = exp(sum_ij (log U)_ij a_i^dag a_j) for a two-mode beam splitter and verified that leakage from the one-photon subspace is 0 to numerical precision (0.0e+00 to 4.4e-16) at reflectivity R = 0.0, 0.25, 0.5, 0.75, 1.0, and that the induced 2x2 matrix on the dual-rail qubit is unitary at every R. At R = 1 it gives i sigma_x. This is the reason single-qubit gates need no post-selection, and it is stated as the contrast with two-qubit gates. (2) Hong-Ou-Mandel interference verified over the full Fock space: the |1,1> output amplitude is t^2 - r^2 = 1 - 2R, confirmed against the closed form (1-2R)^2 at R = 0, 0.25, 0.5, 0.75, 1.0 with exact agreement. At R = 1/2 the |1,1> amplitude is exactly 0 (perfect bunching), with the output (i/sqrt2)(|2,0> + |0,2>) in the stated convention; the convention dependence of the phase and the convention independence of the vanishing |1,1> amplitude are both noted. (3) KLM success-probability scaling p = n^2/(n+1)^2 verified arithmetically: n=1 reproduces the original KLM figure of exactly 1/4, rising to 0.980 at n=100, with the ancilla cost (2n photons) tabulated. (4) Loss verified as exponential: survival eta^N through N components at eta=0.99 gives 0.366 at N=100 and 4.3e-5 at N=1000; fibre at 0.2 dB/km gives transmission 10^(-0.02L), i.e. 0.955 over 1 km, 0.631 over 10 km, 0.010 over 100 km. Objective 3 argues from these numbers that loss is worse than an equivalent gate error for three stated reasons: exponential rather than linear accumulation, leakage rather than a Pauli error, and destruction rather than perturbation of the qubit. Heralded versus unheralded loss is distinguished, with erasure correction identified as the reason heralding helps. DEVICE-SPECIFIC figures explicitly labelled as vendor snapshots rather than platform constants: PsiQuantum Omega (Nature Feb 2025) SPAM 99.98%+-0.01%, two-photon interference visibility 99.50%+-0.25%, two-qubit fusion fidelity 99.22%+-0.12%, loss threshold ~2.7% per photon with advanced adaptive schemes modelled to 18.8%; Xanadu Borealis (2022) 216 squeezed modes at r~1.1 (~9.6 dB) and on-chip GKP (Nature 2025) with symmetric effective squeezing 0.62+-0.02 dB against a 9.75 dB fault-tolerance threshold. Both achieved-versus-required gaps are reported. 157/157 KaTeX compile. 23 RAG chunks, 0 unbalanced fences, max 1670. Validator 56/56.",
+      "last_updated": "2026-10-10"
     },
     {
       "item_id": "M4-I04",
