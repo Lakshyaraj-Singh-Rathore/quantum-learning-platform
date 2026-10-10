@@ -151,26 +151,88 @@ which makes the invariance claim vacuous. Fixed the *content*: amplitude
 changed to `0.3 + 0.4j` so `|z|^2 = 0.25` exactly, prose reworded to
 `0.250000`. Re-executed and confirmed.
 
-### PUSH BLOCKED — GitHub credentials expired
+### Credentials, sandbox rebuild and recovery (2026-10-10)
 
-`git push` fails with `fatal: could not read Username for 'https://github.com'`
-and `gh auth status` reports the `GH_TOKEN` is no longer valid. Commits
-`9d68277`, `352fe99`, `742a9e9` and `ca05149` are already on the remote;
-`033161f` (lesson 18) is committed locally but **not pushed** pending the user
-reconnecting GitHub in Arena. Work continues locally in the meantime.
+**Push blocked, then unblocked.** `git push` began failing with
+`fatal: could not read Username for 'https://github.com'`; `gh auth status`
+reported the `GH_TOKEN` no longer valid. The token is injected into the
+sandbox environment by the platform (there is no `~/.config/gh` and no
+credential helper), so it cannot be refreshed from inside. The user
+re-authorised GitHub from their side and `gh auth status` went green again.
 
-## 8. Remaining tasks / genuine blockers
+**A sandbox rebuild followed.** `git reflog` showed the repository had been
+re-cloned at 06:27:48 (`clone: from https://github.com/...`), leaving HEAD at
+the base commit `9b106fd`. All six local commits were unreachable.
 
-- React rendering / RAG verification deferred to Batch 6, since it needs a
-  live API and authored lesson content.
-- The 54 new topics are `draft`. Each is published as its lesson is authored.
+Recovery, in order, without any destructive command:
 
-## 9. Decisions taken during implementation
+1. `git ls-remote` confirmed the remote branch still held `ca05149` (all of
+   Batch 1-2 plus lessons 14-17). **Nothing except the two unpushed commits
+   was ever at risk.**
+2. Backed up the three files holding unpushed work to `/home/user/m4_backup/`,
+   outside the repository.
+3. `git diff` initially reported 140 files as pure deletions, which looked
+   like mass data loss. It was an artefact: the index was stale (218 entries
+   against 358 files on disk). Confirmed by direct comparison that
+   `backend/app/curriculum.py`, `backend/tests/test_curriculum.py` and
+   lessons 14 and 17 were byte-identical to the remote versions.
+4. `git reset --mixed origin/arena/01a0d874-quantum-learning-platform`
+   refreshed the index only, leaving the working tree untouched. The genuine
+   delta was then exactly the two unpushed commits.
+5. Recommitted as `e99ee29` and pushed.
 
-| # | Decision | Rationale |
+**Root cause of the stale remote-tracking ref:** `remote.origin.fetch` was
+narrow (`+refs/heads/main:refs/remotes/origin/main`), so plain `git fetch`
+never updated the arena branch. Set to `+refs/heads/*:refs/remotes/origin/*`.
+
+**Rebuilt environment.** The venv and `node_modules` (excluded from
+snapshots) were gone. Recreated the venv, reinstalled `backend/requirements.txt`
+and `frontend/requirements.txt`, and ran `npm install` in `frontend/web`.
+The KaTeX checker had lived in `/tmp` and was lost; it is now at
+`/home/user/katex_check.mjs`, which persists.
+
+### Regression found by re-running the suite after the rebuild
+
+`609 passed, 5 skipped` after fixing two failures, both caused by correct
+progress rather than by the rebuild:
+
+1. **`test_downgrade_places_every_lesson_and_preserves_secondary_placements`**
+   — a genuine defect. The M4 downgrade deletes `lesson_topics` rows for M4
+   topics (it must: `topic_id` has a foreign key to the topic table). The
+   thirteen pre-M4 lessons survive that because placements are restored from
+   the rows that remain, but lessons 14-18 are placed *only* against M4
+   topics, so they finished the downgrade with `topic_slug` NULL. Fixed in
+   `a2b3c4d5e6f7`'s downgrade: an unplaced lesson falls back to the primary
+   topic the registry names. Verified 18/18 placed (was 13/18), round-trip
+   identical at 78 placements. Commit `671a469`.
+2. **`test_tracker_counts_reconcile_with_the_gap_report`** — a stale frozen
+   snapshot (`existing=7, partial=8, missing=82`). Authoring lessons moves
+   rows to `existing`, so the real split is now `16/8/73`; the +9 is exactly
+   the five new lessons (1+3+2+2+1 rows). Replaced the magic numbers with
+   derived invariants, including `existing + partial == rows whose lesson
+   file is on disk`. Negative control confirmed the new assertion still
+   fails on tampering. Commit `e01f1e6`.
+
+### Current verified baselines (post-rebuild)
+
+| Suite | Command | Result |
 |---|---|---|
-| D1 | New topics registered as `status = "draft"` | The approved architecture says drafts must not appear as finished modules. Publishing happens per topic once its lesson is validated. |
-| D2 | `all_prerequisites()` keeps its 3-tuple contract; rationale added via a separate `all_prerequisites_with_rationale()` | The already-applied migration `a2b3c4d5e6f7` unpacks 3 values. Changing the signature would break a fresh migrate. |
-| D3 | Existing mapping confidences left at `medium` where they were | The architecture flagged raising them to `high` as needing its own approval. Not explicitly required, so preserved unchanged. |
-| D4 | `test_every_existing_lesson_is_mapped` relaxed to a subset check, with a new `test_no_published_topic_points_at_a_missing_lesson` | The equality form incidentally asserted something now false by design (draft topics map to not-yet-written lessons). The real safety property — no *published* topic with a missing lesson — is now asserted explicitly and is stricter. |
-| D5 | The four Phase 1 guard tests replaced with post-implementation invariants | Their intent was to prevent unapproved implementation. Implementation is now authorised, so the inverse invariants apply: every approved topic is registered, matches the architecture, and the original 17 are preserved. |
+| Backend | `cd backend && python -m pytest -q -p no:cacheprovider` | **609 passed, 5 skipped** |
+| Frontend | `python -m pytest frontend/tests -q -p no:cacheprovider` | **418 passed, 77 skipped** |
+
+React has no unit-test suite; the `render:*`/`a11y`/`states`/`curriculum`
+tsx scripts need a live API and remain deferred to Batch 6.
+
+### Commits
+
+| Hash | Contents |
+|---|---|
+| `5d28ae9` | M4 batches 1-2: 54 topics, associations, migration |
+| `9d68277` | lesson 14 Complex Numbers |
+| `352fe99` | lesson 15 Linear Algebra |
+| `742a9e9` | lesson 16 Eigenvalues and Operators |
+| `ca05149` | lesson 17 Probability and Statistics |
+| `e99ee29` | lesson 18 Group Theory (re-committed after the rebuild) |
+| `671a469` | migration: downgrade no longer orphans M4 lessons |
+| `e01f1e6` | test: derive tracker counts instead of freezing them |
+| `3e4e996` | ledger: Batch 3 progress |
