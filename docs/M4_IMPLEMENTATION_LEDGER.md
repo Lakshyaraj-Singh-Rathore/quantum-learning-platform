@@ -213,6 +213,88 @@ progress rather than by the rebuild:
    file is on disk`. Negative control confirmed the new assertion still
    fails on tampering. Commit `e01f1e6`.
 
+### Batch 4 - IN PROGRESS
+
+Scope: quantum-algorithms, advanced-gates-circuits, variational-nisq.
+26 tracker items resolving to **18 distinct new lessons** plus the mandated
+barren-plateau depth fix.
+
+| # | Lesson | Topic | Status | KaTeX | RAG | Commit |
+|---|---|---|---|---|---|---|
+| - | `07_vqe_qaoa.md` (depth fix) | `nisq.parameterized_circuits` | done | 68/68 | 21 | `a533459` |
+| 38 | `38_multi_controlled.md` | `adv.multi_controlled_gates` | done | 84/84 | 23 | `b29e906` |
+| 39 | `39_two_qubit_gates.md` | `adv.parameterized_two_qubit` | done | 87/87 | 24 | `16e2d4b` |
+| 40 | `40_circuit_identities` | `adv.circuit_identities` | not started | | | |
+| 41 | `41_multipartite_entanglement` | `adv.multipartite_entanglement` | not started | | | |
+| 42 | `42_compilation` | `adv.compilation` | not started | | | |
+| 43 | `43_resource_estimation` | `adv.resource_estimation` | not started | | | |
+| 30 | `30_bernstein_vazirani` | `algo.bernstein_vazirani` | not started | | | |
+| 31 | `31_qft` | `algo.qft` | not started | | | |
+| 32 | `32_phase_estimation` | `algo.phase_estimation` | not started | | | |
+| 33 | `33_shors_algorithm` | `algo.shors` | not started | | | |
+| 34 | `34_simon` | `algo.simon` | not started | | | |
+| 35 | `35_quantum_walks` | `algo.quantum_walks` | not started | | | |
+| 36 | `36_amplitude_estimation` | `algo.amplitude_estimation` | not started | | | |
+| 37 | `37_hhl` | `algo.hhl` | not started | | | |
+| 68 | `68_quantum_cryptography` | `comm.cryptography` | not started | | | |
+| 45 | `45_optimization_loops` | `nisq.optimization` | not started | | | |
+| 46 | `46_approximation_ratios` | `nisq.approximation_ratios` | not started | | | |
+| 47 | `47_quantum_machine_learning` | `nisq.qml` | not started | | | |
+
+Validator is now at **30/30**.
+
+#### The barren-plateau depth gap is FIXED (commit `a533459`)
+
+The review carried this in as a known content-depth defect:
+`nisq.parameterized_circuits` owned the objective while `07_vqe_qaoa` covered
+it in one paragraph. The section is now substantive and every number is
+measured.
+
+Verified, hardware-efficient ansatz of two layers, 300 random parameter
+vectors, observable $\langle Z^{\otimes n}\rangle$: the standard deviation
+falls `0.438 -> 0.250 -> 0.134 -> 0.0683 -> 0.0350` for `n = 2,4,6,8,10`, a
+factor of about `0.73 ~ 1/sqrt(2)` per qubit, so the variance halves per qubit
+and scales as $2^{-n}$. Gradient variance via parameter shift (200 inits,
+3 layers) falls by `0.457, 0.542, 0.504, 0.494` per qubit from n=4 to n=8.
+
+**A caveat is stated inside the lesson**: our experiments at fixed qubit
+number did NOT reproduce a clean collapse as layers were added, so the depth
+axis is presented as established theory rather than as demonstrated here.
+
+**Two negative results found while testing, deliberately kept out of the
+lesson** and recorded here:
+
+- An **RY-only** ansatz produces real amplitudes and never approaches a
+  2-design, so no depth scaling can appear. If you try to demonstrate depth
+  scaling this way it will silently fail.
+- An **L=1 ring-of-CNOTs** ansatz with the global $Z$ observable is
+  degenerate: a ring of CNOTs preserves total parity, so $\langle
+  Z^{\otimes n}\rangle$ is identically $+1$ and the gradient is zero. The
+  apparent "plateau" at L=1 (variance ~1e-33) is an artifact, not physics.
+
+#### Eighth sandbox rebuild recovered
+
+`git reset --mixed origin/arena/...` had left HEAD at `9b106fd` with the
+whole tree staged as untracked/modified. Recovered safely: fetched, verified
+all **370** remote-tip files were present and byte-identical (0 missing,
+0 differing), then reset --mixed. Nothing lost. Venv and node deps rebuilt.
+
+Caution for next time: `git diff --stat <commit>` against a stale index
+reported 152 files as pure deletions, which was misleading. Byte-comparing
+`git show <commit>:<file>` against the file on disk is the reliable check.
+
+### Current verified baselines
+
+| Suite | Result |
+|---|---|
+| Backend | 629 passed, 5 skipped (before Batch 4; re-run due) |
+| Frontend | 418 passed, 77 skipped (not re-run this session) |
+
+### Remaining
+
+- Batch 4: 16 new lessons (40, 41, 42, 43, 30-37, 68, 45, 46, 47).
+- Batch 5, then Batch 6 integration and final validation.
+
 ### Current verified baselines (post-rebuild)
 
 | Suite | Command | Result |
