@@ -106,6 +106,11 @@
       "rewrite_status": "verified",
       "last_updated": "2026-10-10",
       "notes": "Authored per the M4 standard. NumPy 1.26.4. All 3 python blocks executed concatenated. Results: product |00> and |++> S=0.000000 C=0.000000 Schmidt [1.]; t=0.3 S=0.427502 C=0.564642 Schmidt [0.955336 0.29552]; t=pi/8 S=0.600876 C=0.707107; Bell S=1.000000 C=1.000000 Schmidt [0.707107 0.707107]. Entropy from Schmidt coefficients matches S(rho_A) to 6dp in every case. Theta sweep peaks at pi/4 (S=C=1). 86/86 KaTeX compile. 25 RAG chunks, 0 unbalanced, max chunk 1219 chars."
+    },
+    "22_no_cloning": {
+      "rewrite_status": "verified",
+      "last_updated": "2026-10-10",
+      "notes": "Authored per the M4 standard. NumPy 1.26.4. All 3 python blocks executed concatenated. Results: <0|+>=0.707107 vs <00|++>=0.500000, equality False (the contradiction); x=x^2 True only at x=0 and x=1; linearity gives [0.7071,0,0,0.7071] not [0.5,0.5,0.5,0.5]; reduced copy maximally mixed purity 0.5000; CNOT True for |0>,|1> but False for |+>; measure-and-prepare fidelity 0.5000. 71/71 KaTeX compile. 30 RAG chunks, 0 unbalanced, max chunk 1149 chars."
     }
   },
   "items": [
@@ -809,11 +814,11 @@
       "topic_state": "PENDING_TOPIC_CREATION",
       "proposed_topic_id": "core.no_cloning",
       "analysis_status": "proposed_topic",
-      "lesson_slug": null,
-      "lesson_title": null,
+      "lesson_slug": "22_no_cloning",
+      "lesson_title": "The No-Cloning Theorem",
       "proposed_slug": "no_cloning_and_no_deleting",
-      "content_status": "missing",
-      "rewrite_status": "not_started",
+      "content_status": "existing",
+      "rewrite_status": "verified",
       "primary_topic": null,
       "secondary_topics": [],
       "additional_existing_lessons": [],
@@ -828,14 +833,14 @@
       "simulation_required": null,
       "exercises_required": true,
       "references_required": true,
-      "technical_review": "not_run",
-      "schema_validation": "not_run",
-      "mapping_validation": "not_run",
-      "prerequisite_validation": "not_run",
-      "code_validation": "not_run",
-      "integration_validation": "not_run",
-      "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'no_cloning_and_no_deleting' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-04"
+      "technical_review": "passed",
+      "schema_validation": "passed",
+      "mapping_validation": "passed",
+      "prerequisite_validation": "passed",
+      "code_validation": "passed",
+      "integration_validation": "passed",
+      "review_notes": "Authored per the M4 standard. NumPy 1.26.4. All 3 python blocks executed concatenated. Results: <0|+>=0.707107 vs <00|++>=0.500000, equality False (the contradiction); x=x^2 True only at x=0 and x=1; linearity gives [0.7071,0,0,0.7071] not [0.5,0.5,0.5,0.5]; reduced copy maximally mixed purity 0.5000; CNOT True for |0>,|1> but False for |+>; measure-and-prepare fidelity 0.5000. 71/71 KaTeX compile. 30 RAG chunks, 0 unbalanced, max chunk 1149 chars.",
+      "last_updated": "2026-10-10"
     },
     {
       "item_id": "M4-C01",

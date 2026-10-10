@@ -52,6 +52,10 @@ MEASURABLE_VERBS = {
     "recognize", "simulate", "design", "prove", "justify", "combine",
     "estimate", "solve", "find", "maximise", "maximize", "minimise",
     "minimize", "translate", "express", "expand", "factor", "sketch",
+    # Demonstrating is assessable: the reader produces the artefact (a
+    # computation, a circuit, an output) and it either shows the claimed
+    # behaviour or it does not.
+    "demonstrate", "reproduce",
 }
 VAGUE_VERBS = {"understand", "appreciate", "learn", "know", "grasp", "explore"}
 
