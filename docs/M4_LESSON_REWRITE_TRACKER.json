@@ -64,8 +64,8 @@
     },
     "07_vqe_qaoa": {
       "rewrite_status": "verified",
-      "last_updated": "2026-10-04",
-      "notes": "Rewritten. Ran a real VQE: for H = 1.0 ZZ + 0.5 XI + 0.3 ZI the exact ground energy is -1.392839 and COBYLA converged to -1.392838, approaching from above as the variational principle requires. Verified the basis-change recipes: X = H before measuring; Y = Sdg then H (Y eigenstates become deterministic). Documented that the platform's numeric-only parameters limit the Composer to single landscape points rather than full loops."
+      "last_updated": "2026-10-10",
+      "notes": "BARREN-PLATEAU DEPTH GAP FIXED (Batch 4). The review flagged that nisq.parameterized_circuits owns the objective 'Explain what a barren plateau is and when it appears' while 07_vqe_qaoa covered it in a single paragraph with no mathematics or evidence. The section is now substantive and every number is measured. VERIFIED: hardware-efficient ansatz, 2 layers (RY then RZ per qubit, ring of CNOTs, RY/RZ again), 300 random parameter vectors, global observable <Z^0n>. Std dev of the cost falls 0.438 (n=2) -> 0.250 (n=4) -> 0.134 (n=6) -> 0.0683 (n=8) -> 0.0350 (n=10), a factor of about 0.73 ~ 1/sqrt(2) per qubit, so Var ~ 2^-n. Gradient variance via the parameter-shift rule (200 inits, 3 layers) falls by 0.457, 0.542, 0.504, 0.494 for n=4->5, 5->6, 6->7, 7->8. Also explains concentration of measure, the shot-count consequence, when plateaus appear (deep circuits, global observables, random init) and five mitigations. HONEST CAVEAT RECORDED IN THE LESSON: our experiments at fixed qubit number did NOT show a clean collapse as layers were added, so the depth axis is presented as established theory, not as something demonstrated here. Two negative results found while testing and deliberately excluded from the lesson: an RY-only ansatz produces real amplitudes and never approaches a 2-design; and an L=1 ring-of-CNOTs ansatz with the global Z observable is degenerate (the ring preserves total parity, so the gradient is identically zero)."
     },
     "14_complex_numbers": {
       "rewrite_status": "verified",

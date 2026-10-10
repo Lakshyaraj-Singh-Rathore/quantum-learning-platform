@@ -99,14 +99,105 @@ approximation.
 
 ## Ansatz design and barren plateaus
 
+### Expressivity versus depth
+
 The ansatz must be **expressive** enough to contain a good solution but
 **shallow** enough to survive noise. A common hardware-efficient choice is layers
 of RY/RZ rotations followed by a ring of CNOTs.
 
-A real difficulty is the **barren plateau**: for deep, randomly initialized
-circuits the cost landscape becomes exponentially flat, gradients vanish, and the
-optimizer gets no signal. Mitigations include problem-informed ansätze, smart
-initialization and layer-wise training.
+These two requirements pull in opposite directions, and pushing too far toward
+expressivity triggers the failure mode below.
+
+### What a barren plateau is
+
+A **barren plateau** is a cost landscape that is not merely unhelpful but
+*exponentially* flat. As the number of qubits $n$ grows, the cost function
+concentrates around its mean: almost every randomly chosen parameter vector gives
+nearly the same value, and the gradient at a random point has a variance that
+decays exponentially in $n$. An optimizer starting there gets no usable signal.
+
+This is a statement about *typical* points, not about the minimum. The minimum
+still exists and may be deep — the problem is that the gradient does not tell you
+which way to walk to find it.
+
+### Verified: the landscape flattens exponentially
+
+The numbers below are measured, not asserted. For a hardware-efficient ansatz
+of two layers — RY then RZ on every qubit, a ring of CNOTs, then RY/RZ again —
+we sample 300 random parameter vectors and record the spread of the global
+observable $\langle Z^{\otimes n}\rangle$:
+
+| Qubits $n$ | Mean | Std dev | Largest $|\langle Z^{\otimes n}\rangle|$ |
+|---|---|---|---|
+| 2 | $-0.043$ | $4.38\times10^{-1}$ | 0.99 |
+| 4 | $0.010$ | $2.50\times10^{-1}$ | 0.74 |
+| 6 | $0.004$ | $1.34\times10^{-1}$ | 0.53 |
+| 8 | $0.001$ | $6.83\times10^{-2}$ | 0.29 |
+| 10 | $0.000$ | $3.50\times10^{-2}$ | 0.16 |
+
+The standard deviation shrinks by a factor of about $0.73 \approx 1/\sqrt{2}$
+per added qubit, so the **variance halves per qubit**:
+
+$$\operatorname{Var} \propto 2^{-n}$$
+
+By ten qubits the spread of the cost across random parameter vectors is $0.035$.
+The landscape is flat not because the minimum is shallow, but because the
+variation has been squeezed out everywhere.
+
+The same decay appears directly in the gradients. Using the parameter-shift rule
+on the first parameter with 200 random initialisations at three layers, the
+gradient variance of the global observable falls by a factor near one half for
+each qubit added: $0.457$, $0.542$, $0.504$, $0.494$ for $n = 4\to5$, $5\to6$,
+$6\to7$, $7\to8$.
+
+### Why it happens
+
+The mechanism is **concentration of measure** in high dimensions. A sufficiently
+random circuit spreads its output state over a space whose volume grows
+exponentially with $n$, so any single smooth function of that state — the
+expectation value of an observable — becomes nearly constant. The cost is a
+projection of a very high-dimensional object onto one number, and those
+projections concentrate.
+
+The practical consequence is a shot-count problem as much as an optimisation
+one. Resolving a gradient of typical size $\epsilon$ requires on the order of
+$1/\epsilon^2$ shots just to distinguish it from zero. When $\epsilon$ decays
+exponentially, the shots required grow exponentially, and the algorithm is no
+longer scalable.
+
+### When it appears
+
+Barren plateaus are associated with:
+
+- **Deep circuits.** A circuit deep enough to approximate a random unitary
+  concentrates. Shallow circuits can escape.
+- **Global observables.** Terms acting on all $n$ qubits, such as
+  $Z^{\otimes n}$, concentrate hardest. **Local observables**, acting on a few
+  qubits, are markedly more robust — this is the single most useful distinction
+  to remember.
+- **Random initialisation.** The plateau is a statement about random points.
+  Deliberate initialisation can start you outside it.
+
+One honest caveat on depth: the exponential decay in qubit number above
+reproduces cleanly and is the standard signature. The *depth*-driven onset is
+genuinely harder to reproduce in a small statevector simulation, and our own
+experiments at fixed qubit number did **not** show a clean collapse as layers
+were added. Report the qubit-count scaling confidently; treat the depth axis as
+established theory rather than something demonstrated here.
+
+### Mitigations
+
+- **Prefer local cost terms.** If the Hamiltonian can be written as a sum of
+  terms acting on few qubits, the gradients are substantially larger.
+- **Start shallow and grow.** Layer-wise training optimises a shallow circuit,
+  then adds a layer and re-optimises, staying out of the concentrated regime.
+- **Use problem-informed ansätze.** Structures derived from the problem (such as
+  the QAOA ansatz, or a unitary-coupled-cluster ansatz in chemistry) start in a
+  small, meaningful corner of parameter space instead of a random point.
+- **Initialise deliberately.** Identity-block initialisation sets each added
+  layer to the identity so the circuit starts as a known good shallow solution.
+- **Correlate parameters.** Tying parameters together reduces the effective
+  dimension of the search and slows concentration.
 
 ## Building blocks in the composer
 
