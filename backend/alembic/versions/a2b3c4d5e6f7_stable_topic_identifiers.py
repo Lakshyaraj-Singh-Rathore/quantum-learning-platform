@@ -497,6 +497,40 @@ def downgrade() -> None:
                 sa.text("UPDATE lessons SET topic_slug = :t WHERE slug = :l"),
                 {"t": reverse.get(topic_id, topic_id), "l": lesson_slug},
             )
+        # Lessons introduced by the M4 curriculum expansion are placed only
+        # against M4 topics, and the g2a5b8c1d4e7 downgrade deletes those
+        # rows before this one runs -- lesson_topics.topic_id references the
+        # topic table, so the rows cannot survive it. Left alone, such a
+        # lesson would come out of the downgrade with no topic at all:
+        # invisible to pre-migration code and unrecoverable on re-upgrade.
+        # The registry is authoritative and names a primary topic for every
+        # planned lesson, so fall back to it. Re-upgrading rebuilds the exact
+        # placement from the same source, so nothing is invented here.
+        unplaced = [
+            str(slug)
+            for slug, in bind.execute(
+                sa.text(
+                    "SELECT slug FROM lessons WHERE topic_slug IS NULL"
+                    " OR topic_slug = ''"
+                )
+            )
+        ]
+        if unplaced:
+            registry_primary: dict[str, str] = {}
+            for lesson_slug, topic_id, _confidence, is_primary in all_lesson_topics():
+                if is_primary:
+                    registry_primary.setdefault(str(lesson_slug), str(topic_id))
+            for lesson_slug in sorted(unplaced):
+                topic_id = registry_primary.get(lesson_slug)
+                if topic_id is None:
+                    # Not the curriculum's lesson; leaving it unclaimed is
+                    # correct, and f1a2b3c4d5e6 documents topic_slug as
+                    # nullable for exactly this case.
+                    continue
+                bind.execute(
+                    sa.text("UPDATE lessons SET topic_slug = :t WHERE slug = :l"),
+                    {"t": reverse.get(topic_id, topic_id), "l": lesson_slug},
+                )
         # The pre-migration schema stores ONE topic per lesson in topic_slug.
         # Some lessons legitimately belong to two topics, so restoring only the
         # primary would silently drop the secondary placement. The secondary is
