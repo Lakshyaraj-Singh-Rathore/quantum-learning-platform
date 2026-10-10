@@ -286,6 +286,11 @@
       "rewrite_status": "verified",
       "last_updated": "2026-10-10",
       "notes": "Authored per the M4 standard against the registered spec (title 'Neutral Atoms', topic hw.neutral_atoms, prereq qiskit.quantum_noise recommended). All three registered objectives covered: describe how neutral atoms encode qubits; explain the Rydberg blockade mechanism for entangling gates; state the scaling advantage of atom arrays. ESTABLISHED PHYSICS verified by simulation, not quoted. (1) Rydberg blockade gate: the three-pulse Jaksch protocol (pi on control, 2pi on target, pi back) simulated by direct integration of H = Omega/2(|r><1| + |1><r|) + V|rr><rr| on the full two-atom nine-dimensional space. Scored against CZ up to LOCAL z-rotations by maximising |Tr(U_CZ(a,b)^dag U_sub)|/4 over both rotation angles. Results at V/Omega = 0,1,2,5,10,20,100: conditional phase goes 0.000, 1.943, 2.455, 2.836, 2.986, 3.063, 3.126, converging to pi; fidelity 0.500, 0.796, 0.948, 0.993, 0.9984, 0.99953, 0.999954. Two results deserve emphasis. First, at V=0 the fidelity is 0.5 and the conditional phase is 0: the sequence is a perfect LOCAL gate that entangles nothing, which is why the lesson reports conditional phase alongside fidelity rather than fidelity alone. Second, the phase error follows a clean 1/V law, approximately (pi/2) Omega/V: 0.156 = pi/20 at V/Omega=10 and 0.0157 = pi/200 at V/Omega=100. (2) The gate STAYS DIAGONAL: off-diagonal elements of the computational subspace are exactly 0 at every V, so the failure mode is leakage into |r>, not mixing. Verified by the dip of |u_11| to 0.7317 at V/Omega=1, where the blockaded pulse is only partly blockaded and leaves amplitude stranded in the Rydberg state. (3) Blockade radius r_b = (C6/hbar Omega)^(1/6) tabulated over eight orders of magnitude, showing the sixth-root insensitivity: a factor of 64 in C6/hbarOmega changes r_b by only 2. (4) The 1/r^6 falloff tabulated with representative C6/h = 100 MHz um^6: V/h drops from 100 MHz at r=1um to 0.1 kHz at r=10um. DEVICE-SPECIFIC figures labelled as vendor snapshots, including the achieved-versus-required framing: Harvard/QuEra 99.5% two-qubit CZ across 60 parallel gates at ~0.5us; single-qubit >99.9% up to 99.97%; three-qubit CCZ ~98%; Caltech 6,100-atom array (2025); Harvard/MIT 3,000-qubit array running >2 hours with mid-computation replenishment; QuEra Nature Jan 2026 96 logical qubits from 448 physical using a [[16,6,4]] code at 4.7:1; Pasqal 140 qubits. Atom loss flagged as the platform's distinctive error and identified correctly as a HERALDED erasure rather than an unknown error. 148/148 KaTeX compile with no non-ASCII in math. 17 RAG chunks, 0 unbalanced fences, max 1615. Validator 57/57."
+    },
+    "60_spin_qubits": {
+      "rewrite_status": "verified",
+      "last_updated": "2026-10-10",
+      "notes": "Authored per the M4 standard against the registered spec (title 'Spin-Based Qubits', topic hw.spin_qubits, prereq qiskit.quantum_noise recommended). All three registered objectives covered: describe how electron or nuclear spin encodes a qubit; explain how exchange interaction produces two-qubit gates; state the main fabrication and coherence challenges. ESTABLISHED PHYSICS verified by simulation, not quoted. (1) Exchange gate: H = J S1.S2 = (J/4) sigma_1.sigma_2 integrated exactly on the two-spin space. Verified that pulse area int J dt = pi gives SWAP with deviation 1.11e-16 and the expected global phase of exactly +45 degrees (e^{i pi/4}); and that int J dt = pi/2 gives sqrt(SWAP), confirmed by U.U reproducing SWAP to 0.00e+00. (2) Singlet-triplet splitting: verified <S|H|S> = -0.75 J and <T0|H|T0> = +0.25 J, splitting exactly 1.000000 J. (3) Exchange oscillation tabulated over a full period: P(|up down>) goes 1.0, 0.853553, 0.5, 0.0, 0.5, 1.0 at Jt = 0, pi/4, pi/2, pi, 3pi/2, 2pi, confirming period 2 pi / J and the Bell-state point at Jt = pi/2. (4) A genuine subtlety verified rather than glossed: sqrt(SWAP) applied to each computational basis state gives concurrence 1.000000 for |up down> and |down up> but 0.000000 for |up up> and |down down>, which are triplet eigenstates of sigma_1.sigma_2 and acquire only a phase e^{-i pi/8}. So sqrt(SWAP) is entangling but NOT a maximally entangling GATE in the CNOT sense, and the lesson says so explicitly. (5) Noise sensitivity: gate error versus fractional error in J tabulated at dJ/J = 0.001 to 0.1, confirming clean QUADRATIC scaling - 1% gives 2.3e-5 and 10% gives 2.3e-3, a hundredfold error increase for a tenfold noise increase. This is stated as the platform's saving grace against charge noise: the exponential sensitivity of J to the barrier does NOT translate into exponential sensitivity of the gate. DEVICE-SPECIFIC figures labelled as vendor snapshots: Diraq/imec Nature Sept 2025 >99% two-qubit fidelity on randomly selected devices from an industrial 300 mm wafer; SQC Dec 2025 99.99%; industry-compatible unit cells 2025 with T1 = 9.5 s, T2* = 40.6 us, T2 Hahn = 1.9 ms, SPAM 99.95%; mobile spin qubits 2025 with ~99% CZ via conveyor shuttling, 99.5% shuttling fidelity over 10 um in under 200 ns, J/h ~ 33 MHz, CZ in 58 ns; Intel Tunnel Falls 12 qubits and Horse Ridge II addressing up to 128 qubits; electron coherence above 1 s and nuclear above 30 s in purified Si-28. The large T2*/T2 Hahn gap is called out as diagnostic of a refocusable solid-state environment. Isotopic purification (4.7% Si-29 removed to >99.99% Si-28) presented as the key materials fact. 165/165 KaTeX compile with no non-ASCII in math. 18 RAG chunks, 0 unbalanced fences, max 1558. Validator 58/58."
     }
   },
   "items": [
@@ -3448,11 +3453,11 @@
       "topic_state": "PENDING_TOPIC_CREATION",
       "proposed_topic_id": "hw.spin_qubits",
       "analysis_status": "proposed_topic",
-      "lesson_slug": null,
-      "lesson_title": null,
+      "lesson_slug": "60_spin_qubits",
+      "lesson_title": "Spin Qubits",
       "proposed_slug": "spin_based_qubits",
-      "content_status": "missing",
-      "rewrite_status": "not_started",
+      "content_status": "existing",
+      "rewrite_status": "verified",
       "primary_topic": null,
       "secondary_topics": [],
       "additional_existing_lessons": [],
@@ -3467,14 +3472,14 @@
       "simulation_required": null,
       "exercises_required": true,
       "references_required": true,
-      "technical_review": "not_run",
-      "schema_validation": "not_run",
-      "mapping_validation": "not_run",
-      "prerequisite_validation": "not_run",
-      "code_validation": "not_run",
-      "integration_validation": "not_run",
-      "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'spin_based_qubits' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-04"
+      "technical_review": "passed",
+      "schema_validation": "passed",
+      "mapping_validation": "passed",
+      "prerequisite_validation": "passed",
+      "code_validation": "passed",
+      "integration_validation": "passed",
+      "review_notes": "Authored per the M4 standard against the registered spec (title 'Spin-Based Qubits', topic hw.spin_qubits, prereq qiskit.quantum_noise recommended). All three registered objectives covered: describe how electron or nuclear spin encodes a qubit; explain how exchange interaction produces two-qubit gates; state the main fabrication and coherence challenges. ESTABLISHED PHYSICS verified by simulation, not quoted. (1) Exchange gate: H = J S1.S2 = (J/4) sigma_1.sigma_2 integrated exactly on the two-spin space. Verified that pulse area int J dt = pi gives SWAP with deviation 1.11e-16 and the expected global phase of exactly +45 degrees (e^{i pi/4}); and that int J dt = pi/2 gives sqrt(SWAP), confirmed by U.U reproducing SWAP to 0.00e+00. (2) Singlet-triplet splitting: verified <S|H|S> = -0.75 J and <T0|H|T0> = +0.25 J, splitting exactly 1.000000 J. (3) Exchange oscillation tabulated over a full period: P(|up down>) goes 1.0, 0.853553, 0.5, 0.0, 0.5, 1.0 at Jt = 0, pi/4, pi/2, pi, 3pi/2, 2pi, confirming period 2 pi / J and the Bell-state point at Jt = pi/2. (4) A genuine subtlety verified rather than glossed: sqrt(SWAP) applied to each computational basis state gives concurrence 1.000000 for |up down> and |down up> but 0.000000 for |up up> and |down down>, which are triplet eigenstates of sigma_1.sigma_2 and acquire only a phase e^{-i pi/8}. So sqrt(SWAP) is entangling but NOT a maximally entangling GATE in the CNOT sense, and the lesson says so explicitly. (5) Noise sensitivity: gate error versus fractional error in J tabulated at dJ/J = 0.001 to 0.1, confirming clean QUADRATIC scaling - 1% gives 2.3e-5 and 10% gives 2.3e-3, a hundredfold error increase for a tenfold noise increase. This is stated as the platform's saving grace against charge noise: the exponential sensitivity of J to the barrier does NOT translate into exponential sensitivity of the gate. DEVICE-SPECIFIC figures labelled as vendor snapshots: Diraq/imec Nature Sept 2025 >99% two-qubit fidelity on randomly selected devices from an industrial 300 mm wafer; SQC Dec 2025 99.99%; industry-compatible unit cells 2025 with T1 = 9.5 s, T2* = 40.6 us, T2 Hahn = 1.9 ms, SPAM 99.95%; mobile spin qubits 2025 with ~99% CZ via conveyor shuttling, 99.5% shuttling fidelity over 10 um in under 200 ns, J/h ~ 33 MHz, CZ in 58 ns; Intel Tunnel Falls 12 qubits and Horse Ridge II addressing up to 128 qubits; electron coherence above 1 s and nuclear above 30 s in purified Si-28. The large T2*/T2 Hahn gap is called out as diagnostic of a refocusable solid-state environment. Isotopic purification (4.7% Si-29 removed to >99.99% Si-28) presented as the key materials fact. 165/165 KaTeX compile with no non-ASCII in math. 18 RAG chunks, 0 unbalanced fences, max 1558. Validator 58/58.",
+      "last_updated": "2026-10-10"
     },
     {
       "item_id": "M4-I06",
