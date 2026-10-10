@@ -342,6 +342,75 @@ A follow-up commit was the correct action. The branch is session-only and
 the amend landed seconds after the push, so nothing was lost, but it should
 not be repeated.
 
+### Batch 4 - COMPLETE
+
+All 12 remaining Batch 4 lessons authored and verified. Dependency order was
+followed, not numerical order: QFT -> phase estimation -> Shor / amplitude
+estimation / HHL, with BV, Simon, walks and cryptography independent.
+
+| # | Lesson | Topic | KaTeX | RAG | Commit |
+|---|---|---|---|---|---|
+| 31 | `31_qft.md` | `algo.qft` | 97/97 | 27 | `4c57abe` |
+| 32 | `32_phase_estimation.md` | `algo.phase_estimation` | 144/144 | 29 | `4175cf0` |
+| 30 | `30_bernstein_vazirani.md` | `algo.bernstein_vazirani` | 99/99 | 23 | `8a347fb` |
+| 34 | `34_simon.md` | `algo.simon` | 113/113 | 23 | `ffbd4a8` |
+| 33 | `33_shors_algorithm.md` | `algo.shors` | 138/138 | 27 | `35c08e8` + `0003ba6` |
+| 36 | `36_amplitude_estimation.md` | `algo.amplitude_estimation` | 136/136 | 27 | `260337d` |
+| 35 | `35_quantum_walks.md` | `algo.quantum_walks` | 62/62 | 28 | `cd23b8f` |
+| 37 | `37_hhl.md` | `algo.hhl` | 92/92 | 23 | `b6b38f2` |
+| 68 | `68_quantum_cryptography.md` | `comm.cryptography` | 15/15 | 24 | `0a6adfe` |
+| 45 | `45_optimization_loops.md` | `nisq.optimization` | 95/95 | 26 | `6e2df4e` |
+| 46 | `46_approximation_ratios.md` | `nisq.approximation_ratios` | 41/41 | 26 | `3157d4d` |
+| 47 | `47_quantum_machine_learning.md` | `nisq.qml` | 27/27 | 24 | `b6f91ed` |
+
+Validator **46/46**. Backend suite **665 passed, 5 skipped**.
+Frontend suite **418 passed, 77 skipped**. Curriculum+API tests 87 passed.
+
+#### Errors caught by verifying rather than asserting
+
+- **33 (Shor)**: first draft claimed combining denominators by LCM *always*
+  recovers the order. Measuring over 4000 trials disproved it: when every
+  sampled $k$ shares a factor with $r$, the LCM falls short (one run gave
+  lcm(6,6,2) = 6 for $r = 12$). Lesson now reports measured success rates and
+  states plainly that a single run is unreliable.
+- **32 (phase estimation)**: with qubit 0 as the MSB, estimation qubit $q$
+  carries weight $2^{t-1-q}$ and must control $U^{2^{t-1-q}}$. My first
+  implementation used $U^{2^q}$ and returned 0.672 for a phase of 1/3.
+- **36 (amplitude estimation)**: the Grover operator convention matters.
+  Without the leading minus sign the eigenphases are $\pi \pm 2\theta$ and
+  the recovered amplitude was 0.85 for a true value of 0.09.
+- **35 (quantum walks)**: a literal double backslash before `\!` in bra-ket
+  spacing. KaTeX accepted it with a warning; silent warnings are worth chasing.
+- **Inline math split across lines** again in 30, 32, 45. All were in prose or
+  Summary bullets. The Python per-line `$` count catches all of them; `awk`
+  does not.
+
+#### Frontend environment note
+
+`npm run render:check` initially failed because
+`frontend/circuit_composer/frontend` had no `node_modules`. Running
+`npm install` there is the **wrong** fix and the project says so in
+`link-shared.mjs`: it produces a second React copy and an invalid-hook-call
+failure. The correct step is `node scripts/link-shared.mjs` from
+`frontend/web`, which links react and react-dom from the app's copy. Added to
+that script's usage; `recover.sh` should run it too.
+
+### Current verified baselines
+
+| Suite | Result |
+|---|---|
+| Backend | **665 passed, 5 skipped** |
+| Frontend (Python) | **418 passed, 77 skipped** |
+| Curriculum + API | 87 passed |
+| Curriculum UI | 29 checks passed |
+| Frontend render | student / anonymous / instructor all pass |
+
+### Remaining after Batch 4
+
+- Batch 5: error-correction (11 items), hardware-ecosystem (11 items),
+  communication-simulation (6 remaining).
+- Batch 6: integration and final validation.
+
 ### Current verified baselines
 
 | Suite | Result |
