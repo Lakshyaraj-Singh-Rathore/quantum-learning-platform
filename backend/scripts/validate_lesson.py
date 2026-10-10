@@ -62,6 +62,10 @@ MEASURABLE_VERBS = {
     # Producing a count or a decomposition is assessable: the result is right
     # or wrong.
     "count", "decompose", "classify",
+    # 'relate' appears verbatim in the registry's own objectives (e.g. "Relate
+    # each to the portable rotation and CNOT basis") and is assessable here:
+    # the reader produces the decomposition linking the two bases.
+    "relate",
 }
 VAGUE_VERBS = {"understand", "appreciate", "learn", "know", "grasp", "explore"}
 
