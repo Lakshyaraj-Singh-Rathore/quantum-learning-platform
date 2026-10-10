@@ -311,6 +311,11 @@
       "rewrite_status": "verified",
       "last_updated": "2026-10-10",
       "notes": "Authored per the M4 standard against the registered spec (title 'Quantum Benchmarking', topic hw.benchmarking, prereqs hw.nisq_limitations required and hw.platform_comparison recommended - both now satisfied). All three registered objectives covered: describe randomised benchmarking and what it measures; define quantum volume and its limitations; choose a benchmark appropriate to a claimed capability. The distinguishing feature is that RB is VALIDATED rather than merely described: the protocol is run against a known injected error rate and checked. (1) Randomised benchmarking verified by simulation: random Clifford sequences with depolarising noise injected at parameter lambda, survival probability fitted to F(m) = A p^m + 1/2^n, converted to EPC = (2^n-1)(1-p)/2^n. Injected lambda = 0.002, 0.005, 0.01, 0.02 give fitted p = 0.99800, 0.99500, 0.99000, 0.98000 and EPC = 0.001000, 0.002500, 0.005000, 0.010000, matching theory p = 1-lambda and EPC = lambda/2 with 0.00% relative error at every rate. The full nine-point decay curve at lambda=0.01 matches theory to five decimal places at every m from 0 to 320. This is stated as the reason RB is trustworthy: it has been checked against a known answer rather than merely fitted to a decay. (2) A genuine implementation bug is documented in the lesson notes: an earlier version applied the inversion before the forward sequence, producing a survival curve that collapsed to 0.5 immediately and an EPC of 0.259 against a true 0.005 - a 50x error that would have produced a lesson teaching the opposite of the truth. Fixed by simulating the real ordering (Clifford, noise, ..., invert). (3) What RB does NOT measure is given equal weight: SPAM is absorbed into A, twirling destroys the error mechanism so only the average survives, and correlated and non-Markovian errors are invisible. (4) Quantum volume defined as 2^d for the largest square circuit passing at heavy-output probability above 2/3 at 2 sigma, with the power-of-two scale tabulated so a difference of 5 in d reads as a factor of 32. Verified the per-gate error QV demands: roughly d^2/2 two-qubit gates and eps ~ 0.105/(d^2/2) gives 1.31e-2 at d=4, 3.28e-3 at d=8, 8.20e-4 at d=16, 2.05e-4 at d=32, 5.13e-5 at d=64. (5) Objective 3 is a benchmark-versus-blind-to table plus claim-by-claim guidance: gate quality to two-qubit RB on ALL pairs (not the best pair, since the calibration lesson showed the worst qubit was 10x the median); depth to QV or layer fidelity; applications to the application against the best classical algorithm; error correction to a logical-error versus code-distance curve where the SIGN of the slope is the result. 76/76 KaTeX compile. 21 RAG chunks, 0 unbalanced fences, max 1492. Validator 62/62."
+    },
+    "65_quantum_ecosystem": {
+      "rewrite_status": "verified",
+      "last_updated": "2026-10-10",
+      "notes": "Framework survey grounded in verified source: no python blocks; KaTeX 0 expressions; chunks 17 max 1606 (limit 1920); validate_lesson 63/63 pass. Content distinguishes SDK (Qiskit/Cirq/PennyLane/CUDA-Q) from provider service (Braket/Qbraid) as separate layers. Framework capability claims verified against this repo's dispatch table (STATIC_RUNNERS, DYNAMIC_BACKENDS in inspect.py, tasks.py resolve_backend): only qiskit_dynamic runs runtime control flow and other backends are routed to it; noise supported on qiskit_aer and cudaq only. Cirq lacks native runtime control flow (confirmed by codegen_cirq.py Python-driver design)."
     }
   },
   "items": [
@@ -3695,11 +3700,11 @@
       "topic_state": "PENDING_TOPIC_CREATION",
       "proposed_topic_id": "hw.ecosystem",
       "analysis_status": "proposed_topic",
-      "lesson_slug": null,
-      "lesson_title": null,
+      "lesson_slug": "65_quantum_ecosystem",
+      "lesson_title": "Quantum Ecosystem: Qiskit, Cirq, PennyLane, CUDA-Q and Braket",
       "proposed_slug": "quantum_ecosystem_qiskit_cirq_pennylane_cuda_q_and_braket",
-      "content_status": "missing",
-      "rewrite_status": "not_started",
+      "content_status": "existing",
+      "rewrite_status": "verified",
       "primary_topic": null,
       "secondary_topics": [],
       "additional_existing_lessons": [],
@@ -3714,14 +3719,14 @@
       "simulation_required": null,
       "exercises_required": true,
       "references_required": true,
-      "technical_review": "not_run",
-      "schema_validation": "not_run",
-      "mapping_validation": "not_run",
-      "prerequisite_validation": "not_run",
-      "code_validation": "not_run",
-      "integration_validation": "not_run",
-      "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'quantum_ecosystem_qiskit_cirq_pennylane_cuda_q_and_braket' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-04"
+      "technical_review": "passed",
+      "schema_validation": "passed",
+      "mapping_validation": "passed",
+      "prerequisite_validation": "passed",
+      "code_validation": "passed",
+      "integration_validation": "passed",
+      "review_notes": "Framework survey grounded in verified source: no python blocks; KaTeX 0 expressions; chunks 17 max 1606 (limit 1920); validate_lesson 63/63 pass. Content distinguishes SDK (Qiskit/Cirq/PennyLane/CUDA-Q) from provider service (Braket/Qbraid) as separate layers. Framework capability claims verified against this repo's dispatch table (STATIC_RUNNERS, DYNAMIC_BACKENDS in inspect.py, tasks.py resolve_backend): only qiskit_dynamic runs runtime control flow and other backends are routed to it; noise supported on qiskit_aer and cudaq only. Cirq lacks native runtime control flow (confirmed by codegen_cirq.py Python-driver design).",
+      "last_updated": "2026-10-10"
     },
     {
       "item_id": "M4-J01",
