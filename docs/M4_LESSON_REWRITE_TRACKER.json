@@ -301,6 +301,11 @@
       "rewrite_status": "verified",
       "last_updated": "2026-10-10",
       "notes": "Authored per the M4 standard against the registered spec (title 'NISQ Limitations', topic hw.nisq_limitations, prereqs qiskit.quantum_noise required and adv.resource_estimation recommended). All three registered objectives covered: state the constraints defining the NISQ regime; explain why circuit depth is limited by error rates; assess whether a proposed algorithm fits current hardware. The central result is that the whole NISQ constraint reduces to one product N*d*eps, with P_success ~ (1-eps)^(N d) ~ exp(-N d eps) and usable depth d_max ~ ln2/(N eps). VERIFIED by simulation with the AerSimulator density_matrix method: random circuits on N=4 with depolarising eps=0.002 per CX give fidelity 0.995172, 0.989932, 0.979308, 0.959363, 0.939347, 0.919872, 0.881859, 0.845716 at depths 1,2,4,8,12,16,24,32 against predictions 0.994012, 0.988060, 0.976262, 0.953088, 0.930464, 0.908377, 0.865763, 0.825148; and on N=6 with eps=0.005 give 0.979345, 0.957291, 0.914464, 0.833948, 0.760410, 0.693452 at depths 1,2,4,8,12,16. The measured fidelity tracks the independent-error prediction closely and runs slightly ABOVE it, which is explained in the lesson: a depolarising channel leaves the state completely untouched with probability 1-eps rather than perturbing it slightly. A notable early failure is documented and fixed in the lesson notes: the naive statevector method silently ignores the noise model and returns F=1.0 at every depth, and only method='density_matrix' applies it. The budget table at eps=0.01 shows d for P=1/2 falling 17.3, 8.7, 4.3, 2.2, 1.1, 0.5 at N=4,8,16,32,64,128 - at 128 qubits the usable depth is below one entangling layer, which is stated as the NISQ wall reached by scaling qubits without improving error rates. The inversion table gives total CX gates available as ln2/eps: 69 at 1e-2, 693 at 1e-3, 6931 at 1e-4, 69315 at 1e-5, with depth on 50 qubits 1.4, 13.9, 138.6, 1386. Assessment of algorithm fit is given as five explicit checks plus four worked verdicts (VQE 20q depth 12 feasible with mitigation; Grover over 2^50 infeasible by orders of magnitude; Shor RSA-2048 infeasible needing fault tolerance; QAOA 100q p=1 right at the edge at 0.8 while p=10 gives 8). Three independent constraints identified: error budget, coherence, and qubit count with connectivity. 99/99 KaTeX compile. 16 RAG chunks, 0 unbalanced fences, max 1708. Validator 60/60."
+    },
+    "63_complexity_classes": {
+      "rewrite_status": "verified",
+      "last_updated": "2026-10-10",
+      "notes": "Authored per the M4 standard against the registered spec (title 'BQP, P, NP and BPP', topic hw.complexity_classes, prereq algo.grover recommended). All three registered objectives covered: define BQP, BPP and NP; state the known inclusions relating these classes; explain what quantum speed-up evidence does and does not establish. The principal value of this lesson is negative - distinguishing proven theorems from conjecture - so the content is organised explicitly around that split. (1) Definitions: P, BPP (bounded-error probabilistic polynomial time, error at most 1/3), NP (certificate verifiable in polynomial time), BQP (polynomial-size quantum circuit, polynomial time, error at most 1/3, gates specified to polynomial precision). Two commonly-missed features are drawn out: the bounded-error condition is part of the definition and is amplifiable at polynomial cost, and the polynomial-precision gate requirement is needed to keep the class physical. (2) Known inclusions stated as theorems, not conjectures: P subset BPP subset BQP subset PP subset PSPACE, each with its provenance given (BQP subset PP is Adleman-DeMarrais-Huang), plus the tighter BQP subset AWPP and BQP subset P^#P, and NP subset PP. (3) Unknowns stated plainly: whether any inclusion is strict, whether BQP exceeds BPP, whether NP is in BQP (believed no) or BQP in NP (believed no), with the classes described as believed incomparable in the middle. The key structural point is included: proving BQP != BPP would immediately prove P != PSPACE, which is why the question is so hard. (4) Oracle separations (Simon, Bernstein-Vazirani, Raz-Tal 2018 BQP not subset PH) are correctly characterised as evidence about PROOF TECHNIQUES rather than proofs about the unrelativised world, and the strongest real-world evidence is identified as Shor (factoring in BQP, not known to be in P). (5) Objective 3 is the centrepiece: what sampling experiments do and do not establish. The exponential-state-space explanation is verified numerically - 2^n amplitudes at 16 bytes each gives 16.8 MB at n=20, 17.2 GB at n=30, 17.6 TB at n=40, 18.0 PB at n=50, 18.5 EB at n=60, and 1.27e30 amplitudes at n=100 - and the lesson states that this is the honest content of a sampling speed-up claim. Four things it does NOT establish are listed: it does not prove BQP != BPP (the sampling tasks are not decision problems in BQP and the hardness rests on unproven assumptions), it does not show the device does anything useful, it does not show a speed-up over the best classical algorithm for a useful problem, and it says nothing about NP-complete problems. A three-part bar for a genuine quantum advantage demonstration is given. 67/67 KaTeX compile. 15 RAG chunks, 0 unbalanced fences, max 1875. Validator 61/61."
     }
   },
   "items": [
@@ -3611,11 +3616,11 @@
       "topic_state": "PENDING_TOPIC_CREATION",
       "proposed_topic_id": "hw.complexity_classes",
       "analysis_status": "proposed_topic",
-      "lesson_slug": null,
-      "lesson_title": null,
+      "lesson_slug": "63_complexity_classes",
+      "lesson_title": "BQP, P, NP and BPP",
       "proposed_slug": "bqp_p_np_and_bpp",
-      "content_status": "missing",
-      "rewrite_status": "not_started",
+      "content_status": "existing",
+      "rewrite_status": "verified",
       "primary_topic": null,
       "secondary_topics": [],
       "additional_existing_lessons": [],
@@ -3630,14 +3635,14 @@
       "simulation_required": null,
       "exercises_required": true,
       "references_required": true,
-      "technical_review": "not_run",
-      "schema_validation": "not_run",
-      "mapping_validation": "not_run",
-      "prerequisite_validation": "not_run",
-      "code_validation": "not_run",
-      "integration_validation": "not_run",
-      "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'bqp_p_np_and_bpp' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-04"
+      "technical_review": "passed",
+      "schema_validation": "passed",
+      "mapping_validation": "passed",
+      "prerequisite_validation": "passed",
+      "code_validation": "passed",
+      "integration_validation": "passed",
+      "review_notes": "Authored per the M4 standard against the registered spec (title 'BQP, P, NP and BPP', topic hw.complexity_classes, prereq algo.grover recommended). All three registered objectives covered: define BQP, BPP and NP; state the known inclusions relating these classes; explain what quantum speed-up evidence does and does not establish. The principal value of this lesson is negative - distinguishing proven theorems from conjecture - so the content is organised explicitly around that split. (1) Definitions: P, BPP (bounded-error probabilistic polynomial time, error at most 1/3), NP (certificate verifiable in polynomial time), BQP (polynomial-size quantum circuit, polynomial time, error at most 1/3, gates specified to polynomial precision). Two commonly-missed features are drawn out: the bounded-error condition is part of the definition and is amplifiable at polynomial cost, and the polynomial-precision gate requirement is needed to keep the class physical. (2) Known inclusions stated as theorems, not conjectures: P subset BPP subset BQP subset PP subset PSPACE, each with its provenance given (BQP subset PP is Adleman-DeMarrais-Huang), plus the tighter BQP subset AWPP and BQP subset P^#P, and NP subset PP. (3) Unknowns stated plainly: whether any inclusion is strict, whether BQP exceeds BPP, whether NP is in BQP (believed no) or BQP in NP (believed no), with the classes described as believed incomparable in the middle. The key structural point is included: proving BQP != BPP would immediately prove P != PSPACE, which is why the question is so hard. (4) Oracle separations (Simon, Bernstein-Vazirani, Raz-Tal 2018 BQP not subset PH) are correctly characterised as evidence about PROOF TECHNIQUES rather than proofs about the unrelativised world, and the strongest real-world evidence is identified as Shor (factoring in BQP, not known to be in P). (5) Objective 3 is the centrepiece: what sampling experiments do and do not establish. The exponential-state-space explanation is verified numerically - 2^n amplitudes at 16 bytes each gives 16.8 MB at n=20, 17.2 GB at n=30, 17.6 TB at n=40, 18.0 PB at n=50, 18.5 EB at n=60, and 1.27e30 amplitudes at n=100 - and the lesson states that this is the honest content of a sampling speed-up claim. Four things it does NOT establish are listed: it does not prove BQP != BPP (the sampling tasks are not decision problems in BQP and the hardness rests on unproven assumptions), it does not show the device does anything useful, it does not show a speed-up over the best classical algorithm for a useful problem, and it says nothing about NP-complete problems. A three-part bar for a genuine quantum advantage demonstration is given. 67/67 KaTeX compile. 15 RAG chunks, 0 unbalanced fences, max 1875. Validator 61/61.",
+      "last_updated": "2026-10-10"
     },
     {
       "item_id": "M4-I10",
