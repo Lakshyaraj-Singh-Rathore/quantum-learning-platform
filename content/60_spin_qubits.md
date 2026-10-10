@@ -19,7 +19,7 @@ By the end of this lesson you should be able to:
 
 ## Prerequisites
 
-[Quantum Noise and Decoherence](../qiskit/quantum_noise.md) (recommended). Same
+[Quantum Noise and Decoherence](09_quantum_noise.md) (recommended). Same
 per-platform metrics.
 
 ## How spin encodes a qubit

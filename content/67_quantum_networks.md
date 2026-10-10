@@ -19,7 +19,7 @@ By the end of this lesson you should be able to:
 
 ## Prerequisites
 
-[Quantum Teleportation](../qc/teleportation.md) (required) — repeaters are
+[Quantum Teleportation](26_teleportation.md) (required) — repeaters are
 chained entanglement swapping, which is teleportation between nodes.
 
 ## Why direct transmission fails
@@ -112,7 +112,7 @@ So swapping is **deterministic given the outcome**. The measurement result does
 not tell you *whether* the swap worked; it tells you which **Pauli correction**
 to apply to turn the resulting Bell state into the one you wanted. This is the
 same structure as the correction step in
-[teleportation](../qc/teleportation.md).
+[teleportation](26_teleportation.md).
 
 ### Why it matters
 
@@ -372,7 +372,7 @@ comes from shared correlations across many nodes, not from any single link.
   Information*, §12.6 — quantum error correction and repeaters.
 - Wootters, W. K. and Zurek, W. H., "A single quantum cannot be cloned,"
   *Nature* **299**, 802 (1982) — the no-cloning theorem.
-- [Quantum Teleportation](../qc/teleportation.md) — the correction-step
+- [Quantum Teleportation](26_teleportation.md) — the correction-step
   structure reused here.
 - [Superdense Coding](66_superdense_coding.md) — the dual protocol and the
   classical-broadcast constraint.

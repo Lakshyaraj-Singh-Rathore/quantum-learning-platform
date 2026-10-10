@@ -5,7 +5,7 @@ Superdense coding lets Alice send **two classical bits** to Bob by transmitting
 violates Holevo's bound. It does not, and understanding exactly why is the most
 valuable thing in this lesson.
 
-The protocol is also the exact dual of [quantum teleportation](../qc/teleportation.md),
+The protocol is also the exact dual of [quantum teleportation](26_teleportation.md),
 and seeing the two side by side is the fastest route to understanding both.
 
 ## Learning objectives
@@ -18,7 +18,7 @@ By the end of this lesson you should be able to:
 
 ## Prerequisites
 
-[Bell States](../qc/bell_states.md) (required) — consumes a shared Bell pair to
+[Bell States](11_bell_states.md) (required) — consumes a shared Bell pair to
 send two bits in one qubit.
 
 ## What it achieves
@@ -126,7 +126,7 @@ probabilistic:
 
 Over 1000 shots each, every message decodes to itself with probability
 $1.000$. Compare this with [quantum key distribution](68_quantum_cryptography.md)
-or [teleportation](../qc/teleportation.md), where individual runs are random and
+or [teleportation](26_teleportation.md), where individual runs are random and
 only the statistics are meaningful. Superdense coding is not like that: the
 outcome is certain.
 
@@ -351,9 +351,9 @@ information has arrived.
 - Holevo, A. S., "Bounds for the quantity of information transmitted by a
   quantum communication channel," *Problems of Information Transmission*
   **9**, 3 (1973).
-- [Bell States](../qc/bell_states.md) — the $\lvert\Phi^+\rangle$ resource and
+- [Bell States](11_bell_states.md) — the $\lvert\Phi^+\rangle$ resource and
   the four-state basis used here.
-- [Quantum Teleportation](../qc/teleportation.md) — the dual protocol.
+- [Quantum Teleportation](26_teleportation.md) — the dual protocol.
 - [Quantum Cryptography](68_quantum_cryptography.md) — a contrasting setting
   where individual outcomes are genuinely probabilistic.
 - [Quantum Repeaters and the Quantum Internet](67_quantum_networks.md) — how

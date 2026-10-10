@@ -374,5 +374,5 @@ are expensive in a way that is easy to underestimate.
   dominates.
 - [Compilation and Transpilation](42_compilation.md) — the routing and SWAP
   cost of non-local terms.
-- [Quantum Phase Estimation](../algo/phase_estimation.md) — the
+- [Quantum Phase Estimation](32_phase_estimation.md) — the
   fault-tolerant alternative for extracting energies.

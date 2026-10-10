@@ -19,7 +19,7 @@ By the end of this lesson you should be able to:
 
 ## Prerequisites
 
-[Quantum Gates](../qc/basic_gates.md) (recommended) — survey of tooling; assumes
+[Quantum Gates](02_gates.md) (recommended) — survey of tooling; assumes
 the basics.
 
 ## Why so many frameworks
@@ -68,7 +68,7 @@ coupling map and optimisation levels, is the maturest tool for that job.
 from device calibration data. Qiskit also has the best-developed support for
 **dynamic circuits** — mid-circuit measurement and classical feedback — which
 matters for [error correction](52_surface_codes.md) and
-[teleportation](../qc/teleportation.md).
+[teleportation](26_teleportation.md).
 
 ### Cirq — precise control
 

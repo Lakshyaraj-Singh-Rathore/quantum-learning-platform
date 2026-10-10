@@ -20,7 +20,7 @@ By the end of this lesson you should be able to:
 
 ## Prerequisites
 
-[Quantum Noise and Decoherence](../qiskit/quantum_noise.md). Mitigation
+[Quantum Noise and Decoherence](09_quantum_noise.md). Mitigation
 post-processes noisy results; it needs a noise model first.
 
 ## Mitigation versus correction
@@ -575,7 +575,7 @@ during measurement it is not exact.
 - Endo, S., Cai, Z., Benjamin, S. C. & Yuan, X. — a broad review of mitigation
   methods and their limits.
 - Cai, Z. et al. — the exponential cost of error mitigation.
-- [Quantum Noise and Decoherence](../qiskit/quantum_noise.md) — the noise
+- [Quantum Noise and Decoherence](09_quantum_noise.md) — the noise
   channels these methods invert.
 - [Threshold Theorem and Fault Tolerance](54_threshold_theorem.md) — the
   approach whose overhead is polylogarithmic rather than exponential.

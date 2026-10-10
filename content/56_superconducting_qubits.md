@@ -19,7 +19,7 @@ By the end of this lesson you should be able to:
 
 ## Prerequisites
 
-[Quantum Noise and Decoherence](../qiskit/quantum_noise.md) (recommended).
+[Quantum Noise and Decoherence](09_quantum_noise.md) (recommended).
 $T_1$ and $T_2$ are the figures quoted per platform.
 
 ## From an oscillator to a qubit

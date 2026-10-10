@@ -19,9 +19,9 @@ By the end of this lesson you should be able to:
 
 ## Prerequisites
 
-[Quantum Noise and Decoherence](../qiskit/quantum_noise.md) (**required**) —
+[Quantum Noise and Decoherence](09_quantum_noise.md) (**required**) —
 NISQ limits are decoherence and gate-error limits.
-[Resource Estimation](../adv/resource_estimation.md) (recommended) — depth
+[Resource Estimation](43_resource_estimation.md) (recommended) — depth
 budgets quantify what is feasible.
 
 ## What defines the NISQ regime
@@ -382,7 +382,7 @@ three must hold.
   this regime.
 - Cerezo, M. et al., "Variational quantum algorithms" (Nature Reviews Physics,
   2021) — including the barren-plateau problem.
-- [Quantum Noise and Decoherence](../qiskit/quantum_noise.md) — where the error
+- [Quantum Noise and Decoherence](09_quantum_noise.md) — where the error
   rates come from.
 - [Error Mitigation: ZNE, PEC and Readout Correction](55_error_mitigation.md) —
   buying back effective error rate, and what it costs in variance.
@@ -390,7 +390,7 @@ three must hold.
   known way to move $\varepsilon$ by orders of magnitude.
 - [Calibrated Noise Models and Connectivity Topologies](61_platform_comparison.md)
   — the per-platform numbers to plug into the budget.
-- [Resource Estimation](../adv/resource_estimation.md) — turning an algorithm
+- [Resource Estimation](43_resource_estimation.md) — turning an algorithm
   into gate counts and depths.
 - [Quantum Benchmarking](64_benchmarking.md) — how the $\varepsilon$ values are
   actually measured.

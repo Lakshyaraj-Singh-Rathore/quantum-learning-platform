@@ -19,7 +19,7 @@ By the end of this lesson you should be able to:
 
 ## Prerequisites
 
-[Grover's Algorithm](../algorithms/grover.md) (recommended) — Grover and Shor
+[Grover's Algorithm](06_grover.md) (recommended) — Grover and Shor
 are the separations that motivate BQP.
 
 ## The classes
@@ -127,7 +127,7 @@ Since we cannot prove $\text{BQP} \neq \text{BPP}$ outright, the field uses
 **oracle separations**: exhibit a hypothetical black box relative to which a
 quantum computer provably needs far fewer queries than any classical one.
 
-- **Simon's problem** ([covered here](../algorithms/simon.md)) gives an oracle
+- **Simon's problem** ([covered here](34_simon.md)) gives an oracle
   relative to which BQP is exponentially faster than **any** bounded-error
   classical algorithm. This is the cleanest exponential separation and the
   inspiration for Shor's algorithm.
@@ -147,7 +147,7 @@ much as about complexity.
 ### The strongest real-world evidence: factoring
 
 The most concrete evidence that BQP exceeds BPP is
-[Shor's algorithm](../algorithms/shors_algorithm.md). Factoring is in BQP. It is
+[Shor's algorithm](33_shors_algorithm.md). Factoring is in BQP. It is
 not known to be in P. Decades of effort on the fastest classical algorithms have
 not produced a polynomial one, and the problem is widely believed not to be
 NP-complete either — it sits in the awkward middle, in $\text{NP} \cap \text{coNP}$.
@@ -347,9 +347,9 @@ but hardness of simulation and usefulness of result are independent properties.
   of why these questions are hard.
 - Aaronson, S. & Chen, L., "Complexity-theoretic foundations of quantum
   supremacy experiments" — what sampling experiments do and do not establish.
-- [Grover's Algorithm](../algorithms/grover.md) — the quadratic speed-up, and
+- [Grover's Algorithm](06_grover.md) — the quadratic speed-up, and
   why it does not put NP in BQP.
-- [Shor's Algorithm](../algorithms/shors_algorithm.md) — the strongest
+- [Shor's Algorithm](33_shors_algorithm.md) — the strongest
   evidence that BQP exceeds BPP.
 - [NISQ Limitations](62_nisq_limitations.md) — the practical constraint that
   separates what is in BQP from what today's hardware can run.

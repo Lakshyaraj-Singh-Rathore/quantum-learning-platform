@@ -19,10 +19,10 @@ By the end of this lesson you should be able to:
 
 ## Prerequisites
 
-[Quantum Phase Estimation](../algo/phase_estimation.md) (recommended) — energy
+[Quantum Phase Estimation](32_phase_estimation.md) (recommended) — energy
 estimation is the original simulation application.
 
-[VQE](../nisq/vqe.md) (recommended) — VQE is the NISQ-era alternative for the
+[VQE](07_vqe_qaoa.md) (recommended) — VQE is the NISQ-era alternative for the
 same task.
 
 ## The task
@@ -34,7 +34,7 @@ $$\lvert\psi(t)\rangle = e^{-iHt}\lvert\psi(0)\rangle \qquad \text{or}\qquad \lv
 
 the time-evolved state or the ground state. The applications are concrete:
 reaction rates in catalysis, superconductivity, nuclear physics, materials
-design, and [quantum chemistry](../adv/quantum_chemistry.md).
+design, and quantum chemistry.
 
 ## Mapping a Hamiltonian onto a qubit Hamiltonian
 
@@ -252,7 +252,7 @@ This is where expectations most often go wrong.
 - **Arbitrary off-diagonal quantities.** $\langle\psi\lvert A\lvert\phi\rangle$
   for two different states $\lvert\psi\rangle$ and $\lvert\phi\rangle$ is not
   directly measurable; it requires indirect techniques such as the
-  Hadamard test or [phase estimation](../algo/phase_estimation.md).
+  Hadamard test or [phase estimation](32_phase_estimation.md).
 - **Non-linear functionals of the state.** Quantities like entanglement entropy
   are **not** expectation values of any operator. They require multiple
   preparations, tomography, or randomised measurement protocols, and they cost
@@ -392,9 +392,9 @@ computer would be a mistake.
   Information*, §4.7 — quantum simulation.
 - [Trotterization](70_trotterization.md) — how $e^{-iHt}$ becomes gates, and
   the error bound.
-- [Quantum Phase Estimation](../algo/phase_estimation.md) — the
+- [Quantum Phase Estimation](32_phase_estimation.md) — the
   fault-tolerant route to energies.
-- [VQE](../nisq/vqe.md) — the NISQ route to the same quantity.
+- [VQE](07_vqe_qaoa.md) — the NISQ route to the same quantity.
 - [NISQ Limitations](62_nisq_limitations.md) — the fidelity and depth budget
   that bounds real simulations.
 - [BQP, P, NP and BPP](63_complexity_classes.md) — where simulation sits
