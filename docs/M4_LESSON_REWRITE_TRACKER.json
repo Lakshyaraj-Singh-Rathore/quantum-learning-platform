@@ -171,6 +171,11 @@
       "rewrite_status": "verified",
       "last_updated": "2026-10-10",
       "notes": "Both python blocks executed concatenated, clean under -W error::Warning (first block needs PYTHONPATH=backend for app.quantum.ir). VERIFIED with the app's own IR: 5-qubit GHZ = 5 qubits, 5 gates (1 single, 4 two-qubit), depth 6; 8-qubit GHZ = 8 qubits, 8 gates (1 single, 7 two-qubit), depth 9. Error model: exact (1-p2q)^N2q (1-p1q)^N1q vs exp approximation agree (0.8183/0.8187, 0.3669/0.3679, 0.1346/0.1353, 0.0181/0.0183). Shots for one success: 8 / 22,645 / 512,770,631 for N_2q = 100 / 500 / 1000 at 1% error. Required p_2q for 50% success = ln2/N: 6.91e-3, 6.93e-4, 6.93e-7 for N = 10^2, 10^3, 10^6. Depth budget: T2=100us / 200ns = 500, / 1us = 100. 51/51 KaTeX (caught 2 stray delimiters from split inline math). 34/34 validator."
+    },
+    "31_qft": {
+      "rewrite_status": "verified",
+      "last_updated": "2026-10-10",
+      "notes": "NumPy. All 3 python blocks executed concatenated, clean under -W error::Warning. VERIFIED: QFT circuit reproduces the DFT matrix EXACTLY for n=2,3,4 (qubit 0 = MSB). No-swap variant == DFT with bit-reversed rows. Gate count matches n(n+1)/2 when actually built: 3, 6, 10 for n=2,3,4 (and 36, 55 for n=8,10). Periodic superposition n=6: r=4 -> support {0,16,32,48} uniform 1/4; r=8 -> {0,8,...,56} uniform 1/8; offset s=3 leaves support and probabilities UNCHANGED (phases only). 97/97 KaTeX, 0 odd-dollar lines. 27 RAG chunks, 0 unbalanced, max 1412. NOTE: the lesson states explicitly that the QFT is not a drop-in FFT replacement since all 2^n coefficients cannot be read out."
     }
   },
   "items": [
@@ -1670,11 +1675,11 @@
       "topic_state": "PENDING_TOPIC_CREATION",
       "proposed_topic_id": "algo.qft",
       "analysis_status": "proposed_topic",
-      "lesson_slug": null,
-      "lesson_title": null,
+      "lesson_slug": "31_qft",
+      "lesson_title": "Quantum Fourier Transform",
       "proposed_slug": "quantum_fourier_transform",
-      "content_status": "missing",
-      "rewrite_status": "not_started",
+      "content_status": "existing",
+      "rewrite_status": "verified",
       "primary_topic": null,
       "secondary_topics": [],
       "additional_existing_lessons": [],
@@ -1689,14 +1694,14 @@
       "simulation_required": null,
       "exercises_required": true,
       "references_required": true,
-      "technical_review": "not_run",
-      "schema_validation": "not_run",
-      "mapping_validation": "not_run",
-      "prerequisite_validation": "not_run",
-      "code_validation": "not_run",
-      "integration_validation": "not_run",
-      "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'quantum_fourier_transform' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-04"
+      "technical_review": "passed",
+      "schema_validation": "passed",
+      "mapping_validation": "passed",
+      "prerequisite_validation": "passed",
+      "code_validation": "passed",
+      "integration_validation": "passed",
+      "review_notes": "NumPy. All 3 python blocks executed concatenated, clean under -W error::Warning. VERIFIED: QFT circuit reproduces the DFT matrix EXACTLY for n=2,3,4 (qubit 0 = MSB). No-swap variant == DFT with bit-reversed rows. Gate count matches n(n+1)/2 when actually built: 3, 6, 10 for n=2,3,4 (and 36, 55 for n=8,10). Periodic superposition n=6: r=4 -> support {0,16,32,48} uniform 1/4; r=8 -> {0,8,...,56} uniform 1/8; offset s=3 leaves support and probabilities UNCHANGED (phases only). 97/97 KaTeX, 0 odd-dollar lines. 27 RAG chunks, 0 unbalanced, max 1412. NOTE: the lesson states explicitly that the QFT is not a drop-in FFT replacement since all 2^n coefficients cannot be read out.",
+      "last_updated": "2026-10-10"
     },
     {
       "item_id": "M4-E05",
