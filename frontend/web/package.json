@@ -16,6 +16,7 @@
     "render:results": "tsx scripts/render-results.mts",
     "render:codelab": "tsx scripts/render-codelab.mts",
     "render:learn": "tsx scripts/render-learn.mts",
+    "render:content": "tsx scripts/render-b5-check.mts",
     "render:p5": "tsx scripts/render-p5.mts",
     "render:games": "tsx scripts/render-games.mts",
     "render:playground": "tsx scripts/render-playground.mts",
