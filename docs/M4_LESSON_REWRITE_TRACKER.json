@@ -296,6 +296,11 @@
       "rewrite_status": "verified",
       "last_updated": "2026-10-10",
       "notes": "Authored per the M4 standard against the registered spec (title 'Calibrated Noise Models and Connectivity Topologies', topic hw.platform_comparison, prereqs hw.superconducting_qubits REQUIRED and hw.trapped_ions recommended - both now satisfied). All three registered objectives covered: read a calibrated noise model for a device; compare connectivity topologies across platforms; choose a platform appropriate to a given workload. This lesson MEANINGFULLY COMPARES rather than listing, per the standing directive. (1) Reading a calibrated noise model: the real calibration snapshot shipped with a 127-qubit superconducting device extracted and tabulated - median T1 279.6 us (range 40.9-458.8), T2 197.8 us (16.9-423.3), readout error 1.17% (best 0.33%, worst 35.75%), two-qubit gate error 0.80% (best 0.36%, worst 7.40%), single-qubit 0.021%, two-qubit duration 533 ns, single-qubit 57 ns, qubit frequency median 4.79 GHz. Four non-obvious readings are drawn out rather than just the headline fidelity: the T2/T1 ratio is 0.752 not 2, so the qubit is strongly DEPHASING-limited and T2 is actually shorter than T1; the native two-qubit gate is ECR not CNOT, so a logical CNOT costs more than the quoted figure; single-qubit gates are 250x better and 9x faster than two-qubit, which should drive compilation; and the worst qubit is 10x worse than the median, making qubit selection a real optimisation. (2) Connectivity: the same device has 144 edges against 8001 for all-to-all, i.e. 1.80% of all-to-all edges, mean degree 2.27, max degree 3 (heavy-hex), diameter 26, mean shortest path 11.13. (3) The cost of sparse connectivity measured by COMPILING, not estimating: a QFT transpiled onto all-to-all, grid, ring and line at n = 9, 16, 25 with identical optimisation level and seed. Two-qubit gate counts 72/123/171/165, 240/462/645/588, 600/1191/1494/1485; depths 61/165/163/162, 117/417/428/358, 189/694/601/591. Ratios versus all-to-all: gate count line 2.29x/2.45x/2.48x and depth line 2.66x/3.06x/3.13x, with depth identified as the metric that matters since errors accumulate with depth. A genuinely useful negative result is reported: the naive SWAP estimate (mean path (n+1)/3 hops times 3 CNOTs, i.e. 10 CNOTs at n=9 and 26 at n=25) over-predicts by an order of magnitude, because real transpilers reorder operations and amortise a SWAP across several gates. This corrects the naive claim and is stated as such. (4) Choosing a platform is structured as 'which resource binds' - depth, connectivity, qubit count, fidelity, or manufacturability - with a worked variational-algorithm example whose answer depends on whether the ansatz can be restructured for the hardware. Both executable blocks run clean under -W error::Warning with only declared dependencies (qiskit + qiskit-aer); qiskit_ibm_runtime was used ONLY for offline extraction of the calibration table and deliberately kept out of the lesson because it is not a declared dependency. 142/142 KaTeX compile. 18 RAG chunks, 0 unbalanced fences, max 1821. Validator 59/59."
+    },
+    "62_nisq_limitations": {
+      "rewrite_status": "verified",
+      "last_updated": "2026-10-10",
+      "notes": "Authored per the M4 standard against the registered spec (title 'NISQ Limitations', topic hw.nisq_limitations, prereqs qiskit.quantum_noise required and adv.resource_estimation recommended). All three registered objectives covered: state the constraints defining the NISQ regime; explain why circuit depth is limited by error rates; assess whether a proposed algorithm fits current hardware. The central result is that the whole NISQ constraint reduces to one product N*d*eps, with P_success ~ (1-eps)^(N d) ~ exp(-N d eps) and usable depth d_max ~ ln2/(N eps). VERIFIED by simulation with the AerSimulator density_matrix method: random circuits on N=4 with depolarising eps=0.002 per CX give fidelity 0.995172, 0.989932, 0.979308, 0.959363, 0.939347, 0.919872, 0.881859, 0.845716 at depths 1,2,4,8,12,16,24,32 against predictions 0.994012, 0.988060, 0.976262, 0.953088, 0.930464, 0.908377, 0.865763, 0.825148; and on N=6 with eps=0.005 give 0.979345, 0.957291, 0.914464, 0.833948, 0.760410, 0.693452 at depths 1,2,4,8,12,16. The measured fidelity tracks the independent-error prediction closely and runs slightly ABOVE it, which is explained in the lesson: a depolarising channel leaves the state completely untouched with probability 1-eps rather than perturbing it slightly. A notable early failure is documented and fixed in the lesson notes: the naive statevector method silently ignores the noise model and returns F=1.0 at every depth, and only method='density_matrix' applies it. The budget table at eps=0.01 shows d for P=1/2 falling 17.3, 8.7, 4.3, 2.2, 1.1, 0.5 at N=4,8,16,32,64,128 - at 128 qubits the usable depth is below one entangling layer, which is stated as the NISQ wall reached by scaling qubits without improving error rates. The inversion table gives total CX gates available as ln2/eps: 69 at 1e-2, 693 at 1e-3, 6931 at 1e-4, 69315 at 1e-5, with depth on 50 qubits 1.4, 13.9, 138.6, 1386. Assessment of algorithm fit is given as five explicit checks plus four worked verdicts (VQE 20q depth 12 feasible with mitigation; Grover over 2^50 infeasible by orders of magnitude; Shor RSA-2048 infeasible needing fault tolerance; QAOA 100q p=1 right at the edge at 0.8 while p=10 gives 8). Three independent constraints identified: error budget, coherence, and qubit count with connectivity. 99/99 KaTeX compile. 16 RAG chunks, 0 unbalanced fences, max 1708. Validator 60/60."
     }
   },
   "items": [
@@ -3569,11 +3574,11 @@
       "topic_state": "PENDING_TOPIC_CREATION",
       "proposed_topic_id": "hw.nisq_limitations",
       "analysis_status": "proposed_topic",
-      "lesson_slug": null,
-      "lesson_title": null,
+      "lesson_slug": "62_nisq_limitations",
+      "lesson_title": "NISQ Limitations",
       "proposed_slug": "nisq_limitations",
-      "content_status": "missing",
-      "rewrite_status": "not_started",
+      "content_status": "existing",
+      "rewrite_status": "verified",
       "primary_topic": null,
       "secondary_topics": [],
       "additional_existing_lessons": [],
@@ -3588,14 +3593,14 @@
       "simulation_required": null,
       "exercises_required": true,
       "references_required": true,
-      "technical_review": "not_run",
-      "schema_validation": "not_run",
-      "mapping_validation": "not_run",
-      "prerequisite_validation": "not_run",
-      "code_validation": "not_run",
-      "integration_validation": "not_run",
-      "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'nisq_limitations' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-04"
+      "technical_review": "passed",
+      "schema_validation": "passed",
+      "mapping_validation": "passed",
+      "prerequisite_validation": "passed",
+      "code_validation": "passed",
+      "integration_validation": "passed",
+      "review_notes": "Authored per the M4 standard against the registered spec (title 'NISQ Limitations', topic hw.nisq_limitations, prereqs qiskit.quantum_noise required and adv.resource_estimation recommended). All three registered objectives covered: state the constraints defining the NISQ regime; explain why circuit depth is limited by error rates; assess whether a proposed algorithm fits current hardware. The central result is that the whole NISQ constraint reduces to one product N*d*eps, with P_success ~ (1-eps)^(N d) ~ exp(-N d eps) and usable depth d_max ~ ln2/(N eps). VERIFIED by simulation with the AerSimulator density_matrix method: random circuits on N=4 with depolarising eps=0.002 per CX give fidelity 0.995172, 0.989932, 0.979308, 0.959363, 0.939347, 0.919872, 0.881859, 0.845716 at depths 1,2,4,8,12,16,24,32 against predictions 0.994012, 0.988060, 0.976262, 0.953088, 0.930464, 0.908377, 0.865763, 0.825148; and on N=6 with eps=0.005 give 0.979345, 0.957291, 0.914464, 0.833948, 0.760410, 0.693452 at depths 1,2,4,8,12,16. The measured fidelity tracks the independent-error prediction closely and runs slightly ABOVE it, which is explained in the lesson: a depolarising channel leaves the state completely untouched with probability 1-eps rather than perturbing it slightly. A notable early failure is documented and fixed in the lesson notes: the naive statevector method silently ignores the noise model and returns F=1.0 at every depth, and only method='density_matrix' applies it. The budget table at eps=0.01 shows d for P=1/2 falling 17.3, 8.7, 4.3, 2.2, 1.1, 0.5 at N=4,8,16,32,64,128 - at 128 qubits the usable depth is below one entangling layer, which is stated as the NISQ wall reached by scaling qubits without improving error rates. The inversion table gives total CX gates available as ln2/eps: 69 at 1e-2, 693 at 1e-3, 6931 at 1e-4, 69315 at 1e-5, with depth on 50 qubits 1.4, 13.9, 138.6, 1386. Assessment of algorithm fit is given as five explicit checks plus four worked verdicts (VQE 20q depth 12 feasible with mitigation; Grover over 2^50 infeasible by orders of magnitude; Shor RSA-2048 infeasible needing fault tolerance; QAOA 100q p=1 right at the edge at 0.8 while p=10 gives 8). Three independent constraints identified: error budget, coherence, and qubit count with connectivity. 99/99 KaTeX compile. 16 RAG chunks, 0 unbalanced fences, max 1708. Validator 60/60.",
+      "last_updated": "2026-10-10"
     },
     {
       "item_id": "M4-I09",
