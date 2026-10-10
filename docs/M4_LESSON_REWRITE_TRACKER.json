@@ -191,6 +191,11 @@
       "rewrite_status": "verified",
       "last_updated": "2026-10-10",
       "notes": "NumPy. Both python blocks executed concatenated, clean under -W error::Warning. VERIFIED for (n,s) = (2,3),(3,5),(3,6),(4,9): every one of 200 sampled z satisfies z.s = 0 mod 2 (no exceptions); distinct z observed match the orthogonal subspace; after n-1 independent equations the candidate set is exactly {0, s} in every case. GF(2) elimination implemented and verified. 113/113 KaTeX, 0 odd-dollar lines. Lesson states the separation as O(n) quantum vs Theta(2^(n/2)) classical in the ORACLE model, and states explicitly that the problem is artificial and the separation does not prove practical advantage."
+    },
+    "33_shors_algorithm": {
+      "rewrite_status": "verified",
+      "last_updated": "2026-10-10",
+      "notes": "NumPy. Both python blocks executed concatenated, clean under -W error::Warning. VERIFIED: reduction factors N=15 (a=2,r=4)->3,5; N=21 (a=2,r=6)->7,3; N=35 (a=2,r=12)->7,5. Eigenvalues of U|y>=|2y mod 15> are exactly the 4th roots of unity (1, i, -1, -i). Continued fractions: k=1,3 give r=4; k=2 gives divisor 2. phi(r)/r = 0.5 (r=4), 0.333 (r=6,12), 0.5 (r=1024). LCM success measured over 4000 trials: r=4 -> 0.670/0.888/0.960/0.995 for 1/2/3/5 samples; r=12 -> 0.357/0.716/0.885/0.976; r=60 -> 0.275/0.645/0.843/0.971. CORRECTION during authoring: an earlier draft claimed LCM 'always' recovered r; measurement showed it fails when every sampled k shares a factor with r, so the lesson now reports measured rates and states LCM is not guaranteed. 138/138 KaTeX. 27 RAG chunks, 0 unbalanced."
     }
   },
   "items": [
@@ -1764,11 +1769,11 @@
       "topic_state": "PENDING_TOPIC_CREATION",
       "proposed_topic_id": "algo.shors",
       "analysis_status": "proposed_topic",
-      "lesson_slug": null,
-      "lesson_title": null,
+      "lesson_slug": "33_shors_algorithm",
+      "lesson_title": "Shor's Algorithm",
       "proposed_slug": "shors_algorithm",
-      "content_status": "missing",
-      "rewrite_status": "not_started",
+      "content_status": "existing",
+      "rewrite_status": "verified",
       "primary_topic": null,
       "secondary_topics": [],
       "additional_existing_lessons": [],
@@ -1783,14 +1788,14 @@
       "simulation_required": null,
       "exercises_required": true,
       "references_required": true,
-      "technical_review": "not_run",
-      "schema_validation": "not_run",
-      "mapping_validation": "not_run",
-      "prerequisite_validation": "not_run",
-      "code_validation": "not_run",
-      "integration_validation": "not_run",
-      "review_notes": "No registered topic covers this target item. Authoring it requires a new topic identifier, which changes the curriculum architecture and needs explicit approval. Proposed slug 'shors_algorithm' is a suggestion only; it is not an existing stable slug.",
-      "last_updated": "2026-10-04"
+      "technical_review": "passed",
+      "schema_validation": "passed",
+      "mapping_validation": "passed",
+      "prerequisite_validation": "passed",
+      "code_validation": "passed",
+      "integration_validation": "passed",
+      "review_notes": "NumPy. Both python blocks executed concatenated, clean under -W error::Warning. VERIFIED: reduction factors N=15 (a=2,r=4)->3,5; N=21 (a=2,r=6)->7,3; N=35 (a=2,r=12)->7,5. Eigenvalues of U|y>=|2y mod 15> are exactly the 4th roots of unity (1, i, -1, -i). Continued fractions: k=1,3 give r=4; k=2 gives divisor 2. phi(r)/r = 0.5 (r=4), 0.333 (r=6,12), 0.5 (r=1024). LCM success measured over 4000 trials: r=4 -> 0.670/0.888/0.960/0.995 for 1/2/3/5 samples; r=12 -> 0.357/0.716/0.885/0.976; r=60 -> 0.275/0.645/0.843/0.971. CORRECTION during authoring: an earlier draft claimed LCM 'always' recovered r; measurement showed it fails when every sampled k shares a factor with r, so the lesson now reports measured rates and states LCM is not guaranteed. 138/138 KaTeX. 27 RAG chunks, 0 unbalanced.",
+      "last_updated": "2026-10-10"
     },
     {
       "item_id": "M4-E07",
