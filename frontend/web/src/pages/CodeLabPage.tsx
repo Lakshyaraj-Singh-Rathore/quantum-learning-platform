@@ -122,6 +122,18 @@ export function CodeLabPage() {
 
   const problems = findings.data?.findings ?? [];
 
+  // Distinguish "this feature is switched off" from "this attempt failed",
+  // because they need different words. The backend says which: a missing
+  // key returns 503 with that name in the detail.
+  //
+  // Deliberately NOT checking for 503 on its own. The server also returns 503
+  // for GeminiUnavailable, which covers a missing google-generativeai package,
+  // quota exhaustion and upstream API errors — none of which setting
+  // GEMINI_API_KEY would fix. A bare status check would confidently tell the
+  // reader to do something useless.
+  const generationError = generate.error ? String(generate.error) : "";
+  const aiNotConfigured = generationError.includes("GEMINI_API_KEY");
+
   if (loadingStarters) {
     return (
       <p className="flex items-center gap-2 p-6 text-sm text-ink-3">
@@ -301,14 +313,27 @@ export function CodeLabPage() {
             />
             <Button
               size="sm"
-              disabled={!prompt.trim() || generate.isPending}
+              disabled={!prompt.trim() || generate.isPending || aiNotConfigured}
               onClick={() => generate.mutate()}
               className="w-full"
+              title={aiNotConfigured ? "Set GEMINI_API_KEY in .env to enable" : undefined}
+              aria-describedby={aiNotConfigured ? "ai-disabled-note" : undefined}
             >
               {generate.isPending ? <Spinner /> : <Sparkles className="h-3.5 w-3.5" />}
               Generate
             </Button>
-            {generate.isError && (
+            {aiNotConfigured && (
+              <p
+                id="ai-disabled-note"
+                className="mt-2 rounded-md border border-warn/30 bg-warn/10 px-2.5 py-2 text-[12px] leading-relaxed text-ink-2"
+              >
+                AI generation is unavailable —{" "}
+                <code className="font-mono text-ink">GEMINI_API_KEY</code> is not set. Add it
+                to <code className="font-mono">.env</code> and restart the api container to
+                enable.
+              </p>
+            )}
+            {generate.isError && !aiNotConfigured && (
               <ErrorNote className="mt-2">{String(generate.error)}</ErrorNote>
             )}
           </Card>
