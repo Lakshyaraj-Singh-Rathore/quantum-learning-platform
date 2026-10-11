@@ -23,10 +23,6 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-# Streamlit pages must call st.set_page_config() before importing anything
-# that touches Streamlit, so module-level imports legitimately come later.
-"frontend/pages/*.py" = ["E402"]
-"frontend/Home.py" = ["E402"]
 # Tests re-import fixtures and shadow names freely.
 "**/tests/*.py" = ["F811"]
 

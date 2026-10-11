@@ -3,15 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "scripts": {
-    "dev": "vite --port 3001",
-    "build": "tsc --noEmit && vite build",
-    "preview": "vite preview"
-  },
+  "//": "Shared source only. The grid is compiled into frontend/web through the @composer alias; this directory has no build of its own.",
   "dependencies": {
     "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "streamlit-component-lib": "^2.0.0"
+    "react-dom": "^18.3.1"
   },
   "devDependencies": {
     "@types/react": "^18.3.12",

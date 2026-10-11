@@ -1,11 +1,13 @@
 """Interactive playground maths, pinned to analytic values.
 
-The playground computes states locally so sliders feel instant, which means
-its maths is a second implementation of physics the platform already gets
-right elsewhere. These tests keep the two in agreement: every state is
-cross-checked against ``lib.viz``'s Bloch helpers, which are themselves
-verified against Pauli traces.
+The playground computes states locally so sliders feel instant, so its maths
+is a second implementation of physics the platform also computes elsewhere.
+These tests pin it to analytic values: Bloch landmarks are checked against
+Pauli expectation values, which is the definition any Bloch helper resolves
+to, rather than against a particular rendering module.
 """
+
+
 
 from __future__ import annotations
 
@@ -18,7 +20,26 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from lib import playground as pg, viz  # noqa: E402
+from lib import playground as pg  # noqa: E402
+
+PAULI_X = np.array([[0, 1], [1, 0]], dtype=complex)
+PAULI_Y = np.array([[0, -1j], [1j, 0]], dtype=complex)
+PAULI_Z = np.array([[1, 0], [0, -1]], dtype=complex)
+
+
+def bloch_vector(state: np.ndarray) -> tuple[float, float, float]:
+    """Bloch vector of a pure state, as Pauli expectation values.
+
+    Written out here rather than imported so the landmark assertions below
+    rest on the definition itself instead of on whichever module happens to
+    implement it.
+    """
+    v = np.asarray(state).reshape(-1)
+    return (
+        float(np.real(v.conj() @ PAULI_X @ v)),
+        float(np.real(v.conj() @ PAULI_Y @ v)),
+        float(np.real(v.conj() @ PAULI_Z @ v)),
+    )
 
 S2 = pg.SQRT1_2
 
@@ -46,12 +67,11 @@ def test_landmark_angles_round_trip(name):
         ("|−i⟩", (0, -1, 0)),
     ],
 )
-def test_landmarks_match_the_verified_bloch_helper(name, expected):
-    """The playground must agree with viz.py, not invent its own geometry."""
+def test_landmarks_match_the_bloch_definition(name, expected):
+    """The playground must land on the standard Bloch vectors, not invent its own."""
     theta, phi = pg.LANDMARKS[name]
     state = pg.state_from_angles(theta, phi)
-    rho = np.outer(state, state.conj())
-    assert np.allclose(viz.bloch_vector(rho), expected, atol=1e-12)
+    assert np.allclose(bloch_vector(state), expected, atol=1e-12)
 
 
 def test_states_are_normalised():
@@ -187,19 +207,26 @@ def test_sampling_is_reproducible_with_a_seed():
     assert a == b
 
 
-# ------------------------------------------------------------ viz interop
-def test_as_result_is_readable_by_viz():
-    """The playground reuses verified renderers instead of drawing its own."""
+# --------------------------------------------------------- result envelope
+def test_as_result_carries_a_normalised_two_amplitude_statevector():
+    """The envelope is what the golden fixtures and the UI both consume."""
     result = pg.as_result(pg.state_from_angles(90, 45))
-    amplitudes = viz._amplitudes(result)
-    assert amplitudes is not None and amplitudes.size == 2
+    amps = np.array([complex(re, im) for re, im in result["statevector"]])
+    assert amps.size == 2
+    assert np.isclose(np.sum(np.abs(amps) ** 2), 1.0, atol=1e-12)
 
 
 @pytest.mark.parametrize("theta,phi", [(0, 0), (90, 0), (90, 180), (180, 0), (37, 211)])
-def test_every_viz_panel_accepts_a_playground_state(theta, phi):
+def test_as_result_probabilities_agree_with_its_statevector(theta, phi):
+    """Probabilities must not drift from the amplitudes they are derived from."""
     result = pg.as_result(pg.state_from_angles(theta, phi))
-    for name in ("bloch_sphere", "phase_disk", "statevector_ket", "amplitude_table"):
-        getattr(viz, name)(result)  # must not raise
+    amps = np.array([complex(re, im) for re, im in result["statevector"]])
+    expected = np.abs(amps) ** 2
+    assert np.allclose(
+        [result["probabilities"]["0"], result["probabilities"]["1"]],
+        expected,
+        atol=1e-12,
+    )
 
 
 # ------------------------------------------------------------- explainers

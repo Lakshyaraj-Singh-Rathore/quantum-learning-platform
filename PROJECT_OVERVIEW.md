@@ -102,11 +102,12 @@ A web platform combining four pillars:
 ## 4. System Architecture
 
 ```
-┌──────────────────────── Streamlit UI (5 pages) ───────────────────────┐
-│  Home  │  Learn + AI tutor  │  Composer  │  Challenges  │  Dashboard  │
-│                   └─ React/TypeScript drag-drop composer component    │
+┌────────────────────────── React SPA (Vite) ───────────────────────────┐
+│  Learn  │  Curriculum  │  Composer  │  Challenges  │  Code Lab        │
+│  Dashboard  │  Games  │  Playground                                    │
+│                   └─ shared drag-drop composer grid, built from source │
 └───────────────────────────────┬───────────────────────────────────────┘
-                                │ REST (JWT auth)
+                                │ REST (JWT auth), same-origin /api
 ┌───────────────────────────────▼───────────────────────────────────────┐
 │                     FastAPI backend — 29 endpoints                    │
 │  auth │ jobs │ circuits │ QASM3 I/O │ export │ inspect │ backends     │
@@ -137,7 +138,7 @@ circuits are normalized through a common basis so every backend executes the
 
 | Layer | Technology |
 |---|---|
-| Frontend | Streamlit (multi-page), custom React + TypeScript + Vite component |
+| Frontend | React 18 + TypeScript SPA (Vite), with a shared drag-and-drop circuit grid compiled in from source |
 | Backend | FastAPI, Pydantic v2, SQLAlchemy 2.0, Alembic |
 | Async | Celery 5.4 + Redis 7 |
 | Database | PostgreSQL 16 + pgvector |
@@ -233,8 +234,8 @@ circuits are normalized through a common basis so every backend executes the
 ### 6.11 Software Components (slide-ready list)
 
 **Frontend / User Interface**
-- Streamlit multi-page web application (Home, Learn, Composer, Challenges, Dashboard)
-- Custom React + TypeScript drag-and-drop circuit composer component
+- React 18 + TypeScript single-page application (Vite), served as a static bundle behind an `/api` proxy
+- Custom drag-and-drop circuit composer, shared into the SPA from source so there is one implementation
 
 **Quantum Circuit Composer**
 - Drag-and-drop gate placement, global auto-insert-column collision policy
@@ -323,7 +324,7 @@ Dynamic circuit: native engine and exported Cirq driver agree
 ~1,500 lines of TypeScript · **87 automated tests passing**.
 
 **Deployment:** verified end-to-end under Docker Compose — Postgres, Redis,
-Celery worker, FastAPI and Streamlit, with Alembic migrations applied on
+Celery worker, FastAPI and the SPA's nginx, with Alembic migrations applied on
 startup.
 
 ---

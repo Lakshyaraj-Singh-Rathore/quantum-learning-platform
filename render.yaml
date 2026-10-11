@@ -1,9 +1,10 @@
 # Render blueprint for the QuantumLearn API.
 #
-# The Streamlit UI is NOT here: it goes on Streamlit Community Cloud, which
-# gives it ~1 GB against Render's 512 MB. Postgres is not here either --
-# Render's free database is deleted 30 days after creation, so use Neon or
-# Supabase (both free, both support pgvector, neither expires).
+# The React SPA (frontend/web) is NOT here: it is a static bundle served by
+# its own host, which is cheaper than running it as a Render service. Postgres
+# is not here either -- Render's free database is deleted 30 days after
+# creation, so use Neon or Supabase (both free, both support pgvector,
+# neither expires).
 #
 # See docs/DEPLOYMENT.md for the full walkthrough.
 services:
@@ -43,6 +44,7 @@ services:
         sync: false
       - key: QBRAID_API_KEY
         sync: false
-      # Comma-separated Streamlit Cloud URL(s) allowed to call this API.
+      # Comma-separated origin(s) allowed to call this API (the SPA host, or a
+      # local dev server such as http://localhost:3001).
       - key: API_CORS_ORIGINS
         sync: false

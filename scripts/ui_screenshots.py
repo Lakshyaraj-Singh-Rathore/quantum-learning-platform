@@ -20,15 +20,17 @@ import sys
 import time
 from pathlib import Path
 
-BASE = "http://localhost:8501"
+BASE = "http://localhost:3000"
 EMAIL = "instructor@local.dev"
 PASSWORD = "instructor123"
 
 OUT = Path(__file__).resolve().parents[1] / "reports" / "screenshots"
 
 #: (filename, page label in the sidebar nav, what to do before shooting)
+#: There is no "Home" any more — "/" redirects to /learn — so the first shot is
+#: whatever the landing route resolves to.
 SHOTS: list[tuple[str, str, str]] = [
-    ("01_home", "Home", "Landing page and sign-in state"),
+    ("01_landing", "Learn", "Landing route, which redirects to /learn"),
     ("02_learn", "Learn", "Lesson reader, demos and AI tutor"),
     ("03_composer", "Composer", "Circuit editor, run controls, results"),
     ("04_challenges", "Challenges", "Coding challenge list"),
@@ -55,7 +57,8 @@ def main() -> int:
         page.goto(BASE, wait_until="networkidle")
         time.sleep(3)
 
-        # Sign in. Streamlit renders the form in the sidebar.
+        # Sign in. The SPA owns /login, so an unauthenticated visit lands
+        # there first and the redirect back is what puts the chrome on screen.
         try:
             page.get_by_placeholder("you@example.com").fill(EMAIL)
             page.get_by_placeholder("••••••••").fill(PASSWORD)

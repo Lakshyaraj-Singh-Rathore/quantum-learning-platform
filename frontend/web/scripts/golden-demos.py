@@ -6,10 +6,10 @@ Run it from the backend virtualenv (numpy lives there):
 
     /home/user/.venv-ql/bin/python scripts/golden-demos.py
 
-The truth here is frontend/lib/playground.py — the same module the Streamlit
-demos call today, not a re-derivation of it. scripts/golden-demos.mts is the
-check that src/lib/demos.ts agrees, so a ported demo cannot start showing a
-different number than the one a learner sees in Streamlit.
+The truth here is scripts/lib/playground.py: a small, dependency-free
+implementation of the single-qubit maths, kept as the reference the TypeScript
+port is checked against. scripts/golden-demos.mts is that check, so a ported
+demo cannot start showing a number the maths does not produce.
 
 `sample` is deliberately absent: it draws from numpy's PCG64, which JavaScript
 cannot reproduce, and the lesson it teaches is the distribution, not the draw.
@@ -21,7 +21,7 @@ import json
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "lib"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[0] / "lib"))
 
 import playground as pg  # noqa: E402
 

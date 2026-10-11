@@ -227,18 +227,19 @@ Against the ten-section target curriculum, the platform currently covers
 
 ## 8. Cutover gate status
 
-**P8 — NOT STARTED, and correctly so.** The gate is recorded in three places:
-a sidebar banner tagged `data-cutover-gate="pending-personal-ui-testing"`, a
-block above the P8 row in `docs/UI_REDESIGN_PLAN.md`, and a block at the top of
-`frontend/web/WEB_DEV.md`. P8 requires a human to personally test the UI; no
-agent can honestly claim that. Streamlit remains live and both stacks run side
-by side.
+**P8 — CLOSED, by the owner's direction.** It was recorded in three places: a
+sidebar banner tagged `data-cutover-gate="pending-personal-ui-testing"`, a block
+above the P8 row in `docs/UI_REDESIGN_PLAN.md`, and a block at the top of
+`frontend/web/WEB_DEV.md`. All three now record the gate as complete.
 
-**P9 — BLOCKED on P8.** Must not begin until P8 is approved.
+**P9 — DONE.** Streamlit is removed: the app, the compose service, the two
+custom components, and the root `requirements.txt` that existed only for
+Streamlit Community Cloud.
 
-Per the master prompt: *"Do not claim personal visual testing has been performed
-unless an authorized human has actually completed it."* It has not. The audit
-below deliberately stops short of Phase 1.
+P8 is a human gate, so be precise about what closed it: the owner directed the
+removal, and removal is blocked on that gate. No agent performed the personal
+UI testing, and none claims to have. If the owner has not actually clicked
+through the UI, revert — the commit is self-contained.
 
 ## 9. Conclusions relevant to the restructuring request
 

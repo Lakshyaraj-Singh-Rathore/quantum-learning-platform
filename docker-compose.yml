@@ -78,40 +78,16 @@ services:
     # the api service owns migrations; the worker just waits for the schema
     command: celery -A app.workers.celery_app.celery_app worker --loglevel=info --concurrency=2
 
-  streamlit:
-    build:
-      context: ./frontend
-    # .env only OVERRIDES the ${VAR:-defaults} below; a fresh clone must be
-    # able to `make up` before anyone has copied .env.example (Compose >= 2.24).
-    env_file:
-      - path: .env
-        required: false
-    environment:
-      API_BASE_URL: ${STREAMLIT_API_URL:-http://api:8000}
-      PYTHONPATH: /backend
-    volumes:
-      - ./frontend:/app
-      # keep the composer bundle baked into the image visible under the bind mount
-      - /app/circuit_composer/frontend/build
-      - ./backend:/backend:ro
-      - ./content:/content:ro
-      - ./samples:/samples:ro
-    ports:
-      - "8501:8501"
-    depends_on:
-      - api
-    command: streamlit run Home.py --server.address 0.0.0.0 --server.port 8501
-
-  # The new React SPA (docs/UI_REDESIGN_PLAN.md, phase P0). Static bundle +
-  # /api proxy via its own nginx, so the browser stays same-origin and CORS
-  # is a dev-only detail. The dist is BAKED into the image (no bind mount):
-  # `make up` rebuilds this service's image only when frontend/web sources
-  # change, and a fresh clone works with zero host tooling. The frozen
-  # Streamlit app keeps :8501 until the parity cutover (P8).
+  # The React SPA is the only UI. Static bundle + /api proxy via its own
+  # nginx, so the browser stays same-origin and CORS is a dev-only detail.
+  # The dist is BAKED into the image (no bind mount): `make up` rebuilds this
+  # service's image only when frontend/web sources change, and a fresh clone
+  # works with zero host tooling.
   web:
     build:
-      # Context is ./frontend because the grid is shared with the Streamlit
-      # component (see frontend/web/Dockerfile).
+      # Context is ./frontend, not ./frontend/web, because the drag-and-drop
+      # grid lives in frontend/circuit_composer and is shared with this app
+      # (see the @composer alias in frontend/web/vite.config.ts).
       context: ./frontend
       dockerfile: web/Dockerfile
     ports:

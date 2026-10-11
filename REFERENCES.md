@@ -130,7 +130,6 @@ the AI tutor has **no** simulation tool and may only read stored results.
 | Technology | Use in project | Link |
 |---|---|---|
 | FastAPI | REST API (29 endpoints) | https://fastapi.tiangolo.com/ |
-| Streamlit | Multi-page learner UI | https://streamlit.io/ |
 | React + TypeScript | Drag-and-drop composer | https://react.dev/ |
 | Celery | Async simulation jobs | https://docs.celeryq.dev/ |
 | Redis | Task broker and result store | https://redis.io/docs/ |

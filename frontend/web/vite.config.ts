@@ -3,11 +3,11 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { fileURLToPath } from "node:url";
 
-// The drag-and-drop grid is shared with the Streamlit component that owns it
-// (frontend/circuit_composer). Both hosts build from the SAME source, so the
-// grid can never drift between the two UIs. It is aliased rather than moved
-// because Streamlit's Dockerfile builds it in place, and that app has to keep
-// working untouched until the P8 cutover.
+// The drag-and-drop grid lives in frontend/circuit_composer and is compiled
+// from source into this app, so there is exactly one copy of it. It is
+// aliased rather than moved because that directory is where the grid's own
+// history and tests live; the alias is the single seam between the two trees
+// (see scripts/link-shared.mjs, which makes `react` resolve here).
 //
 // The paths are absolute so they resolve identically on a dev host and inside
 // the image, where the build context is ./frontend and the two trees sit side
@@ -33,10 +33,10 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: { "@composer": composerSrc },
-    // The grid's source lives in the Streamlit component's tree, which has its
-    // own node_modules when the component has been built locally. Without
-    // dedupe, `react` imported from there resolves to that second copy and the
-    // bundle ships two Reacts — which fails at runtime with "invalid hook
+    // The grid's source lives outside this app, in a directory that gets its
+    // own node_modules when it has been installed locally. Without dedupe,
+    // `react` imported from there resolves to that second copy and the bundle
+    // ships two Reacts — which fails at runtime with "invalid hook"
     // call", not at build time. One React, resolved from this app.
     dedupe: ["react", "react-dom"],
   },

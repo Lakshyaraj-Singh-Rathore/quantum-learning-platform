@@ -7,7 +7,7 @@
  * drops a CNOT and sees nothing happen would reasonably conclude the demo is
  * broken.
  *
- * Ported from frontend/lib/playground.py::gates_from_ir.
+ * Ported from scripts/lib/playground.py::gates_from_ir.
  */
 import { GATES } from "./demos";
 import type { CircuitIR } from "@composer/types";

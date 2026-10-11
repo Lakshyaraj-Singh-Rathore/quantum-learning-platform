@@ -222,7 +222,7 @@ It restarts on next use with the new limits.
 ## Step 8 — Run the platform
 
 ```
-pip install -r backend/requirements.txt -r frontend/requirements.txt
+pip install -r backend/requirements.txt
 ```
 
 Start the API:
@@ -234,14 +234,14 @@ cd backend && PYTHONPATH=. DATABASE_URL=sqlite:///./dev.db CELERY_TASK_ALWAYS_EA
 And in a second WSL shell, the UI:
 
 ```
-cd frontend && PYTHONPATH=../backend:. API_BASE_URL=http://localhost:8000 streamlit run Home.py
+cd frontend/web && npm install && npm run dev
 ```
 
-Open <http://localhost:8501> from **Windows** — WSL2 forwards the port
-automatically.
+Open <http://localhost:3001> from **Windows** — WSL2 forwards the port
+automatically. The dev server proxies `/api` to the API on :8000.
 
 **Verify:** in the Composer, the backend dropdown should now offer
-**CUDA-Q GPU (up to 28 qubits)** without a "unavailable" note.
+**CUDA-Q GPU (up to 28 qubits)** without an "unavailable" note.
 
 ---
 
@@ -298,7 +298,7 @@ the Dockerfile changes. The image base is Python 3.11, so the pinned numpy<2
 stack installs exactly as in this guide's venv steps -- no 3.13/3.14 trap,
 nothing to pin by hand.
 
-**Verify:** <http://localhost:8501> → Composer dropdown offers **CUDA-Q GPU
+**Verify:** <http://localhost:3000> → Composer dropdown offers **CUDA-Q GPU
 (up to 28 qubits)**. The `/backends` availability check runs *inside the api
 container*, so "0 devices" there means Docker's GPU passthrough -- not WSL --
 is the thing to recheck.

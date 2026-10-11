@@ -19,7 +19,7 @@ export class ApiError extends Error {
 /** FastAPI puts the learner-facing message in `detail`, and this API uses
  *  three shapes: a plain string, a pydantic validation list, or an object with
  *  `errors` (job rejections, e.g. "noise needs Qiskit Aer or CUDA-Q"). Mirror
- *  frontend/lib/api_client.py::_format_detail so both UIs say the same thing —
+ *  the API's own error shape so the UI says what the server meant —
  *  an opaque "Request failed (422)" sends people hunting for a bug that is
  *  really a message they never saw. */
 function readableError(status: number, detail: unknown): string {

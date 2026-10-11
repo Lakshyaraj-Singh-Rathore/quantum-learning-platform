@@ -9,7 +9,7 @@ Run it from the backend virtualenv (numpy lives there):
 The circuits here are the ones a learner actually meets first (Bell, GHZ, a
 superposition with a phase) plus a pseudo-random state that exercises
 non-trivial reduced density matrices. Every value is derived with the SAME
-formulas frontend/lib/viz.py uses, so the fixture is the numpy truth and
+formulas the result views use, so the fixture is the numpy truth and
 scripts/golden-quantum.mts is the check that the port agrees.
 """
 

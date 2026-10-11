@@ -1,12 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-// NOTE: this file is deliberately free of `streamlit-component-lib`.
+// NOTE: this file is deliberately host-agnostic.
 //
-// It is the single implementation of the drag-and-drop grid, and it is used by
-// two hosts: Streamlit (via ./streamlit.tsx, which wires the callbacks to
-// setComponentValue / setFrameHeight) and the new React SPA (via
-// frontend/web, which wires them to props and React state). Keeping the
-// Streamlit import out of here means the SPA bundles no Streamlit code, and
-// Streamlit's iframe behaviour is decided in exactly one file.
+// It is the single implementation of the drag-and-drop grid. It is built into
+// the React SPA (frontend/web) through the `@composer` alias, and it knows
+// nothing about how any host mounts it: state comes in as props and changes go
+// out as callbacks. That is what keeps the physics and the layout in one place
+// while the surrounding app is free to change.
 import { BLOCKS, MULTI_PALETTE, PALETTE, STRUCTURAL, WHILE_CAP } from "./types"
 import type { CircuitIR, Op, PaletteItem } from "./types"
 import {
@@ -69,8 +68,8 @@ export interface ComposerProps {
   nQubits?: number
   /** Called (debounced) whenever the circuit changes. Omit for a read-only grid. */
   onChange?: (ir: CircuitIR) => void
-  /** Called with the height the host should reserve. Streamlit needs this; a
-   *  plain React host can ignore it and let the grid size itself. */
+  /** Called with the height the host should reserve. Optional: a host that
+     *  lays the grid out itself can ignore it and let the grid size normally. */
   onHeight?: (height: number) => void
   theme?: { base?: string }
 }
@@ -101,20 +100,20 @@ export function ComposerInner({ value, nQubits, onChange, onHeight, theme }: Com
     document.body.classList.toggle("dark", theme?.base === "dark")
   }, [theme])
 
-  // Streamlit sizes the iframe from document.body.scrollHeight at the moment
-  // we call this. If layout is not settled yet (web font still loading, grid
-  // not measured) the reported height can be 0 and the component shows as a
-  // blank area. Re-measure after paint and whenever the body resizes.
+  // The height is measured from document.body.scrollHeight at the moment we
+    // call this. If layout is not settled yet (web font still loading, grid not
+    // measured) the reported height can be 0 and the host reserves no space at
+    // all. Re-measure after paint and whenever the body resizes.
   const resize = useCallback(() => {
-    // Never report 0: Streamlit would collapse the iframe to nothing and the
-    // component looks like a blank white box with no error anywhere.
+    // Never report 0: a host that trusts this number would reserve no space
+      // and the grid looks like a blank box with no error anywhere.
     const measured = Math.max(
       document.body.scrollHeight,
       document.documentElement?.scrollHeight ?? 0,
       rootRef.current?.scrollHeight ?? 0,
     )
-    // Streamlit needs the height pushed to the parent frame; a plain React
-    // host usually just lets the grid size itself, hence the optional hook.
+    // Only hosts that need the height pushed upwards pass the hook; others
+      // let the grid size itself, which is why it is optional.
     onHeight?.(Math.max(measured, MIN_FRAME_HEIGHT))
   }, [onHeight])
 
@@ -745,6 +744,5 @@ export function ComposerInner({ value, nQubits, onChange, onHeight, theme }: Com
   );
 }
 
-// No default export on purpose: hosts import { ComposerInner } explicitly.
-// The Streamlit adapter lives in ./streamlit.tsx so that this file stays free
-// of streamlit-component-lib (see the note at the top).
+// No default export on purpose: hosts import { ComposerInner } explicitly, so
+// it is always obvious which grid a page is rendering (see the note at the top).

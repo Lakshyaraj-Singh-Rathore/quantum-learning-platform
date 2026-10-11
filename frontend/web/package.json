@@ -56,7 +56,6 @@
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.4",
     "playwright": "^1.64.0",
-    "streamlit-component-lib": "^2.0.0",
     "tailwindcss": "^4.0.0",
     "tsx": "^4.23.15",
     "typescript": "^5.7.2",

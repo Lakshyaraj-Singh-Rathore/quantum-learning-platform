@@ -1,5 +1,5 @@
 /**
- * Grover's algorithm, ported from frontend/lib/grover_lab.py.
+ * Grover's algorithm, ported from scripts/lib/grover_lab.py.
  *
  * Every number the module shows comes from this file, which simulates a real
  * 2ⁿ state vector. Nothing here invents a percentage, and every pure function

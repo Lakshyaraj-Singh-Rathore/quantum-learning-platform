@@ -13,7 +13,7 @@ You are doing an in-depth UI/UX quality pass on a quantum-computing teaching pla
 A quantum-computing learning platform with three front ends:
 
 - **`frontend/web`** — a React 18 + Vite + Tailwind v4 SPA. This is the **new UI**, a redesign in progress. **This is your primary testing target.**
-- **`frontend/`** (Streamlit) — the **old UI**, still the default landing. Screenshot it for comparison, but **never modify its code.**
+- **`frontend/web/`** — the React SPA. It is the only UI; there is no old UI to compare against any more. Screenshot freely, modify deliberately.
 - **`backend/`** — FastAPI + Postgres + Redis + Celery. Serves `/api/*`.
 
 Simulations run through Qiskit Aer, Cirq, PennyLane and qBraid. Curriculum content lives in `content/*.md` (67 lessons, LaTeX-heavy) and is ingested at startup.
@@ -59,7 +59,7 @@ Service ports:
 | **React SPA** | http://localhost:3000 | **primary target** |
 | Vite dev server | http://localhost:3001 | `make web-dev`, has HMR |
 | API | http://localhost:8000 | FastAPI, `/docs` for OpenAPI |
-| Streamlit (old UI) | http://localhost:8501 | comparison only |
+| React SPA | http://localhost:3000 | the only UI |
 | Postgres | localhost:5432 | |
 | Redis | localhost:6379 | |
 
@@ -121,9 +121,9 @@ Go beyond the seven. Specifically hunt for:
 
 ## 8. Hard constraints — do not
 
-- **Never modify anything under `frontend/` Streamlit.** Screenshot it for comparison only. React SPA work is fine.
+~~- **Never modify anything under `frontend/` Streamlit.** Screenshot it for comparison only.~~ **Superseded:** the Streamlit app was removed (P9). `frontend/` now holds only the SPA and the shared composer grid.
 - **Never touch `backend/app/curriculum.py`'s `status` fields.** 54 topics are deliberately `draft` in the registry while the database says `published`. Two legitimate tests depend on the registry values; changing them breaks a Gate 1 architecture guard. This divergence is an open decision for the owner — **report on it, don't fix it.**
-- **Never remove the `data-cutover-gate="pending-personal-ui-testing"` marker** in `frontend/web/src/components/shell/Sidebar.tsx`. It gates the P8 cutover and must survive until the owner personally signs off.
+~~- **Never remove the `data-cutover-gate` marker** in `frontend/web/src/components/shell/Sidebar.tsx`.~~ **Superseded:** P8 was signed off and P9 is done, so the marker and the banner it drove are gone.
 - **Do not run production migrations or modify production data.**
 - **Do not weaken a real test to make it pass.** If a test fails, fix the code or report the failure.
 - **Do not submit jobs to qBraid** — real credits.

@@ -1,22 +1,42 @@
 # Working on the new web UI (phase P0)
 
-> ## CUTOVER — AFTER PERSONAL UI TESTING
+> ## CUTOVER — COMPLETE
 >
-> Phases P0–P7 are complete and pushed. **P8 (cutover) has not been started and
-> must not be started** until the owner has personally tested the whole UI and
-> signed off on parity. Until then Streamlit stays live and both stacks run in
-> parallel. P9 (removing Streamlit) waits on P8.
+> P8 (personal UI testing) was signed off by the owner, and **P9 (removing
+> Streamlit) is done**. The React SPA in this folder is the only UI. The
+> Streamlit app, its pages, its `lib/` and its two custom components have been
+> deleted; see the "Where Streamlit went" section below for the two modules
+> that were worth keeping.
 
 
-The React SPA in this folder is the replacement front end described in
+The React SPA in this folder is the front end described in
 `docs/UI_REDESIGN_PLAN.md`. **P0 delivered the shell** (routing, auth, design
 tokens), **P1 rebuilt the Composer** (grid, run settings, noise, job lifecycle)
 and **P2 delivered the result suite** (gauges, histogram, tables, comparisons,
-density matrix, Bloch). Three views from Streamlit's result tabs are not yet
+density matrix, Bloch). Three views from the old result tabs are not yet
 ported — phase disk, Q-sphere and the circuit diagram — and say so in the tab
-strip's absence. The other six pages are still placeholders. The Streamlit app
-on `:8501` remains the real UI for everything else until the parity cutover
-(P8).
+strip's absence.
+
+## Where Streamlit went
+
+The Streamlit app is deleted. Most of it went quietly — pages, `lib/`, tests,
+the compose service, the `:8501` port. Three things are worth knowing:
+
+* **Two modules survived, and moved.** `playground.py` and `grover_lab.py`
+  were never Streamlit code: they are pure maths with no UI imports, and they
+  generate the golden fixtures the SPA's demos and Grover module are checked
+  against. They now live in `scripts/lib/`, alongside the scripts that call
+  them and the 104 tests that pin them. Regenerating the fixtures from the new
+  location reproduces the committed files byte for byte.
+
+* **`viz.py` is gone, and took four tests with it.** Those tests cross-checked
+  the playground's Bloch geometry against it. They now assert against Pauli
+  expectation values directly — the definition `viz.py` was proxying for — so
+  they keep their meaning rather than having been deleted.
+
+* **`live_bloch` is gone entirely.** It was a Streamlit component with no
+  consumer in this app; the SPA has its own Bloch geometry in
+  `src/lib/quantum.ts` and `src/components/results/GeometryViews.tsx`.
 
 ## Run it
 
@@ -26,13 +46,12 @@ make upd          # detached stack; rebuilds images, including `web`
 docker compose ps # web should be "running" on 0.0.0.0:3000
 ```
 
-Then open <http://localhost:3000>. Streamlit is still on <http://localhost:8501>.
+Then open <http://localhost:3000>.
 
 | URL | What |
 | --- | --- |
 | <http://localhost:3000> | New SPA (nginx: static bundle + `/api` proxy) |
 | <http://localhost:3001> | Vite dev server with HMR (`make web-dev`) |
-| <http://localhost:8501> | Frozen Streamlit app (unchanged) |
 | <http://localhost:8000/docs> | FastAPI |
 
 ```powershell
@@ -52,13 +71,13 @@ everywhere and CORS is a development convenience rather than a deployment
 requirement. `VITE_PROXY_TARGET` overrides the dev target; it defaults to
 `http://localhost:8000`.
 
-## The grid is shared with Streamlit, not copied
+## The grid is compiled in from one source
 
 `frontend/circuit_composer/frontend/src` is the single implementation of the
-drag-and-drop grid and is compiled into **both** UIs — Streamlit through
-`streamlit.tsx` (which wires `setComponentValue` / `setFrameHeight`), and this
-app through `ComposerInner` with plain props. `Composer.tsx` itself imports no
-`streamlit-component-lib`, so the SPA ships none of it.
+drag-and-drop grid. It lives outside `src/` and is pulled into this app through
+the `@composer` alias in `vite.config.ts`, so the app builds it from source
+rather than depending on a published bundle. `Composer.tsx` is host-agnostic:
+state comes in as props and changes go out as callbacks.
 
 Two consequences worth knowing:
 
@@ -156,10 +175,9 @@ same result views as the Composer.
 
 ### The checks moved to the server
 
-`frontend/lib/code_checks.py` is now `backend/app/services/code_checks.py`. The
-Streamlit page imports it through a shim (`frontend/lib/code_checks.py`) so the
-frozen app and the new UI run one implementation, and the new page calls it over
-`POST /codelab/check` (auth required) instead of in-process. The endpoint never
+The checks live in `backend/app/services/code_checks.py`, and this page calls
+them over `POST /codelab/check` (auth required) instead of running them
+in-process. One implementation, called over HTTP. The endpoint never
 executes the learner's program — it is a syntax/import pass meant to run while
 they type, debounced 400 ms.
 
@@ -228,10 +246,9 @@ what lets the SSR harness see the lesson body at all.
 ### Every demo number is pinned to numpy
 
 `src/lib/demos.ts` is the maths behind the demos, ported from
-`frontend/lib/playground.py`. `scripts/golden-demos.py` regenerates
-`test-fixtures/demo-golden.json` by calling the **same** `playground.py` the
-Streamlit demos call, and `npm run golden:demos` checks the port agrees:
-**804 values at 1e-9**.
+`scripts/lib/playground.py`. `scripts/golden-demos.py` regenerates
+`test-fixtures/demo-golden.json` by calling that **same** reference module, and
+`npm run golden:demos` checks the port agrees: **804 values at 1e-9**.
 
 That caught a real bug: `blochAngles` in `src/lib/quantum.ts` already returns
 degrees, and the port converted again, so the gate sandbox reported θ as
@@ -383,7 +400,7 @@ The featured module on the Games page, reached from its own card. Not a graded
 level: it is a simulation you explore, so it sits outside the challenge
 pipeline and has no score.
 
-`src/lib/grover.ts` ports `frontend/lib/grover_lab.py` — uniform superposition,
+`src/lib/grover.ts` ports `scripts/lib/grover_lab.py` — uniform superposition,
 the oracle phase flip, inversion about the mean, the step-by-step frames, the
 closed form, sampling and the classical comparison. `scripts/golden-grover.py`
 regenerates the fixture by calling that same `grover_lab.py`, and
@@ -427,8 +444,8 @@ in the golden check instead, where it belongs.
 
 The circuit canvas now follows the visual language IBM's Quantum Composer
 made familiar. The change is in `frontend/circuit_composer/frontend/src`,
-which is the single source both hosts build from, so the React app and the
-Streamlit component cannot drift.
+which is the single source this app builds from, so the canvas cannot drift
+from itself.
 
 **`theme.ts` is new and is the only file with colours or sizes in it.** Gate
 colours, row pitch, corner radii, the qubit accent chips — all of it. Matching
@@ -469,7 +486,7 @@ exactly why that is tested rather than eyeballed.
 The new responsive rule reintroduced `max-width: 720px`, and
 `test_desktop_layout_is_not_shrunk` failed it. That test exists because a
 720px breakpoint made ordinary laptop windows feel cramped. Lowered to 520px,
-which catches phones and slim Streamlit columns without touching laptops.
+which catches phones and slim sidebar columns without touching laptops.
 
 ### Verified here
 

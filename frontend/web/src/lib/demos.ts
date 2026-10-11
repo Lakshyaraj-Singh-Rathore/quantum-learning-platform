@@ -1,5 +1,5 @@
 /**
- * The maths behind the lesson demos, ported from frontend/lib/playground.py.
+ * The maths behind the lesson demos, ported from scripts/lib/playground.py.
  *
  * Every pure function here is pinned against numpy by `npm run golden:quantum`
  * (see scripts/golden-quantum.py), so a demo cannot quietly start showing a

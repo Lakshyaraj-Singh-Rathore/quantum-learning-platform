@@ -1,4 +1,4 @@
-/* The result views, ported from frontend/lib/viz.py.
+/* The result views.
  *
  * Two deliberate choices:
  *

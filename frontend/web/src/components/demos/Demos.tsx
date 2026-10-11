@@ -1,5 +1,5 @@
 /**
- * The lesson demos, ported from frontend/lib/lesson_demos.py.
+ * The lesson demos.
  *
  * Each one is self-contained and computes its own state: nothing here is a
  * recording, and the numbers are the ones the golden fixtures pin. The maths
@@ -831,7 +831,7 @@ function CircuitLab() {
 }
 
 /* -------------------------------------------------------------------------- */
-/* Registry — mirrors DEMO_REGISTRY in frontend/lib/lesson_demos.py           */
+/* Registry — which demos belong with which lesson                            */
 /* -------------------------------------------------------------------------- */
 
 export const DEMOS: Record<

@@ -126,7 +126,12 @@ if (anon) {
   const login = renderAt("/login");
   check("the login screen renders for an anonymous visitor", login.includes("Sign in") && login.includes("Create account"));
   check("the login screen offers both modes", login.includes("Create account") && login.includes("Sign in"));
-  check("the login screen links back to the classic UI", login.includes(":8501"));
+  // There is no second UI any more, so this guards the reverse: a link back to
+  // a "classic" app on another port would now be a dead end for the learner.
+  check(
+    "the login screen does not link to a second UI",
+    !login.includes(":8501") && !/classic/i.test(login),
+  );
 } else {
   // Signed in: the gate lets the tree through, so assert the chrome renders.
   const rail = renderWith(createElement(Sidebar));

@@ -6,10 +6,10 @@ Run it from the backend virtualenv (numpy lives there):
 
     /home/user/.venv-ql/bin/python scripts/golden-grover.py
 
-The truth is frontend/lib/grover_lab.py -- the same module the Streamlit Grover
-lab calls today. scripts/golden-grover.mts checks src/lib/grover.ts agrees, so
-the React module cannot start showing a different probability than the one a
-learner sees in Streamlit.
+The truth is scripts/lib/grover_lab.py: a real state-vector simulation kept as
+the reference the TypeScript port is checked against. scripts/golden-grover.mts
+is that check, so the React module cannot start showing a probability the
+simulation does not produce.
 
 `measure` is excluded: it draws from numpy's PCG64, which JavaScript cannot
 reproduce, and the lesson it teaches is the distribution, not the draw.
@@ -20,7 +20,7 @@ import json
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "lib"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[0] / "lib"))
 
 import grover_lab as gl  # noqa: E402
 

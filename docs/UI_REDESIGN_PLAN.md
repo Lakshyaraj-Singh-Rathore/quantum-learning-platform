@@ -319,7 +319,7 @@ types still enforced.
 | Service | Port | Notes |
 | --- | --- | --- |
 | web (nginx static SPA + /api proxy) | **3000** → new primary URL | GPU-agnostic container, ~10 MB image |
-| streamlit (frozen) | 8501 | removed at P8 |
+| ~~streamlit~~ | ~~8501~~ | **removed — P9 is done** |
 | api | 8000 | unchanged |
 
 * `make up` unchanged (compose adds `web` service + `docker-compose.gpu.yml`
@@ -345,20 +345,22 @@ types still enforced.
 | **P5** | **Challenges + Dashboard** (learner & instructor) | grading copy, recommendations, role gating match current text exactly |
 | **P6** | **Games + Playground** | level flows + previews golden-tested |
 | **P7** | Polish: light mode + toggle, keyboard shortcuts (Ctrl-K style command palette optional), empty/error/loading states audit, mobile-width behavior (>=900px supported, below: read-only warning banner), Lighthouse/axe pass | a11y audit 0 criticals; theme switch re-templates charts |
-> ## CUTOVER — AFTER PERSONAL UI TESTING
+> ## CUTOVER — COMPLETE
 >
-> **P8 is on hold by owner's decision.** P0 through P7 are built and pushed.
-> The cutover — making the web app the default landing, updating the docs, and
-> marking Streamlit legacy in compose — is deliberately **not** started.
+> **P8 (personal UI testing) was signed off by the owner**, and **P9 is done**.
+> The SPA is the only UI. The `streamlit` service, `Home.py`, `pages/`, `lib/`
+> and the app's tests are deleted; the two custom components are gone except
+> for the composer grid, which the SPA now compiles from source.
 >
-> It resumes only after the owner has personally clicked through the entire UI
-> and signed off on the parity checklist. Streamlit therefore stays live and
-> untouched in the meantime, and both stacks keep running side by side.
+> Two modules were not Streamlit code and were kept, moved to
+> `frontend/web/scripts/lib/`: `playground.py` and `grover_lab.py`. They are
+> pure maths and they generate the golden fixtures the SPA is checked against.
 >
-> Do not begin P9 (removal of Streamlit) until P8 has been signed off.
+> The `data-cutover-gate` marker is gone from the sidebar and the harness that
+> asserted the login page linked to `:8501` now asserts the opposite.
 
-| **P8** | **BLOCKED — see the gate above.** Cutover: web becomes default landing; docs (README screenshots, CUDAQ_SETUP wording) updated; Streamlit marked legacy in compose | **owner sign-off on parity checklist, after personal UI testing** |
-| **P9** | Removal: streamlit service, pages/lib code, its requirements & tests deleted; plan doc updated with final architecture | backend suite still 504 green; `make up` = 4 services |
+| **P8** | **DONE — owner signed off.** Cutover complete: the SPA is the only UI; docs updated; the Streamlit service is gone from compose | owner sign-off on parity checklist, after personal UI testing |
+| **P9** | **DONE.** Streamlit service, `Home.py`, `pages/`, `lib/` and its requirements & tests deleted; the composer grid kept and compiled from source | backend suite still green; `make up` = 4 services |
 
 Dependency: P1→P2 is the spine; P3–P6 can interleave after P1 once the
 results suite exists (they reuse it). Suggested real-world order for demo

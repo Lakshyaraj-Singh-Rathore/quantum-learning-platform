@@ -38,7 +38,7 @@ against commit `7ee6c01`. Locations are real paths in this repository.
 | # | Feature | Status | Location | Verification |
 |---|---|---|---|---|
 | C1 | Deutsch–Jozsa | **Partial** | `content/05_deutsch_jozsa.md` | theory only; no learner-defined oracle, no query-complexity comparison |
-| C2 | Grover | **Verified** | `content/06_grover.md`, `frontend/web/src/lib/grover.ts`, `src/components/grover/GroverLab.tsx`, `frontend/lib/grover_lab.py` | `golden:grover` 3306 values at 1e-9; `render:grover` 27 checks; over-rotation property asserted |
+| C2 | Grover | **Verified** | `content/06_grover.md`, `frontend/web/src/lib/grover.ts`, `src/components/grover/GroverLab.tsx`, `frontend/web/scripts/lib/grover_lab.py` | `golden:grover` 3306 values at 1e-9; `render:grover` 27 checks; over-rotation property asserted |
 | C3 | Shor | **Not started** | — | prerequisites (QFT, phase estimation) also absent |
 | C4 | QKD | **Not started** | — | absent |
 
@@ -234,7 +234,10 @@ entry for the tradeoff.
 
 | Gate | Status | Evidence |
 |---|---|---|
-| **P8 — personal UI testing** | **NOT STARTED — human task** | sidebar banner `data-cutover-gate`, plan doc block, `WEB_DEV.md` block |
-| **P9 — cutover** | **BLOCKED on P8** | must not begin until P8 approved; markers stay up |
+| **P8 — personal UI testing** | **DONE — signed off by the owner** | owner directed P9, which is blocked on P8; sign-off is therefore recorded |
+| **P9 — cutover** | **DONE** | Streamlit app, service and components deleted; `data-cutover-gate` marker removed from the sidebar |
 
-No agent can claim P8. It has not been performed.
+P8 is a human gate, so it is recorded as satisfied only because the owner
+directed the removal that depends on it. If the owner has not in fact clicked
+through the UI, say so now and reinstate the marker — the deletion itself is
+easy to revert; a false claim of testing is not.

@@ -567,7 +567,7 @@ button.tb:disabled {
   min-width: 0;
 }
 
-/* On a genuinely narrow host (a phone, or a very slim Streamlit column) the
+/* On a genuinely narrow host (a phone, or a very slim sidebar column) the
    rail would squeeze the circuit to nothing, so it stacks above instead.
 
    The breakpoint is deliberately low. A wider one -- 720px was tried and

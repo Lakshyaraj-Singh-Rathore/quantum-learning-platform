@@ -1,4 +1,4 @@
-/* Pure maths for the result views, ported from frontend/lib/viz.py.
+/* Pure maths for the result views.
  *
  * Every function here has a numpy counterpart in that file, and
  * scripts/golden-quantum.mts checks both against the same fixture

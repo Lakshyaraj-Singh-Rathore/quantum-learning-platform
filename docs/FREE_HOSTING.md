@@ -30,14 +30,13 @@ Three providers, each doing the thing it is free at.
 
 | Component | Host | Free allowance |
 | --- | --- | --- |
-| Streamlit UI | Streamlit Community Cloud | ~1 GB RAM, public repo |
+| React SPA | any static host, or a container behind nginx | a static bundle — no runtime |
 | FastAPI backend | Render web service | 512 MB, 0.1 CPU, sleeps after 15 min |
 | Postgres + pgvector | Neon or Supabase | no 30-day expiry |
 
-The UI measures **151 MB** and never imports a simulator
-(`qiskit`/`cirq`/`qiskit_aer` are all absent from `sys.modules` after loading
-`lib.viz`, `lib.api_client` and `lib.composer`), so it sits well inside
-Streamlit Cloud's 1 GB.
+The SPA is a static bundle: it never imports a simulator, so there is no
+Python memory footprint to fit into anything. Build it with
+`VITE_API_BASE=https://<your-api> npm run build` and upload `dist/`.
 
 ### Do not use Render's free Postgres
 
@@ -85,7 +84,9 @@ MAX_STATIC_QUBITS=14 -> 14
 Oversized circuits are refused with HTTP 422 and an explanatory message rather
 than taking the instance down.
 
-On Streamlit Community Cloud set `API_BASE_URL` to the Render URL.
+Set `API_CORS_ORIGINS` on the Render service to the SPA's origin, or every
+request fails CORS. If you instead serve the bundle behind an nginx that
+proxies `/api`, skip that — the browser stays same-origin.
 
 ## Honest limitations
 

@@ -1,10 +1,11 @@
 # Deploying QuantumLearn
 
-Three free services, each doing the part it is actually free at.
+Two free services plus a static bundle, each doing the part it is actually
+free at.
 
 | Part | Host | Why |
 | --- | --- | --- |
-| Streamlit UI | Streamlit Community Cloud | ~1 GB RAM, free, no card |
+| React SPA | any static host, or a container | it is a built bundle — no runtime, no Python |
 | FastAPI backend | Render (free web service) | 512 MB, Docker-free Python build |
 | Postgres + pgvector | Neon (or Supabase) | free and does **not** expire |
 
@@ -68,43 +69,57 @@ created on first boot. Verified locally: 15 tables.
   OOM-killed. 14 keeps the peak near 200 MB. Oversized circuits get a clean
   HTTP 422 instead of taking the instance down.
 
-## 3. Frontend (Streamlit Community Cloud)
+## 3. Frontend (the React SPA)
 
-1. Go to <https://share.streamlit.io> and sign in with GitHub.
-2. **New app** → this repository → branch → main file `frontend/Home.py`.
-3. Under **Advanced settings → Secrets**, add:
+The SPA builds to a static bundle (`frontend/web/dist`) — no Python, no server
+runtime. That gives you two ways to host it.
 
-   ```toml
-   API_BASE_URL = "https://quantumlearn-api.onrender.com"
-   ```
+### 3a. Container with nginx (keeps the API same-origin)
 
-4. Deploy. You get a URL like `https://<name>.streamlit.app`.
+`frontend/web/Dockerfile` builds the bundle and serves it through
+`frontend/web/nginx.conf`, which proxies `/api/*` to the API and strips the
+prefix. The browser never learns a backend port, so **CORS never enters the
+picture** and section 4 does not apply.
 
-Community Cloud installs the root `requirements.txt`, which pulls in
-`frontend/requirements.txt` only. The UI never imports qiskit, cirq or
-pennylane — measured at **151 MB**, comfortably inside the 1 GB limit.
+This is what `docker compose up` does, and it is the only configuration that
+was exercised end to end with the production settings.
 
-It does need `CircuitIR` from the backend package. Docker supplies that with
-`PYTHONPATH=/backend`, which Community Cloud cannot set, so
-`frontend/lib/bootstrap.py` puts `backend/` on `sys.path` itself. Verified with
-`PYTHONPATH` unset.
+### 3b. Static host (Netlify, Cloudflare Pages, GitHub Pages…)
 
-## 4. Close the CORS loop
+The bundle is ordinary static files, but the browser now has to call the API
+directly, so the API URL is baked in at **build** time:
+
+```bash
+cd frontend/web
+VITE_API_BASE=https://quantumlearn-api.onrender.com npm run build
+# upload dist/
+```
+
+`VITE_API_BASE` defaults to `/api`; leave it unset only when something is
+proxying `/api` for you, as in 3a. Because it is compiled in, **changing the
+API URL means rebuilding**, not editing a config file.
+
+Then do section 4, or every request fails CORS.
+
+## 4. Close the CORS loop (static hosting only)
+
+Skip this if you deployed as a container behind nginx (3a).
 
 Go back to Render → **Environment** and set:
 
 ```
-API_CORS_ORIGINS = https://<your-app>.streamlit.app
+API_CORS_ORIGINS = https://<your-static-site>
 ```
 
-Save; Render restarts automatically. Until this is set the API allows `*`,
-which works but is worth tightening. Verified locally: the allowed origin gets
+Save; Render restarts automatically. Until this is set the API allows `*` —
+originally so a Streamlit Cloud URL could call it — which works but is worth
+tightening. Verified locally: the allowed origin gets
 `access-control-allow-origin` back, any other origin gets **400**.
 
 ## 5. Check it end to end
 
-On the Streamlit URL: register an account, open **Composer**, build a Bell
-pair, press **Run simulation**. You should get roughly 50/50 on `00` and `11`.
+On the SPA URL: register an account, open **Composer**, build a Bell pair,
+press **Run simulation**. You should get roughly 50/50 on `00` and `11`.
 
 The same flow against a production-configured API locally:
 

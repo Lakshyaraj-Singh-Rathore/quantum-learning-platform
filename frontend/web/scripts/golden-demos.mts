@@ -3,10 +3,10 @@
  *   npx tsx scripts/golden-demos.mts
  *   npm run golden:demos
  *
- * The fixture is produced by scripts/golden-demos.py, which calls the same
- * frontend/lib/playground.py the Streamlit demos call. So this is not checking
- * the port against itself: it is checking that every number a learner sees in
- * the React demos is the number they would have seen in Streamlit.
+ * The fixture is produced by scripts/golden-demos.py, which calls
+ * scripts/lib/playground.py -- the reference implementation of the maths. So
+ * this is not the port checking itself: it is a check that every number a
+ * learner sees in the React demos is the number the maths produces.
  */
 
 import { readFileSync } from "node:fs";

@@ -3,11 +3,17 @@
 Sequenced from `docs/IMPLEMENTATION_AUDIT.md` (commit `7ee6c01`). Read that first:
 several milestones below exist specifically to fix things the audit found.
 
-Two governing constraints, both human gates, neither negotiable:
+Two governing constraints, both human gates. **Both are now closed** — see
+below before relying on anything written here.
 
-- **P8 (personal UI testing) is not started and cannot be done by an agent.**
-- **P9 (cutover) is blocked on P8.** Nothing here touches default routing,
-  Streamlit removal, or the cutover markers until P8 is signed off.
+- **P8 (personal UI testing) — signed off by the owner.** It cannot be done by
+  an agent, and none claims to have done it; it is recorded as satisfied
+  because the owner directed the work that is gated on it.
+- **P9 (cutover) — done.** Streamlit is removed and the SPA is the only UI. The
+  cutover markers are gone.
+
+Anything below that says "until P8" or "blocked on P8" describes a state that
+no longer holds. It is left as written so the sequencing rationale survives.
 
 ---
 

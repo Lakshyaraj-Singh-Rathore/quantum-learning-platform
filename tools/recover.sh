@@ -157,9 +157,10 @@ if [ ! -x "$VENV/bin/python" ]; then
   python3 -m venv "$VENV"
   "$VENV/bin/pip" install -q --upgrade pip setuptools wheel
   "$VENV/bin/pip" install -q -r backend/requirements.txt
-  "$VENV/bin/pip" install -q -r frontend/requirements.txt
-  # Pins that keep the two requirement sets installable together.
-  "$VENV/bin/pip" install -q "pyarrow<17" "starlette<0.42"
+  # There is no frontend/requirements.txt any more: the Streamlit app it
+  # served was removed, and the SPA's dependencies are npm's problem. The
+  # pyarrow/starlette pins existed only to keep those two requirement sets
+  # installable together, so they go with it.
 else
   echo ">> Python venv already present."
 fi
@@ -177,7 +178,7 @@ fi
 #        'useMemo') at Composer.tsx) instead of failing at build time.
 #
 #      * frontend/node_modules must be populated by scripts/link-shared.mjs,
-#        which symlinks react / react-dom / @types / streamlit-component-lib
+#        which symlinks react / react-dom / @types
 #        to the frontend/web copies so that the shared grid source resolves
 #        exactly one React. Earlier revisions of this script skipped that step,
 #        which left `npm run render:check` unable to resolve React at all.

@@ -8,14 +8,6 @@ import { Button, Card, ErrorNote, Input, Label, cn } from "../components/ui";
 
 type Mode = "login" | "register";
 
-/** The frozen Streamlit app serves on its own port, so the link is host-
- *  relative rather than hardcoded to localhost (it must work for a learner on
- *  a LAN box too). Guarded because this component is also rendered by the
- *  headless smoke harness, where there is no window. */
-function streamlitHost(): string {
-  return typeof window === "undefined" ? "localhost" : window.location.hostname;
-}
-
 export function LoginPage({ mode: initialMode }: { mode: Mode }) {
   const [mode, setMode] = useState<Mode>(initialMode);
   const [email, setEmail] = useState("");
@@ -146,17 +138,6 @@ export function LoginPage({ mode: initialMode }: { mode: Mode }) {
             )}
           </p>
         </Card>
-
-        <p className="mt-4 text-center text-xs leading-relaxed text-ink-3">
-          The classic Streamlit UI stays available at{" "}
-          <a
-            href={`http://${streamlitHost()}:8501`}
-            className="text-ink-2 underline decoration-line"
-          >
-            :8501
-          </a>{" "}
-          until parity cutover.
-        </p>
       </div>
     </div>
   );

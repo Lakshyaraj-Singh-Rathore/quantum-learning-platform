@@ -46,7 +46,7 @@ ps:
 	$(COMPOSE) ps
 
 logs:
-	$(COMPOSE) logs -f api worker streamlit
+	$(COMPOSE) logs -f api worker web
 
 test:
 	$(COMPOSE) exec api pytest -q

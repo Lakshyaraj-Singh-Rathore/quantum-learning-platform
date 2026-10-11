@@ -21,7 +21,7 @@ const web = path.resolve(here, "..");
 const shared = path.resolve(web, "..", "node_modules");
 const own = path.join(web, "node_modules");
 
-const LINKS = ["react", "react-dom", "@types", "streamlit-component-lib"];
+const LINKS = ["react", "react-dom", "@types"];
 
 if (!fs.existsSync(own)) {
   console.error("[link-shared] run `npm install` in frontend/web first");
@@ -46,8 +46,8 @@ for (const name of LINKS) {
   console.log(`[link-shared] ${name} -> ${path.relative(shared, target)}`);
 }
 
-// `npm install` inside the component (to rebuild the Streamlit bundle by hand)
-// creates a second React there. Vite's dedupe keeps the app correct, but plain
+  // `npm install` inside the component creates a second React there.
+  // Vite's dedupe keeps the app correct, but plain Node resolves it first,
 // Node resolves it first, which breaks the headless render checks.
 const componentReact = path.join(web, "..", "circuit_composer", "frontend", "node_modules", "react");
 if (fs.existsSync(componentReact)) {

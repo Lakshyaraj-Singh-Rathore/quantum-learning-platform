@@ -6,9 +6,9 @@ an AI tutor grounded in the course material, auto-graded challenges and
 puzzle games, and an instructor
 dashboard.
 
-**Stack** — Streamlit (7 pages + two custom React/TypeScript components) ·
-FastAPI (41 endpoints) · Celery + Redis · Postgres + pgvector · Google Gemini ·
-Docker Compose.
+**Stack** — React + TypeScript SPA (Vite) with a shared drag-and-drop circuit
+grid · FastAPI (41 endpoints) · Celery + Redis · Postgres + pgvector · Google
+Gemini · Docker Compose.
 
 **982 tests** pass: 463 backend, 519 frontend.
 
@@ -29,7 +29,7 @@ CPU-only box it is the plain stack and that backend shows greyed-out with the
 reason. No flags, no modes to remember — one command, and the backend is a
 per-run dropdown either way. (Force it with `make up GPU=1` / `GPU=0`.)
 
-Then open <http://localhost:8501>. On first load press **Ctrl+Shift+R** — the
+Then open <http://localhost:3000>. On first load press **Ctrl+Shift+R** — the
 React bundles are fingerprinted and a cached copy can be stale.
 
 Seeded accounts:
@@ -150,13 +150,8 @@ backend/
   alembic/          4 migrations
   tests/            463 tests
 frontend/
-  Home.py
-  pages/            Learn · Composer · Challenges · Dashboard · Code Lab ·
-                    Games · Playground
-  lib/              viz · composer · playground · grover_lab · code_checks …
-  circuit_composer/ React drag-and-drop grid (TypeScript)
-  live_bloch/       React continuous Bloch sphere (TypeScript)
-  tests/            519 tests
+  web/              React + TypeScript SPA — the only UI
+  circuit_composer/ the drag-and-drop grid, shared into the SPA from source
 content/            13 lessons in Markdown
 docs/               deployment, UI redesign briefs, references
 reports/            UI audit
@@ -164,18 +159,23 @@ reports/            UI audit
 
 ---
 
-## React components
+## The shared circuit grid
 
-Two TypeScript components are compiled into the Streamlit app. Docker builds
-them automatically; for local development outside Docker:
+`frontend/circuit_composer/frontend/src` is the drag-and-drop circuit editor.
+It has no build of its own: the SPA compiles it from source through the
+`@composer` alias, so there is exactly one copy of the grid.
+
+Because it lives outside `frontend/web`, it needs `react` resolvable from its
+own directory. `npm run dev` and `npm run build` do that for you via
+`scripts/link-shared.mjs`; run it by hand only if you are invoking `tsc` or a
+harness directly:
 
 ```bash
-cd frontend/circuit_composer/frontend && npm ci && npm run build
-cd ../../live_bloch/frontend        && npm ci && npm run build
+cd frontend/web && node scripts/link-shared.mjs
 ```
 
-If a bundle is missing the app degrades gracefully — the composer falls back to
-a pure-Python grid, and the Bloch demo to the verified Plotly sphere.
+The link is what keeps one React in the bundle. A second copy fails at runtime
+with "invalid hook call", not at build time.
 
 ---
 
@@ -183,7 +183,7 @@ a pure-Python grid, and the Bloch demo to the verified Plotly sphere.
 
 ```bash
 python -m venv .venv && source .venv/bin/activate
-pip install -r backend/requirements.txt -r frontend/requirements.txt
+pip install -r backend/requirements.txt
 
 # API
 cd backend
@@ -193,10 +193,12 @@ PYTHONPATH=. DATABASE_URL=sqlite:///./dev.db CELERY_TASK_ALWAYS_EAGER=true \
   uvicorn app.main:app --reload
 
 # UI, in another shell
-cd frontend
-PYTHONPATH=../backend:. API_BASE_URL=http://localhost:8000 \
-  streamlit run Home.py
+cd frontend/web && npm install && npm run dev
 ```
+
+Open <http://localhost:3001>. The dev server proxies `/api` to the API, so the
+browser stays same-origin and CORS is not a development concern. To point it
+somewhere else, set `VITE_PROXY_TARGET`.
 
 `CELERY_TASK_ALWAYS_EAGER=true` runs jobs inline, so Redis and a worker are not
 needed for development.
@@ -204,8 +206,19 @@ needed for development.
 ### Tests
 
 ```bash
-cd backend  && PYTHONPATH=. ../.venv/bin/python -m pytest -q
-cd frontend && PYTHONPATH=../backend:. ../.venv/bin/python -m pytest -q
+cd backend && PYTHONPATH=. ../.venv/bin/python -m pytest -q
+```
+
+The SPA's checks are npm scripts in `frontend/web` — `npm run golden:demos`,
+`npm run golden:grover`, `npm run render:learn` and friends. `frontend/web/WEB_DEV.md`
+lists them and what each one guards.
+
+The maths behind the demos is pinned against numpy by
+`frontend/web/scripts/lib/` (see below), so the reference implementation and its
+104 tests are Python and run with pytest:
+
+```bash
+cd frontend/web/scripts/lib && python -m pytest -q
 ```
 
 Some frontend tests are integration tests and need the API running; they skip
@@ -242,9 +255,9 @@ specifically, because it is easy to do and hard to spot.
 override when a GPU is present) is the supported path and runs the whole
 stack locally.
 
-`docs/DEPLOYMENT.md` documents a measured free-tier cloud split (Streamlit
-Community Cloud for the UI, Render for the API, Neon for Postgres) including
-the memory numbers that drive it and the limitations that come with it.
+`docs/DEPLOYMENT.md` documents a measured free-tier cloud split (a static host
+or container for the SPA, Render for the API, Neon for Postgres) including the
+memory numbers that drive it and the limitations that come with it.
 
 ---
 

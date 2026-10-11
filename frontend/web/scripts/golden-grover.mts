@@ -3,10 +3,10 @@
  *   npx tsx scripts/golden-grover.mts
  *   npm run golden:grover
  *
- * The fixture is produced by scripts/golden-grover.py, which calls the same
- * frontend/lib/grover_lab.py the Streamlit Grover lab calls. So this is not
- * the port checking itself: it is a check that the React module shows the same
- * probabilities a learner would have seen in Streamlit.
+ * The fixture is produced by scripts/golden-grover.py, which calls
+ * scripts/lib/grover_lab.py -- the reference simulation. So this is not the
+ * port checking itself: it is a check that the React module shows the
+ * probabilities the simulation actually produces.
  *
  * Two things the module is built around are asserted explicitly: the closed
  * form agrees with the simulation, and overshooting the optimum makes the

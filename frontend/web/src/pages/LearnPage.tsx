@@ -11,7 +11,7 @@ type Track = "Theory" | "Circuit" | "All";
 
 const TRACKS: Track[] = ["Theory", "Circuit", "All"];
 
-/** Mirrors DEMOS_FOR_LESSON in frontend/lib/lesson_demos.py. */
+/** Which demos belong with which lesson. */
 const DEMOS_FOR_LESSON: Record<string, string[]> = {
   "01_qubits": ["bit_vs_qubit", "build_a_qubit", "bloch", "circuit_lab"],
   "02_gates": ["gates", "plus_minus", "circuit_lab"],

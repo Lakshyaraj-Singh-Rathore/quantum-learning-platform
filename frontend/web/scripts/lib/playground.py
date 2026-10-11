@@ -126,10 +126,11 @@ def ket_string(state: np.ndarray, places: int = 3) -> str:
 
 
 def as_result(state: np.ndarray) -> dict[str, Any]:
-    """Wrap a state in the result envelope ``lib.viz`` expects.
+    """Wrap a state in the standard result envelope.
 
-    Lets the playground reuse the already-verified Bloch sphere, phase disk and
-    amplitude table instead of drawing its own and risking a different answer.
+    This is the same envelope the API returns for a one-qubit circuit, so the
+    fixtures generated here are directly comparable to a backend run and the UI
+    can render a playground state with the components it uses for real results.
     """
     p0, p1 = probabilities(state)
     return {
