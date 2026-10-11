@@ -631,32 +631,45 @@ export function BlochCircle({ q, x, y, z }: { q: number; x: number; y: number; z
   const length = Math.sqrt(x * x + y * y + z * z);
   return (
     <div className="flex flex-col items-center gap-1">
-      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img" aria-label={`Bloch sphere for qubit ${q}`}>
-        <circle cx={centre} cy={centre} r={radius} fill="none" stroke="var(--line)" />
-        <ellipse
-          cx={centre}
-          cy={centre}
-          rx={radius}
-          ry={radius * 0.32}
-          fill="none"
-          stroke="var(--line-soft)"
-        />
-        <line
-          x1={centre}
-          y1={centre}
-          x2={centre}
-          y2={centre - radius}
-          stroke="var(--line-soft)"
-        />
-        <line x1={centre} y1={centre} x2={px} y2={py} stroke="var(--accent)" strokeWidth="2.5" />
-        <circle cx={px} cy={py} r="4" fill="var(--accent)" />
-        <text x={centre} y={12} textAnchor="middle" fontSize="9" fill="var(--ink-3)">
-          |0⟩
-        </text>
-        <text x={centre} y={size - 4} textAnchor="middle" fontSize="9" fill="var(--ink-3)">
-          |1⟩
-        </text>
-      </svg>
+        {/* The sphere used to be drawn in --line/--line-soft, i.e. #2a2a30 and
+            #202024 on a #17171a card: technically rendered, visually gone. The
+            outline now uses --ink-3 so it holds up on both themes, and the
+            guides sit a step back rather than two. */}
+        <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img" aria-label={`Bloch sphere for qubit ${q}`}>
+          <circle
+            cx={centre}
+            cy={centre}
+            r={radius}
+            fill="var(--bg)"
+            stroke="var(--ink-3)"
+            strokeWidth="1.5"
+          />
+          <ellipse
+            cx={centre}
+            cy={centre}
+            rx={radius}
+            ry={radius * 0.32}
+            fill="none"
+            stroke="var(--ink-3)"
+            strokeOpacity="0.5"
+          />
+          <line
+            x1={centre}
+            y1={centre}
+            x2={centre}
+            y2={centre - radius}
+            stroke="var(--ink-3)"
+            strokeOpacity="0.5"
+          />
+          <line x1={centre} y1={centre} x2={px} y2={py} stroke="var(--accent)" strokeWidth="2.5" />
+          <circle cx={px} cy={py} r="4" fill="var(--accent)" />
+          <text x={centre} y={12} textAnchor="middle" fontSize="9" fill="var(--ink-2)">
+            |0⟩
+          </text>
+          <text x={centre} y={size - 4} textAnchor="middle" fontSize="9" fill="var(--ink-2)">
+            |1⟩
+          </text>
+        </svg>
       <p className="text-[11px] text-ink-3">
         q{q} · |r| = {length.toFixed(3)}
       </p>

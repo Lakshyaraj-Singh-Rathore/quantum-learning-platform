@@ -27,6 +27,16 @@
   --accent-2: #a78bfa;
   --danger: #ff5d5d;
   --warn: #ffd166;
+  /* Syntax tokens. These are theme tokens like every other colour here, so a
+     code block stays legible after a light/dark switch instead of stranding
+     dark-mode-only colours on a white background. */
+  --code-keyword: #ff7b9c;
+  --code-string: #7ee787;
+  --code-number: #ffd166;
+  --code-comment: #8b8b95;
+  --code-title: #79c0ff;
+  --code-builtin: #a78bfa;
+  --code-literal: #3dd6c6;
   color-scheme: dark;
 }
 
@@ -45,6 +55,14 @@ html.light {
   --accent-2: #7c3aed;
   --danger: #d43d3d;
   --warn: #a2740a;
+  /* Same tokens, tuned for contrast against the light surfaces. */
+  --code-keyword: #cf222e;
+  --code-string: #0a3069;
+  --code-number: #953800;
+  --code-comment: #6e7781;
+  --code-title: #6639ba;
+  --code-builtin: #8250df;
+  --code-literal: #0d9488;
   color-scheme: light;
 }
 
@@ -93,4 +111,70 @@ html.light {
       transition-duration: 0.01ms !important;
     }
   }
+}
+
+/* highlight.js token colours, mapped onto the app's own code tokens.
+   Scoped to .hljs so the rest of the page is untouched. */
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-literal,
+.hljs-doctag {
+  color: var(--code-keyword);
+}
+
+.hljs-string,
+.hljs-regexp,
+.hljs-addition,
+.hljs-attribute,
+.hljs-meta .hljs-string {
+  color: var(--code-string);
+}
+
+.hljs-number,
+.hljs-symbol,
+.hljs-bullet,
+.hljs-link,
+.hljs-selector-attr,
+.hljs-selector-pseudo {
+  color: var(--code-number);
+}
+
+.hljs-comment,
+.hljs-quote,
+.hljs-deletion {
+  color: var(--code-comment);
+  font-style: italic;
+}
+
+.hljs-title,
+.hljs-title.function_,
+.hljs-section,
+.hljs-name,
+.hljs-selector-id,
+.hljs-selector-class {
+  color: var(--code-title);
+}
+
+.hljs-built_in,
+.hljs-class .hljs-title,
+.hljs-title.class_,
+.hljs-type {
+  color: var(--code-builtin);
+}
+
+.hljs-attr,
+.hljs-variable,
+.hljs-template-variable,
+.hljs-params {
+  color: var(--code-literal);
+}
+
+/* Emphasis is already carried by hue; drop hljs' own weight styling so the
+   monospace metrics stay even across a block. */
+.hljs-emphasis {
+  font-style: italic;
+}
+
+.hljs-strong {
+  font-weight: 600;
 }

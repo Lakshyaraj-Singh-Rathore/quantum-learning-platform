@@ -11,10 +11,14 @@ export function AppShell() {
   // global shortcut drive the same thing.
   const [paletteOpen, setPaletteOpen] = useState(false);
 
-  return (
-    <div className="flex h-full">
-      <Sidebar />
-      <div className="flex min-w-0 flex-1 flex-col">
+    return (
+      /* The rail is position:fixed, so the shell reserves only its collapsed
+       * width (w-[60px]) rather than the expanded 240px. Pages therefore get
+       * the extra ~180px permanently, and the sidebar expands over them on
+       * hover instead of pushing them around. */
+      <div className="flex h-full">
+        <Sidebar />
+        <div className="flex min-w-0 flex-1 flex-col pl-[60px]">
         <TopBar onOpenPalette={() => setPaletteOpen(true)} />
         <NarrowViewportNotice />
         <main className="min-h-0 flex-1 overflow-y-auto">

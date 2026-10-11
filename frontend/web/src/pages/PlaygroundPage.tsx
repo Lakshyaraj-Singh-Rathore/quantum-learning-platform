@@ -57,9 +57,15 @@ export function PlaygroundPage() {
           <button
             key={label}
             onClick={() => setTab(index)}
+            // aria-current so the selected tab is announced, not just coloured:
+            // the old 10%-opacity accent fill was near-invisible against the
+            // raised background and read as "no tab selected".
+            aria-current={tab === index ? "true" : undefined}
             className={cn(
               "rounded-md px-3 py-1.5 text-[13px] transition-colors",
-              tab === index ? "bg-accent/10 font-medium text-ink" : "text-ink-2 hover:bg-hover",
+              tab === index
+                ? "bg-accent/15 font-medium text-accent underline decoration-accent decoration-2 underline-offset-4"
+                : "text-ink-2 hover:bg-hover",
             )}
           >
             {label}

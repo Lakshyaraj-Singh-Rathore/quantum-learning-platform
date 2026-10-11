@@ -714,13 +714,20 @@ button.tb:disabled {
   flex-direction: column;
 }
 
+/* Fixed 48px with no wrapping meant that once the host column got narrow the
+   controls could not shrink (flex items have min-width:auto) and simply
+   spilled out of the bar -- the "Preserve spacing" select ended up drawn over
+   whatever sat below it. Wrapping costs a little height on a narrow screen and
+   buys back a toolbar that can never overlap its neighbours. */
 .circuit-toolbar {
-  height: 48px;
+  min-height: 48px;
   flex-shrink: 0;
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 0 16px;
+  flex-wrap: wrap;
+  column-gap: 14px;
+  row-gap: 8px;
+  padding: 6px 16px;
   border-bottom: 1px solid var(--divider);
 }
 
@@ -748,6 +755,9 @@ button.tb:disabled {
   font-size: 16px;
   cursor: pointer;
   padding: 2px 2px 2px 0;
+  /* Never squeeze the label: a shrunk select is what made "Preserve spacing"
+     collide with the controls beside it. */
+  flex-shrink: 0;
 }
 
 .align-select:focus {

@@ -200,11 +200,22 @@ const FOUR = [
   "Explore the Bloch sphere",
   "Build a circuit here",
 ];
-check(
-  "the lesson's demos are offered as tabs",
-  FOUR.every((title) => demos.includes(title)),
-  FOUR.filter((t) => !demos.includes(t)).join(", ") || "all 4 for 01_qubits",
-);
+  check(
+    "the lesson's demos are offered as tabs",
+    FOUR.every((title) => demos.includes(title)),
+    FOUR.filter((t) => !demos.includes(t)).join(", ") || "all 4 for 01_qubits",
+  );
+  // Regression guard. The active style used to be keyed on `demoKey`, which
+  // starts as null while the panel falls back to showing the first demo, so
+  // the tab that was actually open rendered unselected until you clicked a
+  // different one and came back. Counting the marker catches it either way:
+  // zero means "nothing looks selected", two means "the wrong one is".
+  const activeDemoTabs = (html.match(/border-accent bg-accent\/15/g) ?? []).length;
+  check(
+    "exactly one demo tab is marked active on first render",
+    activeDemoTabs === 1,
+    `${activeDemoTabs} marked active`,
+  );
 check(
   "the first demo is open and really rendered",
   demos.includes("Measure the qubit") && demos.includes("Reset qubit"),

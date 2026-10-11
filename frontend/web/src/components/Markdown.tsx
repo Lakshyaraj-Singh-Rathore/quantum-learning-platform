@@ -6,13 +6,35 @@
  * Dropping any of that would quietly delete half the curriculum, so the reader
  * carries the real plugins rather than a hand-rolled subset.
  */
+import { useMemo } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
+import hljs from "highlight.js/lib/core";
+import python from "highlight.js/lib/languages/python";
+import bash from "highlight.js/lib/languages/bash";
+import json from "highlight.js/lib/languages/json";
 // KaTeX's stylesheet is imported in main.tsx, not here: a CSS import in this
 // module would break the Node render harnesses (scripts/render-*.mts), which
 // load the real components outside a bundler.
+
+/**
+ * Only the grammars the curriculum can actually ask for. Every fenced block in
+ * /content is Python; bash and json cover anything the lesson text adds later.
+ *
+ * This uses highlight.js' `core` build with explicit language registration
+ * rather than the rehype-highlight plugin. rehype-highlight statically imports
+ * lowlight's `common` set (~35 grammars) at module scope, so *every* one of
+ * them ends up in the bundle no matter what you pass as `languages`; going
+ * through core keeps the bundle to the three we named.
+ *
+ * An unregistered or absent fence language is left uncoloured rather than
+ * guessed at: mis-highlighting a block is worse than not highlighting it.
+ */
+hljs.registerLanguage("python", python);
+hljs.registerLanguage("bash", bash);
+hljs.registerLanguage("json", json);
 
 /** Applied by <Markdown> to keep lesson body text on the app's type scale. */
 const STYLES = [
@@ -37,12 +59,59 @@ const STYLES = [
   "[&_.katex-display]:my-4 [&_.katex-display]:overflow-x-auto",
 ].join(" ");
 
+const LANGUAGE_CLASS = /language-([\w-]+)/;
+
+type CodeProps = React.ComponentPropsWithoutRef<"code"> & {
+  /**
+   * react-markdown hands every custom component the underlying hast node.
+   * It is not a DOM attribute, so it must be pulled out here rather than
+   * spread — spreading it rendered `node="[object Object]"` onto every code
+   * element.
+   */
+  node?: unknown;
+};
+
+/**
+ * Fenced blocks get highlighted; inline code does not. The two are told apart
+ * by the `language-*` class, which markdown only sets on a fenced block — an
+ * inline span never carries one.
+ */
+function CodeBlock({ className, children, node: _node, ...rest }: CodeProps) {
+  const language = LANGUAGE_CLASS.exec(className ?? "")?.[1];
+
+  const html = useMemo(() => {
+    if (!language || !hljs.getLanguage(language)) return null;
+    // Strip the trailing newline markdown leaves on the block; without this the
+    // highlighted output ends in an empty line inside the <pre>.
+    const source = String(children).replace(/\n$/, "");
+    // highlight() escapes the source it is given, so the result is markup we
+    // generated ourselves rather than markup that came from the lesson text.
+    return hljs.highlight(source, { language }).value;
+  }, [children, language]);
+
+  if (html === null) {
+    return (
+      <code className={className} {...rest}>
+        {children}
+      </code>
+    );
+  }
+
+  return (
+    <code
+      className={className ? `${className} hljs` : "hljs"}
+      dangerouslySetInnerHTML={{ __html: html }}
+    />
+  );
+}
+
 export function Markdown({ children }: { children: string }) {
   return (
     <div className={STYLES}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm, remarkMath]}
         rehypePlugins={[[rehypeKatex, { throwOnError: false, strict: false }]]}
+        components={{ code: CodeBlock }}
       >
         {children}
       </ReactMarkdown>

@@ -114,7 +114,13 @@ export function LearnPage() {
 
   return (
     <div className="grid gap-6 p-6 lg:grid-cols-[240px_minmax(0,1fr)]">
-      <nav className="flex flex-col gap-3">
+      {/* Sticky from lg up: a 67-lesson list scrolls out of reach otherwise,
+          so changing track or jumping lessons meant scrolling all the way back
+          to the top of the article. self-start is what makes the stickiness
+          possible at all -- a stretched grid item fills the row and has no
+          room left to travel. The max-height keeps the list itself scrollable
+          when it is taller than the viewport. */}
+      <nav className="flex flex-col gap-3 lg:sticky lg:top-6 lg:max-h-[calc(100vh-7rem)] lg:self-start lg:overflow-y-auto lg:pr-1">
         <div>
           <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-3">Track</p>
           <div className="flex gap-1 rounded-lg border border-line bg-raised p-1">
@@ -221,10 +227,14 @@ export function LearnPage() {
                 <button
                   key={key}
                   onClick={() => setDemoKey(key)}
+                  // Highlighted on demoKeyNow, not demoKey: demoKey starts as
+                  // null and the first demo is shown by fallback, so keying the
+                  // active style on demoKey left the opening tab looking
+                  // unselected until you clicked a different one and came back.
                   className={cn(
                     "rounded-md border px-2.5 py-1 text-[13px] transition-colors",
-                    demoKey === key
-                      ? "border-accent bg-accent/10 text-ink"
+                    demoKeyNow === key
+                      ? "border-accent bg-accent/15 font-medium text-accent"
                       : "border-line text-ink-2 hover:bg-hover",
                   )}
                 >
