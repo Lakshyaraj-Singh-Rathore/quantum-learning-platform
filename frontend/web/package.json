@@ -30,7 +30,8 @@
     "fixtures:challenges": "python3 scripts/challenge-fixtures.py",
     "fixtures:games": "python3 scripts/game-fixtures.py",
     "fixtures:game-results": "python3 scripts/game-results.py",
-    "curriculum": "tsx scripts/curriculum-check.mts && tsx scripts/curriculum-check.mts --auth"
+    "curriculum": "tsx scripts/curriculum-check.mts && tsx scripts/curriculum-check.mts --auth",
+    "push:overlay": "tsx scripts/push-overlay-check.mts"
   },
   "dependencies": {
     "@codemirror/lang-python": "^6.2.1",
@@ -54,6 +55,7 @@
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.4",
+    "playwright": "^1.64.0",
     "streamlit-component-lib": "^2.0.0",
     "tailwindcss": "^4.0.0",
     "tsx": "^4.23.15",
