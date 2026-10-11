@@ -30,7 +30,9 @@ export function Sidebar() {
   return (
     <aside
       className={cn(
-        "group fixed inset-y-0 left-0 z-40 flex shrink-0 flex-col overflow-hidden",
+        // `peer` lets AppShell's content react to this rail's hover in pure
+        // CSS (see PUSH_PAGES there) instead of through React state.
+        "peer group fixed inset-y-0 left-0 z-40 flex shrink-0 flex-col overflow-hidden",
         "border-r border-line-soft bg-raised",
         "transition-[width] duration-200 ease-out",
         "focus-within:w-[240px] hover:w-[240px]",
