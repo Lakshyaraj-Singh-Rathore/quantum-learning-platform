@@ -11,6 +11,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
+import { Link, useInRouterContext } from "react-router-dom";
 import hljs from "highlight.js/lib/core";
 import python from "highlight.js/lib/languages/python";
 import bash from "highlight.js/lib/languages/bash";
@@ -105,13 +106,68 @@ function CodeBlock({ className, children, node: _node, ...rest }: CodeProps) {
   );
 }
 
+/**
+ * Lessons cross-reference each other by bare filename — `see 02_gates.md` —
+ * because /content is a flat directory and that is how the files sit on disk.
+ * Rendered raw, that href 404s: there is no .md route in the SPA. The slug is
+ * exactly what LearnPage's `?lesson=<slug>` deep link already consumes, so the
+ * link is rewritten to stay inside the app instead of leaving it.
+ *
+ * There are 344 of these across the 67 lessons (scripts/render-b5-check.mts
+ * verifies every one of them resolves to a real file), so this is the
+ * difference between the curriculum being a set of documents and being a
+ * navigable one.
+ */
+const CROSS_LESSON_LINK = /^(\d{2}_[a-z0-9_]+)\.md$/i;
+
+const EXTERNAL = /^https?:\/\//i;
+
+type AnchorProps = React.ComponentPropsWithoutRef<"a"> & { node?: unknown };
+
+function SmartLink({ href, children, node: _node, ...rest }: AnchorProps) {
+  // Always called: this is what lets the component render under the Node
+  // harnesses, which have no Router mounted.
+  const inRouter = useInRouterContext();
+  const slug = href ? CROSS_LESSON_LINK.exec(href)?.[1] : undefined;
+
+  if (slug) {
+    // A search-only `to` keeps the current pathname, so the link works from
+    // /learn without this component needing to know where it is mounted.
+    return inRouter ? (
+      <Link to={`?lesson=${slug}`} {...rest}>
+        {children}
+      </Link>
+    ) : (
+      <a href={`?lesson=${slug}`} {...rest}>
+        {children}
+      </a>
+    );
+  }
+
+  // Leaving the app on an unannounced new tab is its own small betrayal, so
+  // off-site links say what they do and lock down window.opener.
+  if (href && EXTERNAL.test(href)) {
+    return (
+      <a href={href} target="_blank" rel="noopener noreferrer" {...rest}>
+        {children}
+      </a>
+    );
+  }
+
+  return (
+    <a href={href} {...rest}>
+      {children}
+    </a>
+  );
+}
+
 export function Markdown({ children }: { children: string }) {
   return (
     <div className={STYLES}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm, remarkMath]}
         rehypePlugins={[[rehypeKatex, { throwOnError: false, strict: false }]]}
-        components={{ code: CodeBlock }}
+        components={{ code: CodeBlock, a: SmartLink }}
       >
         {children}
       </ReactMarkdown>

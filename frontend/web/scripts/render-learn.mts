@@ -105,7 +105,10 @@ function render(seed: Record<string, unknown> = {}): string {
     defaultOptions: { queries: { retry: false, gcTime: Infinity } },
   });
   client.setQueryData(["lessons"], seed.lessons ?? LESSONS);
-  for (const [slug, body] of Object.entries(BODIES)) {
+  // `bodies` lets a check substitute lesson content without editing the
+  // fixture, which is captured from a live API and should stay honest.
+  const bodies = (seed.bodies as Record<string, unknown>) ?? BODIES;
+  for (const [slug, body] of Object.entries(bodies)) {
     client.setQueryData(["lesson", slug], body);
   }
   return renderToString(
@@ -238,6 +241,44 @@ check(
   "a lesson with no demos gets no demo section",
   !text(noDemos).includes("Try it yourself"),
   "07_vqe_qaoa has none",
+);
+
+/* ---------- cross-lesson links actually go somewhere ---------- */
+
+// Lessons reference each other by bare filename ("see 02_gates.md"). There are
+// 344 of these and no .md route exists, so rendered literally they are dead
+// ends. They must be rewritten to the ?lesson=<slug> deep link the page
+// already reads. The fixture carries none, so the body is substituted here.
+const linked = render({
+  bodies: {
+    [FIRST.slug]: {
+      ...BODIES[FIRST.slug],
+      content: [
+        "See [single-qubit gates](02_gates.md) first.",
+        "",
+        "Then the [Qiskit docs](https://example.com/qiskit).",
+      ].join("\n"),
+    },
+  },
+});
+check(
+  "a cross-lesson .md link becomes an in-app ?lesson= link",
+  linked.includes("?lesson=02_gates"),
+  "344 of these across /content",
+);
+check(
+  "it no longer points at a .md file that has no route",
+  !linked.includes('href="02_gates.md"'),
+);
+check(
+  "the link text survives the rewrite",
+  text(linked).includes("single-qubit gates"),
+);
+check(
+  "an external link opens in a new tab, safely",
+  /href="https:\/\/example\.com\/qiskit"/.test(linked) &&
+    linked.includes('target="_blank"') &&
+    linked.includes('rel="noopener noreferrer"'),
 );
 
 /* ---------- the empty state ---------- */
