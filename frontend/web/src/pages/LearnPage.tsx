@@ -38,12 +38,30 @@ export function LearnPage() {
 
   const lessons = useQuery({ queryKey: ["lessons"], queryFn: listLessons, staleTime: 5 * 60_000 });
 
+  // The lesson the URL asks for, if it exists at all — resolved from the full
+  // list, before any track filter is applied.
+  const requested = useMemo(() => {
+    const all = lessons.data ?? [];
+    return lessonFromUrl ? (all.find((l) => l.slug === lessonFromUrl) ?? null) : null;
+  }, [lessons.data, lessonFromUrl]);
+
   const visible = useMemo(() => {
     const all = lessons.data ?? [];
     if (track === "All") return all;
     const wanted = track.toLowerCase();
-    return all.filter((l) => (l.track || "theory") === wanted);
-  }, [lessons.data, track]);
+    const filtered = all.filter((l) => (l.track || "theory") === wanted);
+    // A deep link names one lesson and means that lesson. Eight references in
+    // /content cross the track boundary (11_bell_states[circuit] ->
+    // 03_entanglement[theory], and similar), so a strict filter would hide the
+    // very lesson the link asked for and `current` would quietly fall back to
+    // a different one. Surface the requested lesson instead: the reader asked
+    // for it by name, and silently showing another is worse than a list that
+    // contains one entry outside the filter.
+    if (requested && !filtered.some((l) => l.slug === requested.slug)) {
+      return [requested, ...filtered];
+    }
+    return filtered;
+  }, [lessons.data, track, requested]);
 
   // Derived, not stored: a selected lesson that is not in the visible track
   // (or none selected yet) falls back to the first one. Keeping this out of an

@@ -115,7 +115,11 @@ function render(seed: Record<string, unknown> = {}): string {
     createElement(
       QueryClientProvider,
       { client },
-      createElement(MemoryRouter, { initialEntries: ["/learn"] }, createElement(LearnPage)),
+      createElement(
+        MemoryRouter,
+        { initialEntries: [(seed.url as string) ?? "/learn"] },
+        createElement(LearnPage),
+      ),
     ),
   );
 }
@@ -279,6 +283,35 @@ check(
   /href="https:\/\/example\.com\/qiskit"/.test(linked) &&
     linked.includes('target="_blank"') &&
     linked.includes('rel="noopener noreferrer"'),
+);
+
+/* ---------- a deep link actually opens the lesson it names ---------- */
+
+// ?lesson=<slug> is what every cross-lesson reference now produces, so it has
+// to win over the default of showing the first lesson in the list.
+// The router consumes ?lesson= without echoing it into the markup, so the
+// observable effect — which lesson's heading is rendered — is what is asserted.
+const openTitle = (html: string): string | null =>
+  /<h2[^>]*>([^<]*)<\/h2>/.exec(html)?.[1]?.trim() ?? null;
+
+const TARGET = LESSONS.find((l) => l.slug === "03_entanglement") ?? LESSONS[2];
+check(
+  "with no deep link it opens the first lesson",
+  openTitle(html) === FIRST.title,
+  `h2 = "${openTitle(html)}"`,
+);
+const deepLinked = render({ url: `/learn?lesson=${TARGET.slug}` });
+check(
+  "a ?lesson= deep link opens that lesson, not the first in the list",
+  TARGET.slug !== FIRST.slug && openTitle(deepLinked) === TARGET.title,
+  `h2 = "${openTitle(deepLinked)}" (wanted "${TARGET.title}")`,
+);
+check(
+  "an unknown ?lesson= slug falls back to a real lesson rather than blanking",
+  (() => {
+    const bogus = render({ url: "/learn?lesson=99_no_such_lesson" });
+    return bogus.length > 3000 && !text(bogus).includes("99_no_such_lesson");
+  })(),
 );
 
 /* ---------- the empty state ---------- */
