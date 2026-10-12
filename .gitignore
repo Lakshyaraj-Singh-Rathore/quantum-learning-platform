@@ -14,3 +14,14 @@ frontend/circuit_composer/frontend/build/
 frontend/circuit_composer/frontend/dist/
 node_modules/
 venv/
+
+# Local runtime state — never commit: dev.db holds real user rows,
+# password hashes and chat history.
+*.db
+dev.db
+
+# Editor/agent device profiles (not project data).
+devices.json
+
+# Captured screenshots — regenerate locally, do not version them.
+reports/screenshots/
