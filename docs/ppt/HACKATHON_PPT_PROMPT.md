@@ -183,7 +183,7 @@ honest answer in the notes.
 | Backend tests | **707 passed / 5 skipped** (419 test functions, 32 files) |
 | Frontend | **16 harness scripts** → **389 named checks** |
 | Golden values | **4,300** compared against NumPy at **1e-9** |
-| Endpoints | **39** across **7** routers |
+| Endpoints | **41** across **7** routers |
 | Database | **14 tables**, 8 Alembic migrations, one linear head |
 | Backends | **6 adapters** (Aer, Cirq, PennyLane, dynamic Qiskit, qBraid, CUDA-Q) |
 | Gates | **15 base** + **11 controlled aliases** |

@@ -20,7 +20,7 @@ everything not yet built is labelled ROADMAP.
 | `frontend/lib/viz.py`, phase colour | File deleted; **feature ported** to `ResultsViews.tsx:235` — `hsl(phase × 180/π, 65%, 55%)` |
 | 519 frontend tests | **389 named checks** across 16 harnesses + **4,300 golden values** @1e-9 |
 | 982+ tests total | Backend **707 passed / 5 skipped** (419 test functions) + the above |
-| 41 endpoints | **39** route decorators across 7 routers |
+| 41 endpoints | **41** operations across 7 routers |
 | Code Lab, 6 frameworks | **4**: Qiskit, Cirq, PennyLane, OpenQASM 3 |
 | "Streamlit + FastAPI + Celery" | FastAPI + Celery + **React SPA** |
 
@@ -123,7 +123,7 @@ There is **no simulation tool**. The AI can read circuits and results that are a
 
 - Every answer cites curriculum sources; the UI shows them
 - Retrieval: pgvector semantic search, with keyword fallback when embeddings are unavailable
-- Corpus: **67 lesson files ≈ 1,003,000 characters**, fence-aware chunker, ~800+ chunks
+- Corpus: **67 lesson files ≈ 1,003,000 characters**, fence-aware chunker, **1,008** chunks
 - Without an API key: retrieval falls back to keyword search, and Code Lab shows a yellow box — *"AI generation is unavailable — GEMINI_API_KEY is not set. Add it to .env and restart api container"* — wired with `aria-describedby`, so it is announced to screen readers rather than failing silently
 
 ---
@@ -260,10 +260,10 @@ Live diagnostics as you type. Static checks catch typos, blocked imports and a m
 **Agreement:** Bell 1000 shots seed 3 — Aer 489/511, Cirq 488/512, PennyLane 502/498. Worst divergence 0.025 at 8000 shots. Grover 2-qubit `11` at probability 1.000 on all three. Dynamic native vs Cirq driver within shot noise.
 
 **Scale:**
-- **39 endpoints** across 7 routers · **14 tables** · 8 Alembic migrations
+- **41 endpoints** across 7 routers · **14 tables** · 8 Alembic migrations
 - 15 base gates / 11 controlled aliases
 - 6 backends (5 static incl. CUDA-Q GPU, + 1 dynamic engine)
-- **67 lessons · 71 topics · 10 sections** · ~800+ RAG chunks
+- **67 lessons · 71 topics · 10 sections** · **1,008** RAG chunks
 - 6+ visualisation modes · 5 AI tools, zero of them a simulator
 - **Backend 707 passed / 5 skipped** · **frontend 389 named checks across 16 harnesses** · **4,300 golden values agreeing with numpy at 1e-9**
 
@@ -329,7 +329,7 @@ Plus a circuit-diff view comparing a student attempt against the reference, and 
 |---|---|
 | Backend tests | **707 passed / 5 skipped** (419 test functions, 32 files) |
 | Frontend harnesses | **16 scripts** → **389 named checks** + **4,300 golden values** @1e-9 |
-| Endpoints | **39** across 7 routers |
+| Endpoints | **41** across 7 routers |
 | Tables | **14**, 8 Alembic migrations, one linear head |
 | Backends | **6** adapters |
 | Gates | **15** base + **11** controlled aliases |
