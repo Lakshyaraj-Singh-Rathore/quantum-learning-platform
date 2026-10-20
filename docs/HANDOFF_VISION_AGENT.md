@@ -36,32 +36,45 @@ https://github.com/Lakshyaraj-Singh-Rathore/quantum-learning-platform
 - **Never** switch to, create, or push to any other branch.
 - **Never force-push.** Ever.
 
-### ⚠ Git topology — read this before your first push
+### ⚠ Work from `main` ONLY — user decision, 2026-10-20
 
-`main` is **a single orphan commit** (a squashed snapshot of the whole tree). It is
-**not** a lineage and does not contain the branch's history. The branch contains
-`main`'s content, not the reverse.
+**Push target is `origin HEAD:main`. Nothing else.** This supersedes every earlier
+instruction about keeping the branch and main in sync.
 
-Consequences:
+Why: `main` is an orphan root, so the branch and main can never be merged normally,
+and dual-target syncing required a fragile patch-and-apply dance. The user chose
+main-only to end that.
 
-- `git merge origin/main` → **fails** ("refusing to merge unrelated histories").
-- `git push origin HEAD:main` from the branch → **rejected** (non-fast-forward).
-- Both of these are *correct behaviour*. Do not "fix" them with `--force`.
+In practice:
 
-**To sync content between the two**, the working method is:
-```bash
-git diff --binary <main-snapshot> <branch-tip> > /tmp/sync.patch
-git apply --binary --3way /tmp/sync.patch
-```
-Ask the senior agent before doing this — it is easy to make a mess.
+- The local branch name still exists (the session harness tracks it) but is
+  **pointed at main's content**, with upstream set to `origin/main`, so plain
+  `git push` targets main.
+- Before pushing, confirm `git rev-parse HEAD` == `git rev-parse origin/main`.
+  If they differ, **stop and ask** — do not push.
+- `origin/arena/01a0d874-…` is stale at `da00136`. **Do not push to it, and do not
+  treat it as current.** Nothing was lost: main contains every file it had (zero
+  deletions across the switch).
+- `git merge origin/main` still fails ("refusing to merge unrelated histories").
+  That is correct — do not "fix" it with `--force`.
+- Dead branch `arena/01a0754d-…` (`9b106fd`): **do not delete** — never asked for.
 
-### Current heads
+### Git topology, for context
+
+`main` is **a single orphan commit** — a squashed snapshot of the whole tree, with no
+parent. It is not a lineage. Every push the user makes replaces it with a fresh
+orphan snapshot, so:
+
+- Verify `git fetch` shows a new tip before reviewing anything the user describes.
+- Do not assume commit-to-commit history exists on main.
+
+### Current head
 
 | Ref | Commit |
 |---|---|
-| branch `arena/01a0d874-…` | `f8d36bb` |
-| `main` | `d14d539` |
-| dead branch `arena/01a0754d-…` | `9b106fd` (**do not delete** — not asked for) |
+| `main` (= local HEAD) | `ca68d6e` — Qudit Lab / Noise Lab / Smart Composer + test list |
+| `origin/arena/01a0d874-…` | `da00136` — **stale, do not use** |
+| `arena/01a0754d-…` | `9b106fd` — dead, do not delete |
 
 ### Sandbox setup (deps are wiped on every reset)
 

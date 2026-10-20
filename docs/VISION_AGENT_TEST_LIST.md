@@ -64,6 +64,27 @@ They are T-A4 below. Treat any *other* failing script as a new defect.
 
 ## 1. Setup
 
+### ⚠ Work from `main` only — user decision, 2026-10-20
+
+**The branch `arena/01a0d874-…` is no longer a push target.** Push target is
+`origin HEAD:main` and nothing else.
+
+Background: `main` is an orphan root, so branch and main can never be merged
+normally, and keeping both in sync required a fragile patch-and-apply dance. On
+2026-10-20 the user chose **main only**.
+
+What this means in practice:
+
+- The local branch name still exists (the session harness tracks it), but it is
+  **pointed at `main`'s content** and its upstream is `origin/main`, so plain
+  `git push` targets main.
+- Verify with `git rev-parse HEAD` and `git rev-parse origin/main` — they should
+  be equal. If they are not, **stop and ask**; do not push.
+- `origin/arena/01a0d874-…` is left at `da00136` and is now **stale — do not push
+  to it and do not read it as current.** Content-wise nothing was lost: main
+  contains every file the branch had (zero deletions across the switch).
+- Never force-push, and never push to the branch ref.
+
 ```bash
 cd /home/user/quantum-learning-platform
 git fetch --all --prune
@@ -73,6 +94,8 @@ python3 -m venv /home/user/.venv-ql
 /home/user/.venv-ql/bin/pip install -q -r backend/requirements.txt pytest
 cd frontend/web && npm install && node scripts/link-shared.mjs
 ```
+
+Push with: `git push origin HEAD:main`
 
 ```bash
 # API (SQLite; no Postgres/Redis needed for these paths)
