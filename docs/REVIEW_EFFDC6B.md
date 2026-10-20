@@ -215,7 +215,136 @@ strong evidence. The 12,671 should not be presented side by side with them as eq
 - `CHECKLIST_FOR_REVIEW.md`
 - Whether `PROJECT_OVERVIEW.md` figures still hold against these changes
 
-## 6. Carry-forward
+## 6. Verification of `c241f96` (the follow-up fix)
+
+Commit `c241f96` — "fix: align 20-qubit platform cap, fix a11y regressions, refresh
+test harnesses, clarify backend claims, and add genuine UI screenshots" — was verified
+on 2026-10-20.
+
+### 6.1 Qubit cap aligned to 20 ✅
+
+| Location | Before | After |
+|---|---|---|
+| `state/circuit.ts:115` (`setQubits`) | `Math.min(16, n)` | **`Math.min(20, n)`** |
+| `circuitSimulator.ts:111` (preview) | `Math.min(16, …)` | **`Math.min(20, …)`** |
+| `backend/app/config.py` | 15 / 20 / 28 | unchanged (15 / 20 / 28) |
+
+UI and backend now agree at the static ceiling of 20. `CHECKLIST_FOR_REVIEW.md` was
+corrected from "up to 16 qubits" to "up to 20 qubits", and now cites
+`config.py:max_static_qubits = 20` as the reason.
+
+### 6.2 Accessibility fixed ✅
+
+`ui.tsx` gained an `aria-label` prop on the Select primitive (`:203`, `:204`, `:214`),
+**and** the callers use it: `ComposerPage.tsx:686` `"Simulation backend"`,
+`:702` `"Simulation shots"`.
+
+`npm run a11y` → **"0 a11y criticals across every page."**
+
+One caveat: the harness now prints a self-declared exemption —
+
+> Known gap (not counted as critical): the composer palette tiles are draggable
+> `<div>`s with no button role and no keyboard path.
+
+That is the same gap I reported earlier, still open, and now explicitly excluded from
+the critical count rather than fixed. It is in the web SPA's `ComposerPage` palette; the
+separate `circuit_composer/frontend/src/Composer.tsx` grid *was* fixed earlier.
+
+### 6.3 Backend claims corrected — and a correction to my own review ✅
+
+`openqasm3` **was** registered by `effdc6b` after all — at `jobs.py:61-62`, labelled
+`"OpenQASM 3.0 (Qiskit Aer)"`. I missed it because I grepped only `backends/`, not
+`jobs.py`. I stated "no such backend exists"; the accurate statement is that it was
+**not a real adapter — it was Qiskit Aer rebadged under a second name**, which inflated
+the six-backend catalogue to seven.
+
+`c241f96` removes it: `STATIC_BACKENDS` is back to
+`["qiskit_aer", "cirq", "pennylane", "qbraid"]`, and the checklist section was retitled
+from "OpenQASM 3.0 Added to Simulation Backends" to "OpenQASM 3.0 Circuit Export,
+Codegen & Live Authoring", now explicitly noting the "one IR → six backends"
+architecture is preserved. Both the code and the docs now match.
+
+### 6.4 Screenshots are genuine ✅
+
+10 PNGs, all **1600×1100**, 2.0 MB total, no longer gitignored, produced by
+`scripts/ui_screenshots.py` driving Playwright against the real preview server
+(`http://localhost:4173`) with `full_page=True`. Verified as valid PNGs with real
+content entropy (not blank/error pages). This closes the screenshot blocker.
+
+*I could not visually inspect the images — no vision in this session — so "genuine"
+here means programmatically verified as real full-page captures of the running app,
+not confirmed as visually correct.*
+
+Minor: `01_home.png` and `01_landing.png` are both captured from `/login` and are
+near-identical in size (269,846 / 269,540 bytes) — likely redundant.
+
+### 6.5 Harnesses: 235→283 PASS, 75→57 FAIL — partially fixed ⚠
+
+Seven of the failing scripts were refreshed and now pass:
+
+| Script | Before | After |
+|---|---|---|
+| curriculum-check | 21 / 8 | **29 / 0** |
+| render-learn | 28 / 9 | **37 / 0** |
+| render-check | 22 / 6 | **24 / 0** |
+| a11y-check | 7 / 1 | **8 / 0** |
+| states-check | 30 / 1 | **31 / 0** |
+| render-composer | 34 / 2 | **36 / 0** |
+| render-playground | 9 / 11 | **20 / 0** |
+
+**Four scripts were not refreshed and still fail (57 failures):**
+
+| Script | Pass / Fail |
+|---|---|
+| render-games | 12 / 20 |
+| render-p5 | 14 / 20 |
+| render-codelab | 6 / 9 |
+| render-results | 39 / 8 |
+
+I checked these individually and they are the **same stale-copy category**, not dropped
+features. Two worked examples:
+
+- `render-games.mts:139` asserts the text `"🎯 Objective"`; the app renders
+  `"Level Objective"` (`GamesPage.tsx:420`). Same feature, new wording.
+- `render-p5.mts:135` asserts `"Submit answers"`; the app uses
+  `"Submit Assignment for Real-Time Evaluation"` (`ChallengesPage.tsx:492`).
+
+Likewise `render-results` fails "histogram offers the phase-colour toggle" even though
+phase-colour is confirmed present at `ResultsViews.tsx:314/378/425`.
+
+**Recommendation:** refresh these four the same way — update expected strings to the
+new copy. Do not change the app to satisfy them.
+
+### 6.6 New finding: 20-qubit preview is ~1000× slower than documented (S2) ⚠
+
+Raising the preview cap 16→20 makes it `2**20 = 1,048,576` amplitudes. Measured:
+
+| Qubits | Preview time |
+|---|---|
+| 16 | 87.8 ms |
+| 18 | 221.4 ms |
+| **20** | **1018.0 ms** |
+
+The code comment says *"Real-time Analytical Statevector Simulation (< 1ms)"* and the
+UI labels it **"Live Analytical Preview"**. At 20 qubits it is **1.0 second**, and
+`ComposerPage.tsx:108` runs it **synchronously inside `useMemo` on every circuit
+edit** — so each gate change on a 20-qubit circuit blocks the main thread for ~1 s.
+
+The numerics are correct (a Bell circuit correctly reports 2 occupied basis states at
+every size); this is purely a performance/UX defect, and it is a direct consequence of
+the cap change. Options: keep the 20-qubit *build* cap but cap the *live preview*
+lower with a visible notice, or move it off the main thread.
+
+### 6.7 No regressions ✅
+
+| Gate | Result |
+|---|---|
+| Backend pytest | **708 passed, 5 skipped** (unchanged) |
+| Typecheck | **exit 0** |
+| `vite build` | **PASS** (index 598.71 kB / gzip 179.94) |
+| Golden numerics vs numpy | **4,300 values PASS @1e-9** (190 + 804 + 3306) |
+
+## 7. Carry-forward
 
 CUDA-Q GPU availability still unverified (sandbox has no GPU). The Noise-Lab +
 Smart-Composer plan verdict remains deferred at the user's request. The screenshot
