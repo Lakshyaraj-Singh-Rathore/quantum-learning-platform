@@ -29,6 +29,3 @@ devices.json
 artifacts/
 scratch/
 problem screenshot/
-
-# Captured screenshots — regenerate locally, do not version them.
-reports/screenshots/

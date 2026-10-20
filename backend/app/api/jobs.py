@@ -58,13 +58,6 @@ def list_backends() -> dict[str, Any]:
                 "reason": "",
             },
             {
-                "id": "openqasm3",
-                "label": "OpenQASM 3.0 (Qiskit Aer)",
-                "supports": ["static"],
-                "available": True,
-                "reason": "",
-            },
-            {
                 "id": "cirq",
                 "label": "Cirq",
                 "supports": ["static"],

@@ -108,7 +108,7 @@ function getParamGate(gateName: string, paramVal: number): Matrix2 {
 }
 
 export function simulateCircuit(ir: CircuitIR): RunResult {
-  const n = Math.max(1, Math.min(16, ir.n_qubits));
+  const n = Math.max(1, Math.min(20, ir.n_qubits));
   const dim = 1 << n;
   let state: Complex[] = Array.from({ length: dim }, (_, i) => (i === 0 ? cx(1, 0) : cx(0, 0)));
 

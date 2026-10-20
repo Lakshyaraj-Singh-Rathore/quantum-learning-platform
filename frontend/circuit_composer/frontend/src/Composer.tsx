@@ -979,7 +979,7 @@ function renderPaletteLabel(label: string) {
                 let nextIdx = ir.n_qubits;
                 update((prev) => {
                   nextIdx = prev.n_qubits;
-                  const nq = Math.min(prev.n_qubits + 1, 16);
+                  const nq = Math.min(prev.n_qubits + 1, 20);
                   return {
                     ...prev,
                     n_qubits: nq,
@@ -1091,8 +1091,8 @@ function renderPaletteLabel(label: string) {
               onClick={() =>
                 update((prev) => ({
                   ...prev,
-                  n_qubits: Math.min(prev.n_qubits + 1, 16),
-                  n_clbits: Math.max(prev.n_clbits, Math.min(prev.n_qubits + 1, 16)),
+                  n_qubits: Math.min(prev.n_qubits + 1, 20),
+                  n_clbits: Math.max(prev.n_clbits, Math.min(prev.n_qubits + 1, 20)),
                 }))
               }
             >

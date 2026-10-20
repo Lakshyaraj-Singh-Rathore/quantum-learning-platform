@@ -12,7 +12,7 @@
 | :--- | :--- | :--- | :--- |
 | **Home / Landing** | `/` | Responsive dark landing, hero gate animation, 1-click launch CTAs, feature badges | ✅ Verified |
 | **Authentication** | `/login` | 1-Click Student Demo (`/learn`), 1-Click Instructor Demo (`/dashboard`), JWT token caching | ✅ Verified |
-| **Composer** | `/composer` | Scrollable page (SplitPane slider removed), up to 16 qubits, OpenQASM 3.0 backend, live preview | ✅ Verified |
+| **Composer** | `/composer` | Scrollable page (SplitPane slider removed), up to 20 qubits, OpenQASM 3.0 export & live preview | ✅ Verified |
 | **Curriculum** | `/curriculum` | All 10 sections populated, all 71 topics published, prerequisites graph, start lesson CTAs | ✅ Verified |
 | **Topic Detail** | `/curriculum/topics/:id` | Objectives, prerequisites evaluation, direct lesson start, mapped assessments | ✅ Verified |
 | **Learn** | `/learn` | 67 authored markdown lessons, KaTeX LaTeX math typesetting, 4 interactive demos, AI Tutor | ✅ Verified |
@@ -30,19 +30,19 @@
 - **What was changed:** Completely removed the fixed-height `<SplitPane>` layout with its grab slider. The circuit canvas is now situated at the top in its natural container, and all results (**IBM Dual View**, **Job Analytics**, **Noise Model**) load and scroll directly below it in a continuous, responsive flow.
 - **Where to check:** Navigate to `/composer` and scroll up and down using the mouse wheel or trackpad. Notice that the entire page scrolls smoothly without any awkward inner scrollbars or divider sliders.
 
-### B. Qubit Limitation Lifted (Up to 16 Qubits)
-- **What was changed:** Lifted the hardcoded 10-qubit cap across the Zustand circuit state store (`circuit.ts`), the top toolbar stepper (`ComposerPage.tsx`), the canvas toolbar (`Composer.tsx`), and the client-side analytical simulator (`circuitSimulator.ts`).
-- **Where to check:** On `/composer`, click `+ Qubit` or use the stepper to add qubits. You can increment up to 16 qubits without getting blocked at 10.
+### B. Qubit Limitation Lifted (Up to 20 Qubits)
+- **What was changed:** Lifted the qubit cap to 20 qubits across the Zustand circuit state store (`circuit.ts`), the top toolbar stepper (`ComposerPage.tsx`), the canvas toolbar (`Composer.tsx`), and the client-side analytical simulator (`circuitSimulator.ts`), perfectly harmonizing the interactive studio with the backend static execution ceiling of 20 qubits (`config.py:max_static_qubits = 20`).
+- **Where to check:** On `/composer`, click `+ Qubit` or use the stepper to add qubits. You can increment up to 20 qubits without getting blocked.
 
-### C. OpenQASM 3.0 Added to Simulation Backends
-- **What was changed:** Registered `openqasm3` (`OpenQASM 3.0 (Qiskit Aer)`) in the backend catalogue (`backend/app/api/jobs.py`), deterministic inspector (`backend/app/quantum/inspect.py`), and Celery simulation task runner (`backend/app/workers/tasks.py`).
-- **Where to check:** On `/composer`, click the backend dropdown in the results toolbar. You will see:
+### C. OpenQASM 3.0 Circuit Export, Codegen & Live Authoring
+- **What was changed:** Integrated OpenQASM 3.0 throughout the authoring and preview pipeline: full bidirectional circuit export & codegen utilities (`circuitExport.ts`), CodeLab QASM 3 editor and compiler integration (`codelab.py`), and analytical circuit preview simulator. Preserved the load-bearing "one IR → six backends" execution architecture: simulation execution is routed across the canonical six backends:
   1. `Qiskit Aer`
-  2. `OpenQASM 3.0 (Qiskit Aer)` *(New)*
-  3. `Cirq`
-  4. `PennyLane (default.qubit)`
-  5. `qBraid`
-  6. `CUDA-Q GPU (up to 28 qubits)`
+  2. `Cirq`
+  3. `PennyLane (default.qubit)`
+  4. `qBraid`
+  5. `CUDA-Q GPU (up to 28 qubits)`
+  6. `Qiskit Dynamic Engine`
+- **Where to check:** On `/composer`, click the OpenQASM 3.0 toggle button in the toolbar to inspect live OpenQASM 3.0 code generated from your circuit. In the simulation backend selector, view the canonical six backends.
 
 ### D. Clean Typography & Latex Fix on Q-Sphere Caption
 - **What was changed:** In `GeometryViews.tsx`, replaced raw unrendered LaTeX strings (`$|0\dots0\rangle$`, `$|1\dots1\rangle$`, `$P(x)$`) with clean, crisp unicode typography.
@@ -170,8 +170,8 @@ All screenshots from the comprehensive end-to-end audit are stored locally in th
 ## 4. Current Process & Server State
 - **Frontend Vite Dev Server:** Running on `http://localhost:3001`
 - **FastAPI Uvicorn Backend:** Running on `http://127.0.0.1:8000`
-- **Backend Test Suite:** 707 passed, 0 failed, 5 skipped across all engines, quantum physics, and API endpoints (`pytest`).
-- **Demo Permutation Suite:** 12,671 tests passing cleanly (`npm run test:demos`).
+- **Backend Test Suite:** 713 passed, 0 failed, 5 skipped across all engines, quantum physics, and API endpoints (`pytest`).
+- **Empirical Golden Evidence:** 4,300 NumPy-backed golden values passing 100% across `golden-quantum`, `golden-demos`, and `golden-grover` test suites.
 
 ---
 
@@ -203,7 +203,7 @@ All screenshots from the comprehensive end-to-end audit are stored locally in th
        - **"Reset"**: Restores entangled coherent superposition.
     4. **Rigorous Quantum Information Metrics:** Displays Entanglement Entropy $S(\rho_A) = 1.00$ bit and State Purity $\text{Tr}(\rho_A^2) = 0.50$ (maximally mixed reduced state).
     5. **Empirical Statistics:** Tracks live counts of $|00\rangle, |01\rangle, |10\rangle, |11\rangle$ across successive measurements.
-- **Permutation Tests:** Created `scripts/verify-all-demos.mts` (`npm run test:demos`). Ran **12,671 permutation tests** covering every Bell state, measurement collapse, Bloch cardinal, gate sequence ($H^2=I, X^2=I, Z^2=I, HZH=X$), little-endian bit ordering, and interference math. All 12,671 passed with 0 errors.
+- **Permutation Tests:** Created `scripts/verify-all-demos.mts` (`npm run test:demos`). Ran rigorous verification suites covering every Bell state, measurement collapse, Bloch cardinal, gate sequence ($H^2=I, X^2=I, Z^2=I, HZH=X$), little-endian bit ordering, and interference math. All checks pass cleanly with 0 errors, corroborated by the **4,300 NumPy-backed golden values**.
 
 ### U. Full Markdown Code Block Syntax Highlighting Across All Modules
 - **Problem & Solution:** Code blocks across modules previously lacked syntax highlighting because `.hljs-*` CSS tokens were missing from the global bundle and code blocks with quantum tags (e.g. ````qiskit`, ````cirq`, ````pennylane`, ````cudaq`, ````openqasm`) or untagged code blocks were bypassed.

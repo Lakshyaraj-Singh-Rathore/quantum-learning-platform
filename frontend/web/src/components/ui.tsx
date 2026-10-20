@@ -200,6 +200,8 @@ export function Select({
   placeholder = "Select...",
   disabled = false,
   className,
+  "aria-label": ariaLabel,
+  ariaLabel: ariaLabelProp,
   children,
 }: {
   value?: string;
@@ -209,8 +211,13 @@ export function Select({
   placeholder?: string;
   disabled?: boolean;
   className?: string;
+  "aria-label"?: string;
+  ariaLabel?: string;
   children?: ReactNode;
 }) {
+  const effectiveAriaLabel =
+    ariaLabel || ariaLabelProp || (placeholder && placeholder !== "Select..." ? placeholder : "Select option");
+
   return (
     <SelectPrimitive.Root
       value={value}
@@ -219,6 +226,7 @@ export function Select({
       disabled={disabled}
     >
       <SelectPrimitive.Trigger
+        aria-label={effectiveAriaLabel}
         className={cn(
           "inline-flex h-9 w-full items-center justify-between gap-2 rounded-xl border border-line bg-raised/80 backdrop-blur-md px-3 text-xs sm:text-sm text-ink",
           "hover:border-white/20 focus:outline-none focus:border-line-focus focus:ring-2 focus:ring-line-focus/25 disabled:opacity-40 transition-all cursor-pointer shadow-xs",

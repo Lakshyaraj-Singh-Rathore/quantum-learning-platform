@@ -25,8 +25,9 @@
  */
 import { existsSync } from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
-const BASE_DIR = path.resolve(new URL("..", import.meta.url).pathname);
+const BASE_DIR = fileURLToPath(new URL("..", import.meta.url));
 
 let failures = 0;
 function check(name: string, ok: boolean, detail = "") {

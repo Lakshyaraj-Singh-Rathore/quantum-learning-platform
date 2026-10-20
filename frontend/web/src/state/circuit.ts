@@ -112,7 +112,7 @@ export const useCircuit = create<CircuitState>()((set) => ({
     })),
   setQubits: (n: number) =>
     set((state) => {
-      const validN = Math.max(1, Math.min(16, n));
+      const validN = Math.max(1, Math.min(20, n));
       // filter out operations on qubits >= validN
       const validOps = state.ir.ops.filter(
         (op) =>

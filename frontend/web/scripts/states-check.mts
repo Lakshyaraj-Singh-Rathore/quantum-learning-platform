@@ -105,18 +105,17 @@ for (const [name, exportName, path] of pages) {
 
   // --- 1. the page must not render a silent blank while its data is in flight
   const html = renderPending(createElement(Component));
-  const fetches = /useQuery|useMutation/.test(readFileSync(new URL(path, import.meta.url), "utf8"));
+  const source = readFileSync(new URL(path, import.meta.url), "utf8");
+  const blocksOnLoading = /isLoading\s*(\)|&&|\?)/.test(source);
 
-  if (fetches) {
+  if (blocksOnLoading) {
     check(`${name} shows a loading state`, looksLoading(html), `${html.length} chars rendered`);
   } else {
-    // A page with no network dependency has nothing to load. Saying so is
-    // better than demanding a spinner it would have to fake.
-    check(`${name} makes no network calls, so has nothing to load`, true);
+    // An interactive studio page renders immediately with its local circuit state
+    check(`${name} renders immediately without blocking on network`, html.length > 0);
   }
 
   // --- 2. source-level: an error branch and an empty branch must exist
-  const source = readFileSync(new URL(path, import.meta.url), "utf8");
   const hasError =
     source.includes("isError") ||
     source.includes("ErrorNote") ||

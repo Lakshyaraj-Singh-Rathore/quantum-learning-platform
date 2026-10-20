@@ -42,29 +42,25 @@ for (const id of bellKeys) {
     (id.includes("minus") && cfg.phaseDeg === 180) || (id.includes("plus") && cfg.phaseDeg === 0)
   );
 
-  // Run 1000 simulated measurement trials of Qubit A
-  for (let trial = 0; trial < 1000; trial++) {
-    const a = Math.random() < 0.5 ? 0 : 1;
+  // Exact deterministic correlation assertions for both outcomes of Qubit A
+  for (const a of [0, 1]) {
     const b = cfg.correlation === "identical" ? a : 1 - a;
-
     if (cfg.correlation === "identical") {
-      assert(`Trial ${trial} for ${id}: Alice=${a} implies Bob=${b}`, a === b);
-      assert(`State is either |00> or |11>`, (a === 0 && b === 0) || (a === 1 && b === 1));
+      assert(`Measurement of Alice=${a} collapses Bob to identical state ${b}`, a === b);
+      assert(`Basis state is |${a}${b}⟩`, (a === 0 && b === 0) || (a === 1 && b === 1));
     } else {
-      assert(`Trial ${trial} for ${id}: Alice=${a} implies Bob=${b}`, a !== b);
-      assert(`State is either |01> or |10>`, (a === 0 && b === 1) || (a === 1 && b === 0));
+      assert(`Measurement of Alice=${a} collapses Bob to opposite state ${b}`, a !== b);
+      assert(`Basis state is |${a}${b}⟩`, (a === 0 && b === 1) || (a === 1 && b === 0));
     }
   }
 
-  // Run 1000 simulated measurement trials of Qubit B
-  for (let trial = 0; trial < 1000; trial++) {
-    const b = Math.random() < 0.5 ? 0 : 1;
+  // Exact deterministic correlation assertions for both outcomes of Qubit B
+  for (const b of [0, 1]) {
     const a = cfg.correlation === "identical" ? b : 1 - b;
-
     if (cfg.correlation === "identical") {
-      assert(`Trial B ${trial} for ${id}: Bob=${b} implies Alice=${a}`, a === b);
+      assert(`Measurement of Bob=${b} collapses Alice to identical state ${a}`, a === b);
     } else {
-      assert(`Trial B ${trial} for ${id}: Bob=${b} implies Alice=${a}`, a !== b);
+      assert(`Measurement of Bob=${b} collapses Alice to opposite state ${a}`, a !== b);
     }
   }
 }
@@ -116,10 +112,12 @@ for (const [name, [theta, phi]] of Object.entries(LANDMARKS)) {
 
 // 4. Permutation Tests for Exponential State Space (2^n)
 console.log("\n=== 4. Exponential State Space Tests ===");
+let prevStates = 1;
 for (let n = 1; n <= 30; n++) {
   const states = 2 ** n;
   const memoryMB = (states * 16) / 1e6;
-  assert(`State space for n=${n} is strictly positive and doubles each step`, states === 2 ** n && memoryMB > 0);
+  assert(`State space for n=${n} strictly doubles preceding dimension (prev=${prevStates})`, states === prevStates * 2 && memoryMB > 0);
+  prevStates = states;
 }
 const rows = stateSpaceRows(20);
 assert("stateSpaceRows generates 20 rows", rows.length === 20);

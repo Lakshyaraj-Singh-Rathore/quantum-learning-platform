@@ -1186,10 +1186,10 @@ function CircuitLab() {
 
       <div className="rounded-lg border border-line-soft bg-raised/40 p-3.5 text-xs text-ink-2 space-y-2">
         <p className="leading-relaxed">
-          The circuit builder is maintained in our dedicated full-page <strong>Composer</strong> studio to ensure unconstrained viewport space for up to 16 qubits, drag-and-drop operations, multi-qubit controls, and live 3D Bloch & Q-Sphere visualizations without layout clipping.
+          The circuit builder is maintained in our dedicated full-page <strong>Composer</strong> studio to ensure unconstrained viewport space for up to 20 qubits, drag-and-drop operations, multi-qubit controls, and live 3D Bloch & Q-Sphere visualizations without layout clipping.
         </p>
         <p className="text-ink-3 leading-relaxed">
-          Circuits are synchronized across your session: anything you prepare here will automatically load on the Composer page ready to run on Qiskit Aer, OpenQASM 3.0, Cirq, PennyLane, or CUDA-Q.
+          Circuits are synchronized across your session: anything you prepare here will automatically load on the Composer page ready to run on Qiskit Aer, Cirq, PennyLane, qBraid, or CUDA-Q, or export as OpenQASM 3.0.
         </p>
       </div>
 

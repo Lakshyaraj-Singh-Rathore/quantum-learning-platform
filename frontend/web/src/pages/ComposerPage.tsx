@@ -325,6 +325,7 @@ export function ComposerPage() {
             onChange={(e) => setCircuitName(e.target.value)}
             className="h-8 w-44 font-semibold text-xs border-line bg-bg focus:w-56 transition-all"
             placeholder="Circuit Name"
+            aria-label="Circuit Name"
           />
 
           {/* Qubit Count Stepper */}
@@ -334,6 +335,7 @@ export function ComposerPage() {
               disabled={ir.n_qubits <= 1}
               className="p-1 text-ink-3 hover:text-ink disabled:opacity-30 rounded-md transition-colors"
               title="Decrease qubits"
+              aria-label="Decrease qubits"
             >
               <Minus className="h-3.5 w-3.5" />
             </button>
@@ -342,9 +344,10 @@ export function ComposerPage() {
             </span>
             <button
               onClick={() => setQubits(ir.n_qubits + 1)}
-              disabled={ir.n_qubits >= 16}
+              disabled={ir.n_qubits >= 20}
               className="p-1 text-ink-3 hover:text-ink disabled:opacity-30 rounded-md transition-colors"
               title="Increase qubits"
+              aria-label="Increase qubits"
             >
               <Plus className="h-3.5 w-3.5" />
             </button>
@@ -680,6 +683,7 @@ export function ComposerPage() {
                   <Select
                     value={backendId}
                     onValueChange={setBackendId}
+                    aria-label="Simulation backend"
                     className="h-8 text-xs bg-raised"
                   >
                     {options.map((b) => (
@@ -695,6 +699,7 @@ export function ComposerPage() {
                   <Select
                     value={String(effectiveShots)}
                     onValueChange={(val) => setShots(Number(val))}
+                    aria-label="Simulation shots"
                     className="h-8 text-xs bg-raised"
                   >
                     {SHOT_CHOICES.filter((s) => s <= maxShots).map((s) => (

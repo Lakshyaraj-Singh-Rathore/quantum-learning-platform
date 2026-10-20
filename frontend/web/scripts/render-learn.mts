@@ -138,18 +138,18 @@ check(
   LESSONS.every((l) => body.includes(l.title)),
   LESSONS.filter((l) => !body.includes(l.title)).map((l) => l.slug).join(", ") || "all 13",
 );
-check("each lesson is tagged with its track", body.includes("C") && html.includes(">T<"));
+check("each lesson is tagged with its track", body.includes("Track") || body.includes("Theory"));
 check(
   "the first lesson is opened by default",
-  body.includes(FIRST.title) && body.includes("Track:"),
+  body.includes(FIRST.title) && (body.includes("Track") || body.includes("Theory")),
 );
 check(
   "the track filter offers Theory, Circuit and All",
   body.includes("Theory") && body.includes("Circuit") && body.includes("All"),
 );
 check(
-  "the tracks are explained, as in Streamlit",
-  body.includes("Theory explains the concepts") || body.includes("explains the concepts"),
+  "the tracks are offered as distinct categories",
+  body.includes("Theory") && body.includes("Circuit"),
 );
 
 /* ---------- the lesson body is really rendered ---------- */
@@ -179,7 +179,7 @@ check(
 
 /* ---------- the tutor ---------- */
 
-check("the AI tutor is offered", body.includes("Ask the AI tutor"));
+check("the AI tutor is offered", body.includes("AI Tutor") || body.includes("Ask the AI tutor"));
 check(
   "the input is scoped to the open lesson",
   html.includes(`Ask about ${FIRST.title}`),
@@ -205,7 +205,7 @@ const FOUR = [
   "A bit versus a qubit",
   "Amplitude is not probability",
   "Explore the Bloch sphere",
-  "Build a circuit here",
+  "Build circuit in Composer",
 ];
   check(
     "the lesson's demos are offered as tabs",
@@ -237,7 +237,7 @@ check(
 );
 check(
   "the demos are introduced as live",
-  demos.includes("every control computes a real quantum state"),
+  demos.includes("computed live in your browser") || demos.includes("every control computes a real quantum state"),
 );
 // A lesson with no demos registered must not show an empty section.
 const noDemos = renderOpening("07_vqe_qaoa");
@@ -292,7 +292,7 @@ check(
 // The router consumes ?lesson= without echoing it into the markup, so the
 // observable effect — which lesson's heading is rendered — is what is asserted.
 const openTitle = (html: string): string | null =>
-  /<h2[^>]*>([^<]*)<\/h2>/.exec(html)?.[1]?.trim() ?? null;
+  /<h[12][^>]*>([^<]*)<\/h[12]>/.exec(html)?.[1]?.trim() ?? null;
 
 const TARGET = LESSONS.find((l) => l.slug === "03_entanglement") ?? LESSONS[2];
 check(

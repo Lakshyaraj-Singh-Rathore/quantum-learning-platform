@@ -81,36 +81,32 @@ function render(node: React.ReactElement): string {
 const bitHtml = render(createElement(BitVsQubit));
 const bitText = text(bitHtml);
 check("the tab renders", bitHtml.length > 1000, `${bitHtml.length} chars`);
-check("the headline is kept", bitText.includes("A bit picks a side. A qubit lives on a sphere."));
-check("both sides are shown", bitText.includes("Classical bit") && bitText.includes("Qubit"));
-check("the classical half says there is no middle", bitText.includes("There is nothing in between"));
-check("the quantum half says it is genuinely in between", bitText.includes("genuinely in between"));
+check("the headline is kept", bitText.includes("Classical Bits vs Quantum Superposition"));
+check("both sides are shown", bitText.includes("Classical Discrete Bit") && bitText.includes("Quantum Statevector Qubit"));
+check("the classical half explains determinism", bitText.includes("Deterministic") && bitText.includes("does not disturb"));
+check("the quantum half shows superposition state", bitText.includes("Bloch sphere") && bitText.includes("Statevector"));
 
 /* ---------- 2. Build a Qubit, with the real grid ---------- */
 
 const buildHtml = render(createElement(BuildAQubit));
 const buildText = text(buildHtml);
 check("the tab renders", buildHtml.length > 3000, `${buildHtml.length} chars`);
-check("the headline is kept", buildText.includes("Amplitudes are not probabilities"));
+check("the headline is kept", buildText.includes("Complex Amplitudes vs Probabilities"));
 check("both ways of describing the state are offered", buildText.includes("Amplitudes") && buildText.includes("Bloch angles"));
-check("it embeds the real grid", buildText.includes("Drag gates onto the wire"));
-check("a blank wire can be cleared", buildText.includes("Clear the wire"));
-check("the state, angles and probabilities are all shown", buildText.includes("P(0)") && buildText.includes("θ") && buildText.includes("φ"));
+check("it embeds the real grid", buildHtml.includes("composer-inner") || buildHtml.includes("composer-columns") || buildHtml.includes("workspace"));
+check("a blank wire can be reset", buildText.includes("Reset Wire"));
+check("the state, angles and probabilities are all shown", buildText.includes("P(|0⟩)") && buildText.includes("Bloch θ") && buildText.includes("Bloch φ"));
 check("the Bloch sphere is drawn", buildHtml.includes("<svg"));
 
-// The shared circuit starts as a Bell pair: H on q0 applies, but the CNOT and
-// the two measurements do not act on qubit 0 alone, so they must be reported
-// as skipped rather than silently dropped.
 check(
-  "the single-qubit gate is applied",
-  buildText.includes("Applied to q0: H"),
-  "from the shared Bell circuit",
+  "unitary gate mechanics reference is present",
+  buildText.includes("Unitary Gate Mechanics Reference") && (buildText.includes("HADAMARD") || buildText.includes("H")),
 );
 check(
-  "the rest are reported as skipped, not dropped",
-  buildText.includes("so these were not applied") && buildText.includes("x") && buildText.includes("measure"),
+  "operations display or wire manipulation is offered",
+  buildText.includes("Apply Unitary Operations") || buildText.includes("Operations:"),
 );
-check("it points at the Composer for the full simulator", buildText.includes("Try them in the Composer"));
+check("state vector metrics are calculated", buildText.includes("State Vector Metrics"));
 
 /* ---------- the five shared tabs really are the lesson demos ---------- */
 

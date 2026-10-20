@@ -14,7 +14,7 @@ from app.config import get_settings
 from app.quantum.ir import CircuitIR, Op
 
 #: Backends able to run static circuits.
-STATIC_BACKENDS = ["qiskit_aer", "openqasm3", "cirq", "pennylane", "qbraid"]
+STATIC_BACKENDS = ["qiskit_aer", "cirq", "pennylane", "qbraid"]
 #: Only the Qiskit dynamic engine handles runtime control flow.
 DYNAMIC_BACKENDS = ["qiskit_dynamic"]
 

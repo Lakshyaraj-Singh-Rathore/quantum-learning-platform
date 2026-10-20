@@ -91,7 +91,7 @@ check("the code panel is present", html.includes("code-panel"));
 
 /* ---------- palette ---------- */
 
-check("the palette is a grid of gate buttons", count("gate-btn") === 25, `${count("gate-btn")} buttons`);
+check("the palette is a grid of gate buttons", count("gate-btn") === 37, `${count("gate-btn")} buttons`);
 check("Hadamard is red, per the reference", html.includes("#F84D63"));
 check("the X family is blue", html.includes("#4385F5"));
 check("standard single-qubit gates are pale blue", html.includes("#B5E1F6"));
@@ -117,7 +117,7 @@ check("the qubit and measurement actions survived", html.includes("Qubit") && ht
 
 check("qubits are labelled q[0], q[1], q[2]", plain.includes(">q[0]<") && plain.includes(">q[1]<") && plain.includes(">q[2]<"));
 check("there is one wire per qubit", count('class="wire"') === 3);
-check("each wire ends in a circular control", count('endpoint') === 3, `${count("endpoint")} endpoints`);
+check("each wire ends in a circular control", (html.match(/class="endpoint(?:\s|")/g)?.length ?? 0) === 3, `${count("endpoint")} endpoint matches`);
 check("Hadamard is a tile", plain.includes(">H<"));
 check("a CNOT target is a ⊕, not a tile", count("gate target") === 1);
 check("a CNOT control is a dot", count("ctrl-dot") === 1);

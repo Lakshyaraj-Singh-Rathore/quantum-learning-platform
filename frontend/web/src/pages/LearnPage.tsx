@@ -18,6 +18,7 @@ import { getLesson, listLessons, aiChat, type ChatTurn } from "../api/lessons";
 import { Badge, Button, ErrorNote, Input, Spinner, Textarea, cn } from "../components/ui";
 import { Markdown } from "../components/Markdown";
 import { DEMOS } from "../components/demos/Demos";
+import { NoLessonsIllustration } from "../components/illustrations/NoLessonsIllustration";
 
 type Track = "Theory" | "Circuit" | "All";
 const TRACKS: Track[] = ["All", "Theory", "Circuit"];
@@ -163,6 +164,18 @@ export function LearnPage() {
     return (
       <div className="p-8">
         <ErrorNote>{String(lessons.error)}</ErrorNote>
+      </div>
+    );
+  }
+
+  if (allLessons.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full p-8 text-center max-w-md mx-auto">
+        <NoLessonsIllustration className="w-36 h-28 mb-4 opacity-80" />
+        <h2 className="text-xl font-bold text-ink mb-2">No lessons are loaded yet</h2>
+        <p className="text-sm text-ink-3 leading-relaxed mb-4">
+          The curriculum loader searches <code className="font-mono text-xs bg-subtle px-1.5 py-0.5 rounded">/content/*.md</code> for authored markdown lessons.
+        </p>
       </div>
     );
   }
