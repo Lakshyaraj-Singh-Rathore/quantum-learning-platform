@@ -13,7 +13,6 @@ import {
   Plus,
   Minus,
   ChevronDown,
-  ChevronUp,
   ArrowRight,
   X,
   Code2,
@@ -42,7 +41,6 @@ import {
   cn,
   Badge,
   Button,
-  Card,
   ConfirmModal,
   Dialog,
   DialogContent,
@@ -52,7 +50,6 @@ import {
   DialogFooter,
   ErrorNote,
   Input,
-  Label,
   Select,
   SelectItem,
   Spinner,
@@ -60,9 +57,10 @@ import {
   toast,
 } from "../components/ui";
 import { ResultsPanel } from "../components/results/ResultsPanel";
+import { NoiseLabView } from "../components/noise/NoiseLabView";
+import { SmartComposerPanel } from "../components/smart_composer/SmartComposerPanel";
 
 const SHOT_CHOICES = [128, 256, 512, 1024, 2048, 4096, 8192];
-const NOISE_BACKENDS = new Set(["qiskit_aer", "cudaq"]);
 
 const DEFAULT_NOISE: NoiseIn = {
   enabled: false,
@@ -95,7 +93,7 @@ export function ComposerPage() {
 
   const [shots, setShots] = useState(1024);
   const [backendId, setBackendId] = useState<string>("qiskit_aer");
-  const [noise, setNoise] = useState<NoiseIn>(DEFAULT_NOISE);
+  const [noise] = useState<NoiseIn>(DEFAULT_NOISE);
   const [jobId, setJobId] = useState<number | null>(null);
   const [runSnapshot, setRunSnapshot] = useState<string | null>(null);
   const [ranQubits, setRanQubits] = useState<number | null>(null);
@@ -103,6 +101,7 @@ export function ComposerPage() {
 
   // IBM Quantum Platform Layout States
   const [showQasm, setShowQasm] = useState(false);
+  const [showSmartComposer, setShowSmartComposer] = useState(false);
   const [bottomView, setBottomView] = useState<"ibm_dual" | "advanced" | "noise">("ibm_dual");
 
   // Live analytical statevector preview. Capped at PREVIEW_MAX_QUBITS (12) —
@@ -378,6 +377,18 @@ export function ComposerPage() {
 
         {/* Right Toolbar Actions */}
         <div className="flex items-center gap-2">
+          {/* Smart Composer AI Studio Toggle */}
+          <Button
+            size="sm"
+            variant={showSmartComposer ? "secondary" : "ghost"}
+            onClick={() => setShowSmartComposer(!showSmartComposer)}
+            className="gap-1.5 text-xs font-medium text-purple-400 border border-purple-500/30 hover:bg-purple-500/10"
+            title="Smart Composer AI Studio: generate and simplify quantum circuits"
+          >
+            <Sparkles className="h-3.5 w-3.5 text-purple-400" />
+            <span>Smart Composer</span>
+          </Button>
+
           {/* OpenQASM 3 Live Panel Toggle */}
           <Button
             size="sm"
@@ -567,6 +578,20 @@ export function ComposerPage() {
       {/* Main Unified Scrollable Flow: Canvas on top, Results below */}
       <div className="flex-1 overflow-y-auto min-h-0 bg-bg">
         <div className="max-w-[1600px] mx-auto p-4 sm:p-6 space-y-6 w-full">
+          {/* Smart Composer AI Studio Panel */}
+          {showSmartComposer && (
+            <div className="animate-in fade-in slide-in-from-top-3 duration-200">
+              <SmartComposerPanel
+                currentIr={ir}
+                onAdoptCircuit={(newIr) => {
+                  setIr(newIr);
+                  toast.success("Adopted circuit into Composer!");
+                }}
+                onClose={() => setShowSmartComposer(false)}
+              />
+            </div>
+          )}
+
           {/* Top: Circuit Canvas & OpenQASM 3 Panel */}
           <div className="flex flex-col lg:flex-row gap-4">
             <div className="flex-1 min-w-0">
@@ -676,7 +701,7 @@ export function ComposerPage() {
                       bottomView === "noise" ? "bg-hover text-white shadow-xs" : "text-ink-3 hover:text-ink"
                     }`}
                   >
-                    Noise Model
+                    Noise Lab
                   </button>
                 </div>
               </div>
@@ -795,12 +820,8 @@ export function ComposerPage() {
               )}
 
               {bottomView === "noise" && (
-                <div className="max-w-2xl mx-auto space-y-4 py-4">
-                  <NoisePanelBasic
-                    noise={noise}
-                    onChange={setNoise}
-                    enabled={NOISE_BACKENDS.has(backendId)}
-                  />
+                <div className="space-y-4 py-2">
+                  <NoiseLabView circuitIr={ir} backendId={backendId} />
                 </div>
               )}
 
@@ -935,96 +956,5 @@ export function ComposerPage() {
         </DialogContent>
       </Dialog>
     </div>
-  );
-}
-
-/* -------------------------------------------------------------------------- */
-/* Basic Noise Panel Component                                                */
-/* -------------------------------------------------------------------------- */
-function NoisePanelBasic({
-  noise,
-  onChange,
-  enabled,
-}: {
-  noise: NoiseIn;
-  onChange: (n: NoiseIn) => void;
-  enabled: boolean;
-}) {
-  const [open, setOpen] = useState(false);
-  if (!enabled) return null;
-
-  const set = (patch: Partial<NoiseIn>) => onChange({ ...noise, ...patch });
-  const clamped = Math.min(noise.t2_us, 2 * noise.t1_us);
-
-  return (
-    <Card className="p-4 border-line bg-raised">
-      <button
-        onClick={() => setOpen((o) => !o)}
-        aria-expanded={open}
-        className="flex w-full items-center justify-between text-xs font-semibold text-ink cursor-pointer"
-      >
-        <span>Realistic Noise Model (T₁ / T₂ / Readout)</span>
-        <span className="text-ink-3">
-          {open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-        </span>
-      </button>
-
-      {open && (
-        <div className="mt-3.5 flex flex-col gap-3 pt-3 border-t border-line-soft">
-          <label className="flex items-center gap-2 text-xs font-medium text-ink cursor-pointer">
-            <input
-              type="checkbox"
-              checked={noise.enabled}
-              onChange={(e) => set({ enabled: e.target.checked })}
-              className="h-4 w-4 rounded accent-accent"
-            />
-            <span>Enable Thermal Decoherence & Readout Noise</span>
-          </label>
-
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-            <div>
-              <Label className="text-[11px]">T₁ Relaxation (µs)</Label>
-              <Input
-                type="number"
-                value={noise.t1_us}
-                min={1}
-                max={200}
-                className="h-7 text-xs"
-                onChange={(e) => set({ t1_us: Number(e.target.value) })}
-              />
-            </div>
-            <div>
-              <Label className="text-[11px]">T₂ Dephasing (µs)</Label>
-              <Input
-                type="number"
-                value={noise.t2_us}
-                min={1}
-                max={200}
-                className="h-7 text-xs"
-                onChange={(e) => set({ t2_us: Number(e.target.value) })}
-              />
-            </div>
-            <div>
-              <Label className="text-[11px]">Readout Error (%)</Label>
-              <Input
-                type="number"
-                value={Math.round(noise.readout_error * 1000) / 10}
-                min={0}
-                max={20}
-                step={0.1}
-                className="h-7 text-xs"
-                onChange={(e) => set({ readout_error: Number(e.target.value) / 100 })}
-              />
-            </div>
-          </div>
-
-          {noise.t2_us > 2 * noise.t1_us && (
-            <p className="text-[11px] text-warn">
-              Note: T₂ cannot exceed 2×T₁; will be clamped to {clamped.toFixed(1)} µs.
-            </p>
-          )}
-        </div>
-      )}
-    </Card>
   );
 }

@@ -33,6 +33,9 @@ const CurriculumPage = lazy(() =>
 const TopicDetailPage = lazy(() =>
   import("./pages/TopicDetailPage").then((m) => ({ default: m.TopicDetailPage })),
 );
+const QuditLabPage = lazy(() =>
+  import("./pages/QuditLabPage").then((m) => ({ default: m.QuditLabPage })),
+);
 
 function NotFound() {
   return (
@@ -66,6 +69,7 @@ export default function App() {
             <Route path="/curriculum" element={<CurriculumPage />} />
             <Route path="/curriculum/topic/:topicId" element={<TopicDetailPage />} />
             <Route path="/composer" element={<ComposerPage />} />
+            <Route path="/qudit-lab" element={<QuditLabPage />} />
             <Route path="/challenges" element={<ChallengesPage />} />
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/codelab" element={<CodeLabPage />} />

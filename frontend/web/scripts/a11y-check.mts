@@ -56,6 +56,7 @@ const pages: [string, string, () => Promise<Record<string, React.ComponentType>>
   ["Learn", "LearnPage", () => import("../src/pages/LearnPage.tsx")],
   ["Curriculum", "CurriculumPage", () => import("../src/pages/CurriculumPage.tsx")],
   ["Composer", "ComposerPage", () => import("../src/pages/ComposerPage.tsx")],
+  ["Qudit Lab", "QuditLabPage", () => import("../src/pages/QuditLabPage.tsx")],
   ["Challenges", "ChallengesPage", () => import("../src/pages/ChallengesPage.tsx")],
   ["Dashboard", "DashboardPage", () => import("../src/pages/DashboardPage.tsx")],
   ["Code Lab", "CodeLabPage", () => import("../src/pages/CodeLabPage.tsx")],

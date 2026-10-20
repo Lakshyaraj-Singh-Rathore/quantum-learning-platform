@@ -4,6 +4,7 @@ import {
   Code2,
   FlaskConical,
   Gamepad2,
+  Layers,
   LayoutDashboard,
   Route as RouteIcon,
   Trophy,
@@ -27,6 +28,7 @@ export const NAV_ITEMS: NavItem[] = [
 
   // Build & Simulate
   { to: "/composer", label: "Composer", icon: Blocks, section: "build" },
+  { to: "/qudit-lab", label: "Qudit Lab (Beta)", icon: Layers, section: "build" },
   { to: "/codelab", label: "Code Lab", icon: Code2, section: "build" },
 
   // Practice

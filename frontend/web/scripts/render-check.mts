@@ -115,7 +115,7 @@ const mode = anon ? "anonymous" : staff ? "instructor" : "student";
 if (anon) {
   // Nobody signed in: every protected route must redirect to /login rather
   // than render even a sliver of the app.
-  for (const path of ["/learn", "/composer", "/codelab", "/dashboard", "/games", "/playground"]) {
+  for (const path of ["/learn", "/composer", "/qudit-lab", "/codelab", "/dashboard", "/games", "/playground"]) {
     const html = renderAt(path);
     // React wraps every Suspense boundary in `<!--$-->...<!--/$-->` markers,
     // and the Code Lab route is lazily loaded, so an empty render is no longer
