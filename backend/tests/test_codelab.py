@@ -209,8 +209,9 @@ def test_cudaq_starter_round_trips_through_real_cudaq():
     assert ir.has_measurements()
 
 
-def test_available_frameworks_hides_cudaq_without_the_wheel():
+def test_available_frameworks_includes_cudaq():
     listed = codelab.available_frameworks()
-    assert "cudaq" in listed if _package_present("cudaq") else "cudaq" not in listed
-    for core in ("qiskit", "cirq", "pennylane", "qasm3"):
+    assert "cudaq" in listed
+    for core in ("qiskit", "cirq", "pennylane", "qasm3", "qbraid"):
         assert core in listed
+

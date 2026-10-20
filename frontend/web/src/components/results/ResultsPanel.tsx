@@ -104,6 +104,21 @@ export function ResultsPanel({
         )}
         {status === "completed" && <Badge tone="accent">completed</Badge>}
         {(status === "failed" || result.data?.error) && <Badge tone="danger">failed</Badge>}
+        <button
+          type="button"
+          onClick={() => {
+            const el = document.getElementById("circuit-canvas-section");
+            if (el) {
+              el.scrollIntoView({ behavior: "smooth", block: "start" });
+            } else {
+              window.scrollTo({ top: 0, behavior: "smooth" });
+            }
+          }}
+          className="ml-auto flex items-center gap-1.5 rounded-lg border border-line bg-hover px-2.5 py-1 text-xs font-medium text-ink-2 transition-colors hover:border-line-soft hover:bg-active hover:text-ink"
+          title="Scroll back up to circuit editor"
+        >
+          ↑ Back to circuit
+        </button>
       </div>
 
       {stale && (
@@ -134,7 +149,7 @@ export function ResultsPanel({
           <div
             role="tablist"
             aria-label="Result views"
-            className="flex flex-wrap gap-1 border-b border-line-soft pb-2"
+            className="flex flex-wrap gap-1.5 border-b border-line-soft pb-2"
           >
             {TABS.map((t) => (
               <button
@@ -143,9 +158,11 @@ export function ResultsPanel({
                 aria-selected={tab === t.id}
                 onClick={() => setTab(t.id)}
                 className={cn(
-                  "rounded-lg px-3 py-1.5 text-[13px] text-ink-2 transition-colors",
-                  "hover:bg-hover hover:text-ink",
-                  tab === t.id && "bg-active font-medium text-ink",
+                  "rounded-lg px-3 py-1.5 text-[13px] font-medium transition-all",
+                  "border",
+                  tab === t.id
+                    ? "border-accent/40 bg-accent/15 text-accent shadow-sm"
+                    : "border-transparent text-ink-2 hover:border-line hover:bg-hover hover:text-ink",
                 )}
               >
                 {t.label}

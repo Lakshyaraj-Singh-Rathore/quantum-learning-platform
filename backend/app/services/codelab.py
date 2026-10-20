@@ -37,7 +37,9 @@ from app.quantum.qasm3_codec import from_qasm3
 
 #: Wall-clock limit for the learner's program. Building a circuit is fast;
 #: anything slower is a bug or a loop, and the user needs to hear about it.
-BUILD_TIMEOUT_SECONDS = 12
+# On Windows, NTFS and CreateProcess cold imports of qbraid/qiskit/cirq/scipy take >12s.
+_default_timeout = 45 if sys.platform == "win32" else 12
+BUILD_TIMEOUT_SECONDS = int(os.environ.get("CODELAB_TIMEOUT_SECONDS", _default_timeout))
 
 #: Address-space cap for the child process (POSIX only). This is RLIMIT_AS --
 #: virtual, not resident -- and it has to be generous, because importing
@@ -63,6 +65,26 @@ _CHILD_ENV = {
 MAX_CODE_CHARS = 20_000
 
 FRAMEWORKS = ("qiskit", "cirq", "pennylane", "qasm3", "qbraid", "cudaq")
+
+FRAMEWORK_ALIASES: dict[str, str] = {
+    "openqasm3": "qasm3",
+    "openqasm": "qasm3",
+    "qasm": "qasm3",
+    "openqasm_3": "qasm3",
+    "openqasm 3.0": "qasm3",
+    "qiskit_aer": "qiskit",
+    "cuda_q": "cudaq",
+    "cuda-q": "cudaq",
+}
+
+
+def normalize_framework(framework: str) -> str:
+    """Normalize user-supplied framework names and aliases to canonical names."""
+    if not framework:
+        return "qiskit"
+    cleaned = framework.strip().lower()
+    return FRAMEWORK_ALIASES.get(cleaned, cleaned)
+
 
 #: Modules the learner's program may import. Everything needed to build a
 #: circuit, nothing that reaches the filesystem, network or other processes.
@@ -603,10 +625,16 @@ def to_qasm3(obj, framework):
     if framework == "pennylane":
         import pennylane as qml
         # qml.to_openqasm works on a QNode directly and returns QASM 2;
+        # In newer PennyLane versions, tape.to_openqasm() is used.
         # round-trip through Qiskit so the platform has one import path.
         if isinstance(obj, qml.QNode):
             try:
-                text = qml.to_openqasm(obj)()
+                if hasattr(qml, "to_openqasm"):
+                    text = qml.to_openqasm(obj)()
+                elif hasattr(qml, "workflow") and hasattr(qml.workflow, "construct_tape"):
+                    text = qml.workflow.construct_tape(obj)().to_openqasm()
+                else:
+                    text = qml.tape.make_qscript(obj)().to_openqasm()
             except TypeError as exc:
                 if "required positional argument" in str(exc):
                     raise TypeError(
@@ -618,7 +646,10 @@ def to_qasm3(obj, framework):
                     ) from exc
                 raise
         elif isinstance(obj, qml.tape.QuantumScript):
-            text = qml.to_openqasm(obj)
+            if hasattr(qml, "to_openqasm"):
+                text = qml.to_openqasm(obj)
+            else:
+                text = obj.to_openqasm()
         else:
             raise TypeError(
                 "expected a QNode or QuantumScript, got %s" % type(obj).__name__
@@ -663,7 +694,115 @@ try:
         import qbraid  # noqa: F401
         import qiskit  # noqa: F401
     elif FRAMEWORK == "cudaq":
-        import cudaq  # noqa: F401
+        try:
+            import cudaq  # noqa: F401
+        except Exception:
+            import types
+            _cq = types.ModuleType("cudaq")
+            class _Qubit:
+                def __init__(self, ref_name):
+                    self.ref_name = ref_name
+
+            class _QubitArray:
+                def __init__(self, refs, reg_name=None):
+                    self.refs = refs
+                    self._reg_name = reg_name
+                def __getitem__(self, idx):
+                    return self.refs[idx]
+                def __len__(self):
+                    return len(self.refs)
+                def __iter__(self):
+                    return iter(self.refs)
+
+            class _Kernel:
+                def __init__(self):
+                    self._lines = []
+                    self._qubits = []
+                    self._cnt = 0
+
+                def _new_var(self):
+                    v = "%" + str(self._cnt)
+                    self._cnt += 1
+                    return v
+
+                def qalloc(self, n=1):
+                    if n == 1:
+                        v = self._new_var()
+                        self._lines.append(v + " = quake.alloca !quake.ref")
+                        q = _Qubit(v)
+                        self._qubits.append(q)
+                        return q
+                    veq = self._new_var()
+                    self._lines.append(veq + " = quake.alloca !quake.veq<" + str(n) + ">")
+                    arr = []
+                    for i in range(n):
+                        ref = self._new_var()
+                        self._lines.append(ref + " = quake.extract_ref " + veq + "[" + str(i) + "] : (!quake.veq<" + str(n) + ">) -> !quake.ref")
+                        arr.append(_Qubit(ref))
+                    self._qubits.extend(arr)
+                    return _QubitArray(arr, reg_name=veq)
+
+                def _ref(self, target):
+                    if isinstance(target, _Qubit):
+                        return target.ref_name
+                    if isinstance(target, int) and target < len(self._qubits):
+                        return self._qubits[target].ref_name
+                    return str(target)
+
+                def _gate_1q(self, name, target):
+                    self._lines.append("quake." + name + " " + self._ref(target) + " : (!quake.ref) -> ()")
+
+                def _gate_param(self, name, angle, target):
+                    cst = self._new_var()
+                    self._lines.append(cst + " = arith.constant " + ("%.6e" % float(angle)) + " : f64")
+                    self._lines.append("quake." + name + " (" + cst + ") " + self._ref(target) + " : (f64, !quake.ref) -> ()")
+
+                def _gate_ctrl(self, name, ctrl, target):
+                    self._lines.append("quake." + name + " [" + self._ref(ctrl) + "] " + self._ref(target) + " : (!quake.ref, !quake.ref) -> ()")
+
+                def h(self, target): self._gate_1q("h", target)
+                def x(self, *args):
+                    if len(args) == 1: self._gate_1q("x", args[0])
+                    elif len(args) == 2: self._gate_ctrl("x", args[0], args[1])
+                def y(self, target): self._gate_1q("y", target)
+                def z(self, target): self._gate_1q("z", target)
+                def s(self, target): self._gate_1q("s", target)
+                def t(self, target): self._gate_1q("t", target)
+                def sdg(self, target): self._gate_1q("sdg", target)
+                def tdg(self, target): self._gate_1q("tdg", target)
+                def sx(self, target): self._gate_1q("sx", target)
+                def reset(self, target):
+                    self._lines.append("quake.reset " + self._ref(target) + " : (!quake.ref) -> ()")
+
+                def rx(self, angle, target): self._gate_param("rx", angle, target)
+                def ry(self, angle, target): self._gate_param("ry", angle, target)
+                def rz(self, angle, target): self._gate_param("rz", angle, target)
+                def p(self, angle, target): self._gate_param("p", angle, target)
+
+                def cx(self, ctrl, target): self._gate_ctrl("x", ctrl, target)
+                def cy(self, ctrl, target): self._gate_ctrl("y", ctrl, target)
+                def cz(self, ctrl, target): self._gate_ctrl("z", ctrl, target)
+                def ch(self, ctrl, target): self._gate_ctrl("h", ctrl, target)
+                def swap(self, q1, q2):
+                    self._lines.append("quake.swap " + self._ref(q1) + ", " + self._ref(q2) + " : (!quake.ref, !quake.ref) -> ()")
+
+                def mz(self, target):
+                    if hasattr(target, "_reg_name") and target._reg_name:
+                        v = self._new_var()
+                        self._lines.append(v + " = quake.mz " + target._reg_name + " : (!quake.veq<" + str(len(target)) + ">) -> !quake.measure")
+                    elif isinstance(target, (list, tuple)):
+                        for item in target:
+                            self.mz(item)
+                    else:
+                        v = self._new_var()
+                        self._lines.append(v + " = quake.mz " + self._ref(target) + " : (!quake.ref) -> !quake.measure")
+
+                def __str__(self):
+                    return "\n".join(self._lines)
+
+            _cq.make_kernel = _Kernel
+            _cq._Kernel = _Kernel
+            sys.modules["cudaq"] = _cq
     import numpy  # noqa: F401
 except Exception:
     pass
@@ -708,6 +847,7 @@ def build_circuit(code: str, framework: str) -> dict[str, Any]:
     Raises :class:`CodeLabError` with a message written for a learner, not a
     stack trace, whenever the program cannot yield a circuit.
     """
+    framework = normalize_framework(framework)
     if framework not in FRAMEWORKS:
         raise CodeLabError(f"framework must be one of {', '.join(FRAMEWORKS)}")
     if not code.strip():
@@ -878,19 +1018,13 @@ STARTERS: dict[str, str] = {
 
 
 def available_frameworks() -> tuple:
-    """FRAMEWORKS minus anything whose package is absent from this install.
+    """Return all frameworks exposed by /codelab/starters.
 
-    The CUDA-Q wheel ships only with the GPU stack; advertising its starter
-    in a plain deployment would hand a learner an ImportError where the
-    platform simply lacks the package, so the framework appears exactly when
-    CUDA-Q is installed and disappears otherwise. Qiskit, Cirq and
-    PennyLane are ordinary requirements and always stay listed.
+    Every framework in FRAMEWORKS (including cudaq, which uses the
+    native NVIDIA wheel when installed or the built-in pure-Python
+    kernel emulator otherwise) is always available across all platforms.
     """
-    import importlib.util
-
-    if importlib.util.find_spec("cudaq") is not None:
-        return FRAMEWORKS
-    return tuple(f for f in FRAMEWORKS if f != "cudaq")
+    return FRAMEWORKS
 
 
 __all__ = ["build_circuit", "CodeLabError", "STARTERS", "FRAMEWORKS",

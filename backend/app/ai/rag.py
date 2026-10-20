@@ -213,6 +213,7 @@ def ingest_content_folder(db: Session, folder: str | None = None, force: bool = 
                 )
             )
             chunks_written += 1
+        db.commit()
 
     db.commit()
 

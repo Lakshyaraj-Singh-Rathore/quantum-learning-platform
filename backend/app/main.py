@@ -27,10 +27,22 @@ async def lifespan(app: FastAPI):
             from app.seed import seed_all
 
             seed_all(db)
-            from app.ai.rag import ingest_content_folder
 
-            stats = ingest_content_folder(db)
-            log.info("content ingestion: %s", stats)
+            def _background_ingest():
+                try:
+                    from app.database import SessionLocal
+                    from app.ai.rag import ingest_content_folder
+                    bg_db = SessionLocal()
+                    try:
+                        stats = ingest_content_folder(bg_db)
+                        log.info("content ingestion: %s", stats)
+                    finally:
+                        bg_db.close()
+                except Exception as bg_err:
+                    log.warning("background ingestion skipped: %s", bg_err)
+
+            import threading
+            threading.Thread(target=_background_ingest, daemon=True).start()
         finally:
             db.close()
     except Exception as exc:  # noqa: BLE001 - the API should still boot

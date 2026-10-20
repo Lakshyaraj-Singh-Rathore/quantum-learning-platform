@@ -33,7 +33,7 @@ export const FRAMEWORK_LABELS: Record<string, string> = {
   qiskit: "Qiskit",
   cirq: "Cirq",
   pennylane: "PennyLane",
-  qasm3: "OpenQASM 3",
+  qasm3: "OpenQASM 3.0",
   qbraid: "qBraid",
   cudaq: "CUDA-Q",
 };

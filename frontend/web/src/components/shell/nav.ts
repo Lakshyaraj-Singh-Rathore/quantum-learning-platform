@@ -10,25 +10,36 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
+export type NavSection = "study" | "build" | "practice" | "insights";
+
 export interface NavItem {
   to: string;
   label: string;
   icon: LucideIcon;
-  /** Which redesign phase takes this page from placeholder to rebuilt —
-   * kept in the UI so the parity progress is visible to anyone, not just
-   * in docs. `live: true` means the real page has replaced the placeholder
-   * (later phases still deepen it). */
-  phase: string;
-  live?: boolean;
+  section: NavSection;
 }
 
 export const NAV_ITEMS: NavItem[] = [
-  { to: "/learn", label: "Learn", icon: BookOpen, phase: "P4" },
-  { to: "/curriculum", label: "Curriculum", icon: RouteIcon, phase: "M3 · live", live: true },
-  { to: "/composer", label: "Composer", icon: Blocks, phase: "P1 · live", live: true },
-  { to: "/challenges", label: "Challenges", icon: Trophy, phase: "P5" },
-  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, phase: "P5" },
-  { to: "/codelab", label: "Code Lab", icon: Code2, phase: "P3" },
-  { to: "/games", label: "Games", icon: Gamepad2, phase: "P6" },
-  { to: "/playground", label: "Playground", icon: FlaskConical, phase: "P6" },
+  // Study
+  { to: "/learn", label: "Learn", icon: BookOpen, section: "study" },
+  { to: "/curriculum", label: "Curriculum", icon: RouteIcon, section: "study" },
+  { to: "/playground", label: "Playground", icon: FlaskConical, section: "study" },
+
+  // Build & Simulate
+  { to: "/composer", label: "Composer", icon: Blocks, section: "build" },
+  { to: "/codelab", label: "Code Lab", icon: Code2, section: "build" },
+
+  // Practice
+  { to: "/challenges", label: "Challenges", icon: Trophy, section: "practice" },
+  { to: "/games", label: "Games", icon: Gamepad2, section: "practice" },
+
+  // Insights
+  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, section: "insights" },
+];
+
+export const NAV_SECTIONS: { id: NavSection; label: string }[] = [
+  { id: "study", label: "Study" },
+  { id: "build", label: "Build & Simulate" },
+  { id: "practice", label: "Practice" },
+  { id: "insights", label: "Insights" },
 ];

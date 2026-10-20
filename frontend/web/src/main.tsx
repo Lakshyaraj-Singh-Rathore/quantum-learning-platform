@@ -3,6 +3,7 @@ import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import App from "./App";
+import "katex/dist/katex.min.css";
 import "./globals.css";
 
 // One app, one polite retry policy: the API is a container that can restart

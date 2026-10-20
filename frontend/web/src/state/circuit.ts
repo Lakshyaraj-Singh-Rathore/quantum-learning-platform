@@ -7,9 +7,7 @@
  * idea: one circuit, owned by whoever is editing it, visible to everyone who
  * needs to read it.
  *
- * It lives here rather than in ComposerPage because three places use it: the
- * Composer, the lesson demos (which embed the real grid), and the coding
- * challenges (which submit it).
+ * Extended with Phase 2 presets and stubs for challengeContext and saved circuits.
  */
 import { create } from "zustand";
 import { makeOp } from "@composer/ir";
@@ -29,36 +27,113 @@ export function bell(): CircuitIR {
   };
 }
 
+export function ghz(n = 3): CircuitIR {
+  const ops = [makeOp("gate", { gate: "h", qubits: [0], layer: 0 })];
+  for (let i = 0; i < n - 1; i++) {
+    ops.push(makeOp("gate", { gate: "x", qubits: [i + 1], controls: [i], layer: i + 1 }));
+  }
+  for (let i = 0; i < n; i++) {
+    ops.push(makeOp("measure", { qubits: [i], clbits: [i], layer: n }));
+  }
+  return { name: `ghz_${n}`, n_qubits: n, n_clbits: n, ops };
+}
+
+export function wState(): CircuitIR {
+  return {
+    name: "w_state",
+    n_qubits: 3,
+    n_clbits: 3,
+    ops: [
+      makeOp("gate", { gate: "ry", qubits: [0], params: [{ expr: "1.9106", value: 1.9106 }], layer: 0 }),
+      makeOp("gate", { gate: "x", qubits: [1], controls: [0], layer: 1 }),
+      makeOp("gate", { gate: "h", qubits: [0], layer: 2 }),
+      makeOp("gate", { gate: "x", qubits: [2], controls: [1], layer: 3 }),
+      makeOp("measure", { qubits: [0], clbits: [0], layer: 4 }),
+      makeOp("measure", { qubits: [1], clbits: [1], layer: 4 }),
+      makeOp("measure", { qubits: [2], clbits: [2], layer: 4 }),
+    ],
+  };
+}
+
+export function qft3(): CircuitIR {
+  return {
+    name: "qft_3",
+    n_qubits: 3,
+    n_clbits: 3,
+    ops: [
+      makeOp("gate", { gate: "h", qubits: [0], layer: 0 }),
+      makeOp("gate", { gate: "s", qubits: [0], controls: [1], layer: 1 }),
+      makeOp("gate", { gate: "t", qubits: [0], controls: [2], layer: 2 }),
+      makeOp("gate", { gate: "h", qubits: [1], layer: 3 }),
+      makeOp("gate", { gate: "s", qubits: [1], controls: [2], layer: 4 }),
+      makeOp("gate", { gate: "h", qubits: [2], layer: 5 }),
+      makeOp("measure", { qubits: [0], clbits: [0], layer: 6 }),
+      makeOp("measure", { qubits: [1], clbits: [1], layer: 6 }),
+      makeOp("measure", { qubits: [2], clbits: [2], layer: 6 }),
+    ],
+  };
+}
+
 export function emptyCircuit(n = 2): CircuitIR {
   return { name: "circuit", n_qubits: n, n_clbits: n, ops: [] };
 }
 
-interface CircuitState {
+export interface ChallengeContext {
+  challengeId: string;
+  title: string;
+  returnPath: string;
+}
+
+export interface CircuitState {
   ir: CircuitIR;
-  /**
-   * Bumped to remount the grid. It is uncontrolled once mounted — it owns its
-   * own edit state — so a programmatic reset remounts it rather than fighting
-   * it.
-   */
   epoch: number;
+  circuitId?: string;
+  circuitName?: string;
+  challengeContext?: ChallengeContext;
   setIr: (ir: CircuitIR) => void;
   reset: (ir?: CircuitIR) => void;
+  setQubits: (n: number) => void;
+  setCircuitId: (id?: string) => void;
+  setCircuitName: (name?: string) => void;
+  setChallengeContext: (ctx?: ChallengeContext) => void;
 }
 
 export const useCircuit = create<CircuitState>()((set) => ({
   ir: bell(),
   epoch: 0,
+  circuitId: undefined,
+  circuitName: "Bell State",
+  challengeContext: undefined,
   setIr: (ir) => set({ ir }),
-  reset: (ir) => set((state) => ({ ir: ir ?? emptyCircuit(state.ir.n_qubits), epoch: state.epoch + 1 })),
+  reset: (ir) =>
+    set((state) => ({
+      ir: ir ?? emptyCircuit(state.ir.n_qubits),
+      epoch: state.epoch + 1,
+    })),
+  setQubits: (n: number) =>
+    set((state) => {
+      const validN = Math.max(1, Math.min(16, n));
+      // filter out operations on qubits >= validN
+      const validOps = state.ir.ops.filter(
+        (op) =>
+          op.qubits.every((q) => q < validN) &&
+          (!op.controls || op.controls.every((c) => c < validN))
+      );
+      return {
+        ir: {
+          ...state.ir,
+          n_qubits: validN,
+          n_clbits: validN,
+          ops: validOps,
+        },
+        epoch: state.epoch + 1,
+      };
+    }),
+  setCircuitId: (circuitId) => set({ circuitId }),
+  setCircuitName: (circuitName) => set({ circuitName }),
+  setChallengeContext: (challengeContext) => set({ challengeContext }),
 }));
 
-/**
- * Identity of a circuit, ignoring op ids.
- *
- * Op ids are regenerated every time the IR is rebuilt, so comparing raw
- * dictionaries would report a change on every keystroke and throw away results
- * that are still valid.
- */
 function stripIds(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(stripIds);
   if (value && typeof value === "object") {

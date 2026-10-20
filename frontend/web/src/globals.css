@@ -1,180 +1,580 @@
-/* The drag-and-drop grid's own stylesheet. Loaded here rather than inside the
-   Composer page so the bundle stays a single CSS file; its tokens are scoped
-   to .composer-host, so it cannot restyle the rest of the app. */
-@import "@composer/styles.css";
-
+@import "../../circuit_composer/frontend/src/styles.css";
 @import "tailwindcss";
 
-/* Dark-first: the tokens on :root ARE the dark palette (QuantumLearn night,
-   the ChatGPT-after-dark posture this redesign signed up for). A `.light`
-   class on <html> overrides them; components only ever consume the tokens,
-   never raw colors, so a theme switch re-skins everything at once. */
+@theme {
+  --color-bg: #07090e;
+  --color-raised: #0f131f;
+  --color-bg-raised: #0f131f;
+  --color-subtle: #141928;
+  --color-bg-subtle: #141928;
+  --color-hover: #1c2338;
+  --color-bg-hover: #1c2338;
+  --color-active: #242d47;
+  --color-bg-active: #242d47;
 
-:root {
-  --bg: #0d0d0f;
-  --bg-raised: #17171a;
-  --bg-hover: #1f1f23;
-  --bg-active: #26262c;
-  --line: #2a2a30;
-  --line-soft: #202024;
-  --ink: #ececee;
-  --ink-secondary: #b9b9c1;
-  --ink-muted: #8b8b95;
-  --accent: #3dd6c6;
-  --accent-ink: #06231f;
-  /* Second series in charts. Must invert with the theme like --accent does,
-     or a chart that is legible in dark mode becomes unreadable in light. */
-  --accent-2: #a78bfa;
-  --danger: #ff5d5d;
-  --warn: #ffd166;
-  /* Syntax tokens. These are theme tokens like every other colour here, so a
-     code block stays legible after a light/dark switch instead of stranding
-     dark-mode-only colours on a white background. */
-  --code-keyword: #ff7b9c;
-  --code-string: #7ee787;
-  --code-number: #ffd166;
-  --code-comment: #8b8b95;
-  --code-title: #79c0ff;
-  --code-builtin: #a78bfa;
-  --code-literal: #3dd6c6;
+  --color-line: rgba(255, 255, 255, 0.09);
+  --color-line-soft: rgba(255, 255, 255, 0.05);
+  --color-line-focus: #3b82f6;
+
+  --color-ink: #f8fafc;
+  --color-ink-2: #94a3b8;
+  --color-ink-3: #64748b;
+
+  --color-accent: #3b82f6;
+  --color-accent-2: #6366f1;
+  --color-accent-ink: #eff6ff;
+  --color-accent-soft: rgba(59, 130, 246, 0.15);
+
+  --color-ok: #10b981;
+  --color-warn: #f59e0b;
+  --color-danger: #ef4444;
+
+  --color-gate-h: #f97316;
+  --color-gate-pauli: #3b82f6;
+  --color-gate-phase: #06b6d4;
+  --color-gate-param: #a855f7;
+  --color-gate-multi: #10b981;
+  --color-gate-meas: #94a3b8;
+
+  --font-display: 'Plus Jakarta Sans', 'Inter', -apple-system, sans-serif;
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+:root,
+html,
+body,
+html.dark,
+body.dark {
   color-scheme: dark;
+
+  /* Premium Obsidian & Deep Slate Palette */
+  --bg: #07090e;
+  --bg-raised: #0f131f;
+  --bg-subtle: #141928;
+  --bg-hover: #1c2338;
+  --bg-active: #242d47;
+
+  /* Refined Translucent Borders */
+  --line: rgba(255, 255, 255, 0.09);
+  --line-soft: rgba(255, 255, 255, 0.05);
+  --line-focus: #3b82f6;
+
+  /* Typography Ink Hierarchy */
+  --ink: #f8fafc;
+  --ink-2: #94a3b8;
+  --ink-3: #64748b;
+
+  /* Electric Cobalt & Indigo Accents */
+  --accent: #3b82f6;
+  --accent-2: #6366f1;
+  --accent-ink: #eff6ff;
+  --accent-soft: rgba(59, 130, 246, 0.15);
+
+  /* Status Tokens */
+  --ok: #10b981;
+  --warn: #f59e0b;
+  --danger: #ef4444;
+
+  /* Quantum Gate Taxonomy */
+  --gate-h: #f97316;
+  --gate-pauli: #3b82f6;
+  --gate-phase: #06b6d4;
+  --gate-param: #a855f7;
+  --gate-multi: #10b981;
+  --gate-meas: #94a3b8;
+
+  /* Fonts */
+  --font-display: 'Plus Jakarta Sans', 'Inter', sans-serif;
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
-html.light {
-  --bg: #fafafa;
-  --bg-raised: #ffffff;
-  --bg-hover: #f0f0f1;
-  --bg-active: #e7e7e9;
-  --line: #e2e2e6;
-  --line-soft: #ececee;
-  --ink: #17171a;
-  --ink-secondary: #43434b;
-  --ink-muted: #74747e;
-  --accent: #0d9488;
-  --accent-ink: #ffffff;
-  --accent-2: #7c3aed;
-  --danger: #d43d3d;
-  --warn: #a2740a;
-  /* Same tokens, tuned for contrast against the light surfaces. */
-  --code-keyword: #cf222e;
-  --code-string: #0a3069;
-  --code-number: #953800;
-  --code-comment: #6e7781;
-  --code-title: #6639ba;
-  --code-builtin: #8250df;
-  --code-literal: #0d9488;
-  color-scheme: light;
+html,
+body {
+  background-color: #07090e;
+  background-image: 
+    radial-gradient(ellipse 90% 60% at 50% -20%, rgba(59, 130, 246, 0.12), transparent),
+    radial-gradient(ellipse 60% 40% at 100% 50%, rgba(99, 102, 241, 0.06), transparent),
+    radial-gradient(ellipse 50% 30% at 0% 80%, rgba(168, 85, 247, 0.05), transparent);
+  background-attachment: fixed;
+  color: #f8fafc;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  min-height: 100vh;
 }
 
-@theme inline {
-  --color-bg: var(--bg);
-  --color-raised: var(--bg-raised);
-  --color-hover: var(--bg-hover);
-  --color-active: var(--bg-active);
-  --color-line: var(--line);
-  --color-line-soft: var(--line-soft);
-  --color-ink: var(--ink);
-  --color-ink-2: var(--ink-secondary);
-  --color-ink-3: var(--ink-muted);
-  --color-accent: var(--accent);
-  --color-accent-ink: var(--accent-ink);
-  --color-danger: var(--danger);
-  --color-warn: var(--warn);
-  --font-sans:
-    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue",
-    Arial, sans-serif;
+h1, h2, h3, h4 {
+  font-family: var(--font-display);
+  letter-spacing: -0.025em;
 }
 
-@layer base {
-  html,
-  body,
-  #root {
-    height: 100%;
+code,
+pre,
+kbd,
+samp,
+.font-mono,
+.ket-notation,
+.tabular-nums {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Fallback Utility Classes to guarantee 100% styling coverage */
+.bg-bg { background-color: var(--bg) !important; }
+.bg-raised { background-color: var(--bg-raised) !important; }
+.bg-subtle { background-color: var(--bg-subtle) !important; }
+.bg-hover { background-color: var(--bg-hover) !important; }
+.bg-active { background-color: var(--bg-active) !important; }
+
+.hover\:bg-hover:hover { background-color: var(--bg-hover) !important; }
+.hover\:bg-subtle:hover { background-color: var(--bg-subtle) !important; }
+.hover\:bg-raised:hover { background-color: var(--bg-raised) !important; }
+
+.border-line { border-color: var(--line) !important; }
+.border-line-soft { border-color: var(--line-soft) !important; }
+.border-line-focus { border-color: var(--line-focus) !important; }
+
+.text-ink { color: var(--ink) !important; }
+.text-ink-2 { color: var(--ink-2) !important; }
+.text-ink-3 { color: var(--ink-3) !important; }
+.text-accent { color: var(--accent) !important; }
+.text-ok { color: var(--ok) !important; }
+.text-warn { color: var(--warn) !important; }
+.text-danger { color: var(--danger) !important; }
+
+/* Custom Sleek Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.14);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.28);
+}
+
+/* Glassmorphism Surface Classes */
+.glass-panel {
+  background: linear-gradient(180deg, rgba(15, 19, 31, 0.85) 0%, rgba(10, 13, 22, 0.92) 100%) !important;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--line) !important;
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.06), 0 12px 36px -4px rgba(0, 0, 0, 0.55);
+}
+
+.glass-card {
+  background: linear-gradient(180deg, rgba(18, 23, 38, 0.75) 0%, rgba(12, 16, 28, 0.85) 100%) !important;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--line) !important;
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.08), 0 6px 24px -2px rgba(0, 0, 0, 0.4);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.glass-card:hover {
+  border-color: rgba(255, 255, 255, 0.16) !important;
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.12), 0 10px 32px -4px rgba(0, 0, 0, 0.55);
+  transform: translateY(-1px);
+}
+
+/* Quantum Dot Mesh Pattern */
+.quantum-grid-bg {
+  background-size: 28px 28px;
+  background-image: radial-gradient(circle, rgba(255, 255, 255, 0.07) 1px, transparent 1px);
+}
+
+/* Button & Interactive Glows */
+.btn-primary-glow {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 50%, #1d4ed8 100%) !important;
+  box-shadow: 0 0 20px -3px rgba(59, 130, 246, 0.5), inset 0 1px 0 0 rgba(255, 255, 255, 0.3) !important;
+  border: 1px solid rgba(59, 130, 246, 0.6) !important;
+  color: #ffffff !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.btn-primary-glow:hover {
+  box-shadow: 0 0 28px -2px rgba(59, 130, 246, 0.75), inset 0 1px 0 0 rgba(255, 255, 255, 0.45) !important;
+  transform: translateY(-1px);
+}
+
+.btn-primary-glow:active {
+  transform: translateY(0px);
+}
+
+/* Circuit Composer Luxury Overrides */
+.composer-host,
+.composer-host.dark {
+  --bg: #090c14 !important;
+  --fg: #f8fafc !important;
+  --muted: #94a3b8 !important;
+  --line: rgba(255, 255, 255, 0.09) !important;
+  --wire: rgba(99, 102, 241, 0.5) !important;
+  --panel: #0d111d !important;
+  --accent: #3b82f6 !important;
+  --divider: rgba(255, 255, 255, 0.08) !important;
+  --editor-bg: #07090e !important;
+  --endpoint-border: rgba(255, 255, 255, 0.3) !important;
+  background-color: #090c14 !important;
+  color: #f8fafc !important;
+  font-family: var(--font-sans) !important;
+}
+
+.composer-host .toolbar {
+  background: linear-gradient(180deg, #101524 0%, #0d111e 100%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.09) !important;
+  border-radius: 12px !important;
+  padding: 8px 12px !important;
+  gap: 8px !important;
+}
+
+.composer-host button.tb {
+  background: rgba(255, 255, 255, 0.04) !important;
+  border: 1px solid rgba(255, 255, 255, 0.09) !important;
+  color: #94a3b8 !important;
+  border-radius: 8px !important;
+  padding: 6px 12px !important;
+  font-weight: 500 !important;
+  transition: all 0.15s ease !important;
+}
+
+.composer-host button.tb:hover {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(59, 130, 246, 0.5) !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 12px -2px rgba(59, 130, 246, 0.3) !important;
+}
+
+.composer-host button.tb.primary {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
+  border-color: rgba(59, 130, 246, 0.7) !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 15px -3px rgba(59, 130, 246, 0.5) !important;
+}
+
+.composer-host .grid-viewport {
+  background-color: #080a11 !important;
+  background-image: radial-gradient(circle, rgba(255, 255, 255, 0.05) 1px, transparent 1px) !important;
+  background-size: 24px 24px !important;
+}
+
+/* Lesson Prose Reading Measure & Rhythm */
+.lesson-prose {
+  max-width: 72ch;
+  line-height: 1.8;
+  color: var(--ink);
+}
+
+.lesson-prose h1,
+.lesson-prose h2,
+.lesson-prose h3,
+.lesson-prose h4 {
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin-top: 1.6em;
+  margin-bottom: 0.6em;
+}
+
+.lesson-prose p,
+.lesson-prose ul,
+.lesson-prose ol {
+  margin-bottom: 1.25em;
+  color: var(--ink-2);
+  font-size: 0.95rem;
+}
+
+.lesson-prose strong {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.lesson-prose code {
+  background-color: var(--bg-subtle);
+  border: 1px solid var(--line);
+  color: #93c5fd;
+  padding: 0.15rem 0.4rem;
+  border-radius: 0.375rem;
+  font-size: 0.85em;
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.03);
+}
+
+.lesson-prose pre {
+  background-color: #080a12;
+  border: 1px solid var(--line);
+  border-radius: 0.75rem;
+  padding: 1.15rem;
+  overflow-x: auto;
+  margin-bottom: 1.35em;
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.5);
+}
+
+.lesson-prose pre code {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  color: var(--ink);
+  font-size: 0.875rem;
+}
+
+/* Skeleton Shimmer Animation */
+@keyframes ql-shimmer {
+  0% {
+    background-position: -200% 0;
   }
-  body {
-    @apply bg-bg text-ink font-sans antialiased;
-    font-size: 15px;
-    line-height: 1.55;
-  }
-  /* ChatGPT-grade restraint: no shadows, no gradients. Focus visibility is
-     the one loud thing we allow. */
-  :focus-visible {
-    outline: 2px solid var(--accent);
-    outline-offset: 2px;
-    border-radius: 4px;
-  }
-  @media (prefers-reduced-motion: reduce) {
-    *,
-    *::before,
-    *::after {
-      animation-duration: 0.01ms !important;
-      transition-duration: 0.01ms !important;
-    }
+  100% {
+    background-position: 200% 0;
   }
 }
 
-/* highlight.js token colours, mapped onto the app's own code tokens.
-   Scoped to .hljs so the rest of the page is untouched. */
+.ql-skeleton {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.03) 25%,
+    rgba(255, 255, 255, 0.08) 50%,
+    rgba(255, 255, 255, 0.03) 75%
+  );
+  background-size: 200% 100%;
+  animation: ql-shimmer 1.8s ease-in-out infinite;
+}
+
+/* Holographic Quantum Wave Animations */
+@keyframes ql-laser-flow {
+  0% {
+    stroke-dashoffset: 300;
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes ql-quantum-glow {
+  0%, 100% {
+    filter: drop-shadow(0 0 6px rgba(59, 130, 246, 0.5));
+    transform: scale(1);
+  }
+  50% {
+    filter: drop-shadow(0 0 16px rgba(59, 130, 246, 0.85));
+    transform: scale(1.02);
+  }
+}
+
+.ql-wire-flow {
+  stroke-dasharray: 10 20;
+  animation: ql-laser-flow 6s linear infinite;
+}
+
+.ql-gate-node {
+  animation: ql-quantum-glow 3s ease-in-out infinite;
+  transition: all 0.3s ease;
+}
+
+/* Radial Blur Spotlights */
+.ambient-glow-blue {
+  background: radial-gradient(circle, rgba(59, 130, 246, 0.18) 0%, transparent 70%);
+}
+
+.ambient-glow-purple {
+  background: radial-gradient(circle, rgba(168, 85, 247, 0.15) 0%, transparent 70%);
+}
+
+/* KaTeX Math Formatting & Duplication Elimination */
+.katex .katex-mathml {
+  display: none !important;
+}
+.katex-html {
+  display: inline-block;
+}
+.katex-display {
+  margin: 1rem 0 !important;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+.katex-display > .katex {
+  display: block;
+  text-align: center;
+}
+
+/* Scoped IBM Quantum Composer Layout & Gate Palette */
+.composer-host.dark {
+  --bg: #0c0f18;
+  --fg: #f8fafc;
+  --muted: #94a3b8;
+  --line: rgba(255, 255, 255, 0.12);
+  --wire: #64748b;
+  --panel: #111624;
+  --accent: #3b82f6;
+  --divider: rgba(255, 255, 255, 0.1);
+  --editor-bg: #090c14;
+  --endpoint-border: #94a3b8;
+}
+
+.composer-host .gate-grid {
+  display: grid !important;
+  grid-template-columns: repeat(6, 40px) !important;
+  gap: 8px !important;
+}
+
+.composer-host .gate-btn {
+  width: 40px !important;
+  height: 40px !important;
+  border-radius: 4px !important;
+  font-weight: 700 !important;
+  display: inline-flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 2px !important;
+  overflow: hidden !important;
+  text-align: center !important;
+  line-height: 1.05 !important;
+  box-sizing: border-box !important;
+  cursor: grab !important;
+  user-select: none !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4) !important;
+}
+
+.composer-host .gate-btn:active {
+  cursor: grabbing !important;
+}
+
+.composer-host .ops-sidebar {
+  width: 320px !important;
+  flex-shrink: 0 !important;
+  border-right: 1px solid var(--divider) !important;
+  background: var(--bg) !important;
+}
+
+.composer-host .composer-columns {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: stretch !important;
+  min-height: 380px !important;
+}
+
+.composer-host .workspace {
+  flex: 1 !important;
+  min-width: 0 !important;
+  overflow-x: auto !important;
+}
+
+/* Force dark theme & high contrast for native select dropdowns in Composer */
+.composer-host select,
+.composer-host .align-select,
+.composer-host .ops-sidebar select {
+  color-scheme: dark !important;
+  background-color: #0b1120 !important;
+  color: #f8fafc !important;
+  border: 1px solid rgba(255, 255, 255, 0.25) !important;
+  border-radius: 6px !important;
+  padding: 4px 10px !important;
+  font-size: 12px !important;
+  cursor: pointer !important;
+  outline: none !important;
+}
+
+.composer-host select:hover,
+.composer-host .align-select:hover {
+  background-color: #162035 !important;
+  border-color: var(--accent, #3b82f6) !important;
+}
+
+.composer-host select option,
+.composer-host .align-select option {
+  background-color: #0b1120 !important;
+  color: #f8fafc !important;
+  padding: 8px 12px !important;
+}
+
+/* Global native form controls dark scheme */
+select,
+option,
+optgroup {
+  color-scheme: dark !important;
+  background-color: #0b1120 !important;
+  color: #f8fafc !important;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Syntax Highlighting (Highlight.js Dark Theme)                              */
+/* -------------------------------------------------------------------------- */
+.hljs {
+  color: #e2e8f0;
+  background: transparent;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
 .hljs-keyword,
-.hljs-selector-tag,
-.hljs-literal,
-.hljs-doctag {
-  color: var(--code-keyword);
+.hljs-operator,
+.hljs-selector-tag {
+  color: #c084fc !important; /* purple / violet */
+  font-weight: 600;
+}
+
+.hljs-function,
+.hljs-title.function_,
+.hljs-title {
+  color: #60a5fa !important; /* bright sky blue */
+  font-weight: 600;
 }
 
 .hljs-string,
-.hljs-regexp,
-.hljs-addition,
-.hljs-attribute,
-.hljs-meta .hljs-string {
-  color: var(--code-string);
+.hljs-char {
+  color: #4ade80 !important; /* bright emerald green */
 }
 
 .hljs-number,
-.hljs-symbol,
-.hljs-bullet,
-.hljs-link,
-.hljs-selector-attr,
-.hljs-selector-pseudo {
-  color: var(--code-number);
+.hljs-literal {
+  color: #fbbf24 !important; /* warm amber / gold */
 }
 
 .hljs-comment,
-.hljs-quote,
-.hljs-deletion {
-  color: var(--code-comment);
+.hljs-quote {
+  color: #94a3b8 !important; /* muted slate */
   font-style: italic;
-}
-
-.hljs-title,
-.hljs-title.function_,
-.hljs-section,
-.hljs-name,
-.hljs-selector-id,
-.hljs-selector-class {
-  color: var(--code-title);
 }
 
 .hljs-built_in,
-.hljs-class .hljs-title,
-.hljs-title.class_,
-.hljs-type {
-  color: var(--code-builtin);
-}
-
-.hljs-attr,
-.hljs-variable,
-.hljs-template-variable,
-.hljs-params {
-  color: var(--code-literal);
-}
-
-/* Emphasis is already carried by hue; drop hljs' own weight styling so the
-   monospace metrics stay even across a block. */
-.hljs-emphasis {
-  font-style: italic;
-}
-
-.hljs-strong {
+.hljs-type,
+.hljs-class .hljs-title {
+  color: #38bdf8 !important; /* electric cyan */
   font-weight: 600;
 }
+
+.hljs-variable,
+.hljs-template-variable,
+.hljs-attr {
+  color: #f472b6 !important; /* rose pink */
+}
+
+.hljs-meta,
+.hljs-subst {
+  color: #a78bfa !important; /* soft violet */
+}
+
+.hljs-punctuation {
+  color: #94a3b8;
+}
+
+.hljs-addition {
+  color: #4ade80;
+  background: rgba(74, 222, 128, 0.15);
+}
+
+.hljs-deletion {
+  color: #f87171;
+  background: rgba(248, 113, 113, 0.15);
+}
+
+
+
+

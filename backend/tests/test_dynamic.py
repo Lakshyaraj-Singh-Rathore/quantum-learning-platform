@@ -111,3 +111,34 @@ def test_shot_limit_enforced():
     ir.place(Op(kind="if", condition=Condition(type="bit_eq", bit=0, value=1), body=[]), 1)
     with pytest.raises(DynamicLimitError):
         dynamic_qiskit.run(ir, shots=settings.max_dynamic_shots + 1)
+
+
+def test_dynamic_circuit_with_noise():
+    from app.quantum.noise import NoiseParams
+
+    # Prepare |1> via X gate, then measure
+    ir = CircuitIR(name="noisy_dynamic", n_qubits=1, n_clbits=1)
+    ir.place(Op(kind="gate", gate="x", qubits=[0]), 0)
+    ir.place(Op(kind="measure", qubits=[0], clbits=[0]), 1)
+    ir.place(
+        Op(kind="if", condition=Condition(type="bit_eq", bit=0, value=1), body=[]), 2
+    )
+
+    noise = NoiseParams(
+        enabled=True,
+        t1_us=2.0,  # Fast relaxation relative to gate
+        t2_us=1.0,
+        readout_error=0.15,
+    )
+
+    result = dynamic_qiskit.run(ir, shots=100, seed=42, noise=noise)
+    meta = result["metadata"]
+
+    assert meta["noise"]["enabled"] is True
+    assert "ideal_counts" in meta
+    assert meta["ideal_counts"] == {"1": 100}
+    # Noise should produce some '0' outcomes due to readout error and relaxation
+    assert "0" in result["counts"]
+    assert "metrics" in meta
+    assert meta["metrics"]["total_variation"] > 0
+

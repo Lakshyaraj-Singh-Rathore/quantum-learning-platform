@@ -86,6 +86,12 @@ def append_op_to_qiskit(circ: QuantumCircuit, op: Op) -> None:
             circ.mcx(list(op.controls), op.qubits[0])
         return
 
+    if name == "swap":
+        q0 = op.qubits[0] if op.qubits else 0
+        q1 = op.qubits[1] if len(op.qubits) >= 2 else (1 if q0 == 0 else 0)
+        circ.swap(q0, q1)
+        return
+
     cls = GATE_CLASSES.get(name)
     if cls is None:
         raise NormalizeError(f"unsupported gate: {name}")

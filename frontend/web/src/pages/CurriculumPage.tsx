@@ -1,41 +1,39 @@
 import { Link } from "react-router-dom";
-import { AlertTriangle, ArrowRight, BookOpen } from "lucide-react";
+import { ArrowRight, BookOpen, Compass } from "lucide-react";
 
-import { Card, ErrorNote, Spinner } from "../components/ui";
+import { Button, Card, ErrorNote, Spinner } from "../components/ui";
 import { CurriculumBrowser } from "../components/curriculum/CurriculumBrowser";
 import { useCurriculum, useNextTopics } from "../api/curriculum";
 import { useSession } from "../state/session";
 
 export function CurriculumPage() {
   const { data, isLoading, error, refetch } = useCurriculum();
-  // Deliberately non-blocking: if the recommendation call fails the curriculum
-  // itself must still render. A failed /next is not a failed curriculum.
   const next = useNextTopics();
   const token = useSession((s) => s.token);
 
   if (isLoading) {
     return (
-      <div className="flex items-center gap-3 p-6 text-ink-2">
-        <Spinner />
-        <span role="status">Loading curriculum…</span>
+      <div className="flex items-center justify-center p-12 text-ink-3 text-sm">
+        <Spinner className="mr-2" />
+        <span role="status">Loading curriculum topics…</span>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="flex flex-col gap-3 p-6">
+      <div className="flex flex-col gap-4 p-8 max-w-2xl mx-auto">
         <ErrorNote>
-          Could not load the curriculum.{" "}
-          {error instanceof Error ? error.message : "Unknown error"}
+          Could not load curriculum data: {error instanceof Error ? error.message : "Unknown error"}
         </ErrorNote>
-        <button
-          type="button"
+        <Button
+          variant="secondary"
+          size="sm"
           onClick={() => void refetch()}
-          className="self-start rounded-lg border border-line bg-raised px-3 py-1.5 text-[13px] text-ink hover:bg-hover"
+          className="self-start"
         >
           Try again
-        </button>
+        </Button>
       </div>
     );
   }
@@ -44,15 +42,12 @@ export function CurriculumPage() {
 
   if (sections.length === 0) {
     return (
-      <div className="p-6">
-        <ErrorNote>
-          The curriculum is empty. No topics have been published yet.
-        </ErrorNote>
+      <div className="p-8 max-w-2xl mx-auto">
+        <ErrorNote>The curriculum is currently empty. No topics published yet.</ErrorNote>
       </div>
     );
   }
 
-  // Derived, never hardcoded: counts come from the response.
   const totalTopics = data?.progress.topics_total ?? 0;
   const completed = data?.progress.topics_completed ?? 0;
   const percent = data?.progress.percent ?? 0;
@@ -60,63 +55,71 @@ export function CurriculumPage() {
   const resume = next.data?.find((n) => n.lesson_slug) ?? null;
 
   return (
-    <div className="mx-auto flex max-w-4xl flex-col gap-6 p-6">
-      <header className="flex flex-col gap-2">
-        <h1 className="text-xl font-semibold text-ink">Curriculum</h1>
-        <p className="max-w-2xl text-[13px] leading-relaxed text-ink-2">
-          A guided path through quantum computing, ordered so each topic only
-          assumes what comes before it. Work through it in sequence, or jump to
-          any topic whose prerequisites you already have.
+    <div className="mx-auto flex max-w-5xl flex-col gap-6 p-6">
+      <header className="flex flex-col gap-2 border-b border-line pb-4">
+        <h1 className="text-2xl font-bold tracking-tight text-ink flex items-center gap-2.5">
+          <Compass className="h-6 w-6 text-accent" /> Structured Quantum Curriculum
+        </h1>
+        <p className="max-w-2xl text-sm leading-relaxed text-ink-3">
+          A pedagogical sequence through quantum theory, linear algebra, circuit synthesis, and algorithmic speedups. Each topic builds cleanly on its verified prerequisites.
         </p>
       </header>
 
-      <Card className="flex flex-wrap items-center justify-between gap-4">
-        <div className="flex flex-col gap-1">
-          <p className="text-[12px] font-semibold uppercase tracking-wide text-ink-3">
-            Your progress
-          </p>
-          {token ? (
-            <p className="text-[13px] text-ink-2">
-              {completed} of {totalTopics} topics completed
-              {percent > 0 ? ` · ${percent}%` : ""}
-            </p>
+      {/* Progress & Quick Resume Card */}
+      <Card className="p-6">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex flex-col gap-2 min-w-0 flex-1">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-ink-3">
+              Curriculum Progress
+            </span>
+            {token ? (
+              <div className="space-y-2">
+                <p className="text-sm font-semibold text-ink">
+                  {completed} of {totalTopics} topics completed ({percent}%)
+                </p>
+                {/* Visual Progress Bar */}
+                <div className="h-2 w-full max-w-md overflow-hidden rounded-full bg-subtle border border-line-soft">
+                  <div
+                    className="h-full bg-accent transition-all duration-300"
+                    style={{ width: `${percent}%` }}
+                  />
+                </div>
+              </div>
+            ) : (
+              <p className="text-xs text-ink-3">
+                Sign in to persist your progress and track mastery across devices.
+              </p>
+            )}
+          </div>
+
+          {resume ? (
+            <Link
+              to={`/learn?lesson=${encodeURIComponent(resume.lesson_slug as string)}`}
+              className="inline-flex h-9 items-center gap-2 rounded-lg bg-accent px-4 text-xs font-semibold text-accent-ink hover:opacity-90 shadow-sm transition-all"
+            >
+              <BookOpen size={14} aria-hidden="true" />
+              {completed > 0 ? "Resume Learning" : "Start Learning"}
+              <ArrowRight size={14} aria-hidden="true" />
+            </Link>
           ) : (
-            <p className="text-[13px] text-ink-3">
-              Sign in to track your progress. You can browse everything now.
-            </p>
+            next.error && (
+              <span className="text-xs text-ink-3">Next topic suggestion queued</span>
+            )
           )}
         </div>
 
-        {resume ? (
-          <Link
-            to={`/learn?lesson=${encodeURIComponent(resume.lesson_slug as string)}`}
-            className="inline-flex h-9 items-center gap-2 rounded-lg bg-accent px-3.5 text-sm font-medium text-accent-ink transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
-          >
-            <BookOpen size={15} aria-hidden="true" />
-            {completed > 0 ? "Resume learning" : "Start learning"}
-            <ArrowRight size={15} aria-hidden="true" />
-          </Link>
-        ) : (
-          next.error && (
-            <span className="inline-flex items-center gap-1.5 text-[12px] text-ink-3">
-              <AlertTriangle size={13} aria-hidden="true" />
-              Next-lesson suggestion unavailable
-            </span>
-          )
+        {resume && (
+          <p className="text-xs text-ink-3 mt-3 pt-3 border-t border-line-soft">
+            Recommended next step:{" "}
+            <Link
+              to={`/curriculum/topic/${encodeURIComponent(resume.slug)}`}
+              className="text-accent font-medium hover:underline"
+            >
+              {resume.title}
+            </Link>
+          </p>
         )}
       </Card>
-
-      {resume && (
-        <p className="text-[12px] text-ink-3">
-          Suggested next:{" "}
-          <Link
-            to={`/curriculum/topic/${encodeURIComponent(resume.slug)}`}
-            className="text-accent underline-offset-2 hover:underline"
-          >
-            {resume.title}
-          </Link>
-        </p>
-      )}
 
       <CurriculumBrowser sections={sections} />
     </div>

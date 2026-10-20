@@ -47,6 +47,34 @@ def seed_users(db: Session) -> None:
         "instructor",
         "Course Instructor",
     )
+    ensure_user(
+        db,
+        "student@quantum.local",
+        "password123",
+        "student",
+        "Student Demo",
+    )
+    ensure_user(
+        db,
+        "instructor@quantum.local",
+        "password123",
+        "instructor",
+        "Instructor Demo",
+    )
+    ensure_user(
+        db,
+        "student@quantum.dev",
+        "password123",
+        "student",
+        "Student Demo",
+    )
+    ensure_user(
+        db,
+        "instructor@quantum.dev",
+        "password123",
+        "instructor",
+        "Instructor Demo",
+    )
 
 
 QUIZZES = [
@@ -412,10 +440,128 @@ def seed_challenges(db: Session) -> None:
     db.commit()
 
 
+def seed_curriculum(db: Session) -> None:
+    from app.curriculum import SECTIONS, TOPICS, all_prerequisites, all_lesson_topics, NAMESPACES
+    from app.models.curriculum import CurriculumSection, CurriculumTopic, TopicPrerequisite, LessonTopic
+
+    for s in SECTIONS:
+        existing = db.scalar(select(CurriculumSection).where(CurriculumSection.slug == s["slug"]))
+        if existing is None:
+            db.add(CurriculumSection(
+                slug=s["slug"],
+                letter=s.get("letter", ""),
+                title=s["title"],
+                position=s["position"],
+            ))
+    db.commit()
+
+    for t in TOPICS:
+        existing = db.scalar(select(CurriculumTopic).where(CurriculumTopic.id == t["id"]))
+        ns = t["id"].split(".")[0]
+        sec_slug = NAMESPACES.get(ns, (t.get("section", "intro-quantum-computing"), "", ""))[0]
+        objectives = t.get("objectives", t.get("learning_objectives", []))
+        if existing is None:
+            db.add(CurriculumTopic(
+                id=t["id"],
+                title=t["title"],
+                namespace=ns,
+                module=t.get("module", ""),
+                section_slug=sec_slug,
+                position=t.get("position", 0),
+                difficulty=t.get("difficulty", "beginner"),
+                description=t.get("description", ""),
+                learning_objectives=objectives,
+                status=t.get("status", "published"),
+                revision=t.get("revision", 1),
+                assessments=t.get("assessments", []),
+                visualizations=t.get("visualizations", []),
+            ))
+        else:
+            existing.learning_objectives = objectives
+            existing.status = t.get("status", "published")
+            existing.section_slug = sec_slug
+    db.commit()
+
+    for item in all_prerequisites():
+        tid = item[0]
+        req = item[1]
+        kind = item[2] if len(item) > 2 else "required"
+        existing = db.scalar(select(TopicPrerequisite).where(
+            TopicPrerequisite.topic_id == tid,
+            TopicPrerequisite.prerequisite_id == req,
+        ))
+        if existing is None:
+            db.add(TopicPrerequisite(topic_id=tid, prerequisite_id=req, kind=kind))
+    db.commit()
+
+    for slug, tid, conf, is_prim in all_lesson_topics():
+        existing = db.scalar(select(LessonTopic).where(
+            LessonTopic.lesson_slug == slug,
+            LessonTopic.topic_id == tid,
+        ))
+        if existing is None:
+            db.add(LessonTopic(
+                lesson_slug=slug,
+                topic_id=tid,
+                confidence=conf,
+                is_primary=is_prim,
+            ))
+    db.commit()
+
+
+def seed_lessons(db: Session) -> None:
+    from app.models.content import Lesson
+    from app.ai.rag import infer_tags, infer_track, _title_of
+    from pathlib import Path
+
+    candidates = [
+        Path(get_settings().content_dir),
+        Path(__file__).resolve().parents[2] / "content",
+        Path.cwd() / "content",
+        Path.cwd().parent / "content",
+    ]
+    content_dir = None
+    for c in candidates:
+        if c.is_dir() and len(list(c.glob("*.md"))) > 0:
+            content_dir = c
+            break
+
+    if not content_dir:
+        return
+
+    for order, path in enumerate(sorted(content_dir.glob("*.md"))):
+        slug = path.stem
+        text = path.read_text(encoding="utf-8")
+        tags = infer_tags(text)
+        track = infer_track(text)
+        title = _title_of(text, slug)
+
+        lesson = db.scalar(select(Lesson).where(Lesson.slug == slug))
+        if lesson is None:
+            lesson = Lesson(
+                slug=slug,
+                title=title,
+                path=str(path.resolve()),
+                tags=tags,
+                order_index=order,
+                track=track,
+            )
+            db.add(lesson)
+        else:
+            lesson.title = title
+            lesson.path = str(path.resolve())
+            lesson.tags = tags
+            lesson.order_index = order
+            lesson.track = track
+    db.commit()
+
+
 def seed_all(db: Session) -> dict[str, int]:
     seed_users(db)
     seed_quizzes(db)
     seed_challenges(db)
+    seed_lessons(db)
+    seed_curriculum(db)
     log.info("seed complete")
     from app.games import GAME_LEVELS
 
@@ -426,4 +572,5 @@ def seed_all(db: Session) -> dict[str, int]:
     }
 
 
-__all__ = ["seed_all", "seed_users", "seed_quizzes", "seed_challenges", "ensure_user"]
+__all__ = ["seed_all", "seed_users", "seed_quizzes", "seed_challenges", "seed_lessons", "seed_curriculum", "ensure_user"]
+

@@ -43,6 +43,7 @@ services:
       - ./backend:/app
       - ./content:/content:ro
       - ./samples:/samples:ro
+      - ./docs:/docs:ro
     ports:
       - "8000:8000"
     depends_on:
@@ -70,6 +71,7 @@ services:
       - ./backend:/app
       - ./content:/content:ro
       - ./samples:/samples:ro
+      - ./docs:/docs:ro
     depends_on:
       postgres:
         condition: service_healthy

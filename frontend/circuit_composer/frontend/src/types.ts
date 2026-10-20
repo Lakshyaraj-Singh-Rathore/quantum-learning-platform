@@ -31,6 +31,9 @@ export interface Op {
   gate?: string | null
   qubits: number[]
   controls: number[]
+  neg_controls?: number[]
+  inv?: boolean
+  power?: number | string
   params: Param[]
   clbits: number[]
   layer: number
@@ -117,7 +120,7 @@ export const MULTI_PALETTE: PaletteItem[] = [
     gate: "x",
     kind: "gate",
     controls: 1,
-    hint: "Drop on the TARGET (the qubit that flips), then click its control",
+    hint: "CNOT: Drag onto circuit wire to connect control & target",
     color: "#14b8a6",
   },
   {
@@ -126,7 +129,25 @@ export const MULTI_PALETTE: PaletteItem[] = [
     gate: "y",
     kind: "gate",
     controls: 1,
-    hint: "Drop on the TARGET, then click its control",
+    hint: "Controlled-Y: Drag onto circuit wire to connect control & Y target",
+    color: "#14b8a6",
+  },
+  {
+    id: "cz",
+    label: "CZ",
+    gate: "z",
+    kind: "gate",
+    controls: 1,
+    hint: "Controlled-Z: Drag onto circuit wire to connect control & Z target",
+    color: "#14b8a6",
+  },
+  {
+    id: "ch",
+    label: "CH",
+    gate: "h",
+    kind: "gate",
+    controls: 1,
+    hint: "Controlled-Hadamard: Drag onto circuit wire to connect control & H target",
     color: "#14b8a6",
   },
   {
@@ -135,7 +156,7 @@ export const MULTI_PALETTE: PaletteItem[] = [
     gate: "x",
     kind: "gate",
     controls: 2,
-    hint: "Drop on the TARGET (the qubit that flips), then click 2 controls",
+    hint: "Toffoli (CCX): Drag onto circuit wire to connect 2 controls & target",
     color: "#14b8a6",
   },
   {
@@ -144,7 +165,7 @@ export const MULTI_PALETTE: PaletteItem[] = [
     gate: "x",
     kind: "gate",
     controls: -1,
-    hint: "Drop on the TARGET (the qubit that flips), then click controls, then Done",
+    hint: "Multi-Controlled X: Drag onto circuit wire",
     color: "#14b8a6",
   },
   {
@@ -153,7 +174,7 @@ export const MULTI_PALETTE: PaletteItem[] = [
     gate: "swap",
     kind: "gate",
     targets: 2,
-    hint: "Drop on first qubit, then click the second",
+    hint: "SWAP: Drag onto circuit to swap two wires",
     color: "#f59e0b",
   },
   {
@@ -161,8 +182,16 @@ export const MULTI_PALETTE: PaletteItem[] = [
     label: "Control+",
     kind: "gate",
     controls: -1,
-    hint: "Add a control to an existing gate",
+    hint: "Control+: Drag onto an existing gate to add another control (•)",
     color: "#14b8a6",
+  },
+  {
+    id: "negctrl",
+    label: "NegCtrl+",
+    kind: "gate",
+    controls: -1,
+    hint: "NegCtrl+: Drag onto an existing gate to add a negative control (○)",
+    color: "#0284c7",
   },
 ]
 

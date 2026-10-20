@@ -16,26 +16,19 @@ import hljs from "highlight.js/lib/core";
 import python from "highlight.js/lib/languages/python";
 import bash from "highlight.js/lib/languages/bash";
 import json from "highlight.js/lib/languages/json";
+import javascript from "highlight.js/lib/languages/javascript";
 // KaTeX's stylesheet is imported in main.tsx, not here: a CSS import in this
 // module would break the Node render harnesses (scripts/render-*.mts), which
 // load the real components outside a bundler.
 
 /**
- * Only the grammars the curriculum can actually ask for. Every fenced block in
- * /content is Python; bash and json cover anything the lesson text adds later.
- *
- * This uses highlight.js' `core` build with explicit language registration
- * rather than the rehype-highlight plugin. rehype-highlight statically imports
- * lowlight's `common` set (~35 grammars) at module scope, so *every* one of
- * them ends up in the bundle no matter what you pass as `languages`; going
- * through core keeps the bundle to the three we named.
- *
- * An unregistered or absent fence language is left uncoloured rather than
- * guessed at: mis-highlighting a block is worse than not highlighting it.
+ * Grammars the curriculum and code blocks can ask for. Every fenced block in
+ * /content is Python or quantum frameworks; bash, json, and javascript cover tooling.
  */
 hljs.registerLanguage("python", python);
 hljs.registerLanguage("bash", bash);
 hljs.registerLanguage("json", json);
+hljs.registerLanguage("javascript", javascript);
 
 /** Applied by <Markdown> to keep lesson body text on the app's type scale. */
 const STYLES = [
@@ -48,8 +41,8 @@ const STYLES = [
   "[&_li]:mb-1",
   "[&_strong]:font-semibold [&_strong]:text-ink",
   "[&_code]:rounded [&_code]:bg-hover [&_code]:px-1 [&_code]:py-0.5 [&_code]:font-mono [&_code]:text-[13px] [&_code]:text-ink",
-  "[&_pre]:mb-3 [&_pre]:overflow-auto [&_pre]:rounded-lg [&_pre]:border [&_pre]:border-line-soft [&_pre]:bg-hover/60 [&_pre]:p-3",
-  "[&_pre_code]:bg-transparent [&_pre_code]:p-0",
+  "[&_pre]:my-4 [&_pre]:overflow-auto [&_pre]:rounded-xl [&_pre]:border [&_pre]:border-white/10 [&_pre]:bg-[#080d1a] [&_pre]:p-4 [&_pre]:shadow-lg",
+  "[&_pre_code]:bg-transparent [&_pre_code]:p-0 [&_pre_code]:font-mono [&_pre_code]:text-[13px] [&_pre_code]:leading-relaxed",
   "[&_blockquote]:mb-3 [&_blockquote]:border-l-2 [&_blockquote]:border-line [&_blockquote]:pl-3 [&_blockquote]:italic [&_blockquote]:text-ink-3",
   "[&_table]:mb-3 [&_table]:w-full [&_table]:border-collapse [&_table]:text-sm",
   "[&_th]:border [&_th]:border-line-soft [&_th]:bg-hover/60 [&_th]:px-2 [&_th]:py-1 [&_th]:text-left [&_th]:font-semibold [&_th]:text-ink",
@@ -78,19 +71,48 @@ type CodeProps = React.ComponentPropsWithoutRef<"code"> & {
  * inline span never carries one.
  */
 function CodeBlock({ className, children, node: _node, ...rest }: CodeProps) {
-  const language = LANGUAGE_CLASS.exec(className ?? "")?.[1];
+  const rawLang = LANGUAGE_CLASS.exec(className ?? "")?.[1];
+  const source = String(children).replace(/\n$/, "");
+  const isBlock = Boolean(rawLang) || String(children).endsWith("\n") || source.includes("\n");
 
   const html = useMemo(() => {
-    if (!language || !hljs.getLanguage(language)) return null;
-    // Strip the trailing newline markdown leaves on the block; without this the
-    // highlighted output ends in an empty line inside the <pre>.
-    const source = String(children).replace(/\n$/, "");
-    // highlight() escapes the source it is given, so the result is markup we
-    // generated ourselves rather than markup that came from the lesson text.
-    return hljs.highlight(source, { language }).value;
-  }, [children, language]);
+    if (!isBlock) return null;
+    const langMap: Record<string, string> = {
+      py: "python",
+      python: "python",
+      python3: "python",
+      qiskit: "python",
+      cirq: "python",
+      pennylane: "python",
+      cudaq: "python",
+      qasm: "python",
+      openqasm: "python",
+      sh: "bash",
+      shell: "bash",
+      bash: "bash",
+      zsh: "bash",
+      js: "javascript",
+      javascript: "javascript",
+      ts: "javascript",
+      typescript: "javascript",
+      json: "json",
+    };
+    const normalized = rawLang ? rawLang.toLowerCase() : "";
+    const targetLang = normalized && (langMap[normalized] || hljs.getLanguage(normalized))
+      ? (langMap[normalized] || normalized)
+      : "python";
 
-  if (html === null) {
+    try {
+      if (hljs.getLanguage(targetLang)) {
+        return hljs.highlight(source, { language: targetLang }).value;
+      }
+      return hljs.highlight(source, { language: "python" }).value;
+    } catch {
+      return null;
+    }
+  }, [source, rawLang, isBlock]);
+
+  if (!isBlock || html === null) {
     return (
       <code className={className} {...rest}>
         {children}
@@ -166,7 +188,7 @@ export function Markdown({ children }: { children: string }) {
     <div className={STYLES}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm, remarkMath]}
-        rehypePlugins={[[rehypeKatex, { throwOnError: false, strict: false }]]}
+        rehypePlugins={[[rehypeKatex, { throwOnError: false, strict: false, output: "html" }]]}
         components={{ code: CodeBlock, a: SmartLink }}
       >
         {children}

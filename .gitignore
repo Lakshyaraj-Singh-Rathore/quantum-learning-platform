@@ -18,10 +18,17 @@ venv/
 # Local runtime state — never commit: dev.db holds real user rows,
 # password hashes and chat history.
 *.db
+*.db-shm
+*.db-wal
 dev.db
+backend/dev.db*
 
-# Editor/agent device profiles (not project data).
+# Editor/agent device profiles and workspace artifacts (not project data).
 devices.json
+.gemini/
+artifacts/
+scratch/
+problem screenshot/
 
 # Captured screenshots — regenerate locally, do not version them.
 reports/screenshots/

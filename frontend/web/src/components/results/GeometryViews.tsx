@@ -6,6 +6,8 @@
  * a polar plot are each a handful of circles and lines, so a megabyte of
  * plotting library to draw them would be a poor trade.
  */
+import { useState, useRef } from "react";
+import { RotateCcw, Move3d } from "lucide-react";
 import { amplitudes, cabs, probabilities, qubitCount, relativePhases } from "../../lib/quantum";
 import type { RunResult } from "../../api/jobs";
 import { Notice } from "./ResultsViews";
@@ -68,95 +70,178 @@ export function PhaseDisk({ result }: { result: RunResult }) {
       .sort((a, b) => a - b);
   }
 
-  const size = 420;
+  const size = 440;
   const centre = size / 2;
-  const scale = centre - 42;
+  const scale = centre - 56;
   const total = indices.length;
 
   const ticks = [0, 45, 90, 135, 180, 225, 270, 315];
-  const tickLabels = ["0", "45", "90", "135", "180", "-135", "-90", "-45"];
+  const tickLabels = ["0°", "45°", "90°", "135°", "180°", "-135°", "-90°", "-45°"];
 
   return (
-    <div className="flex flex-col gap-3">
-      <svg
-        viewBox={`0 0 ${size} ${size}`}
-        className="mx-auto w-full max-w-[420px]"
-        role="img"
-        aria-label="Phase disk: one ring per basis state, angle is relative phase"
-      >
-        {ticks.map((tick) => {
-          const [x1, y1] = polar(centre, centre, scale * 0.94, tick);
-          const [x2, y2] = polar(centre, centre, scale, tick);
-          const [lx, ly] = polar(centre, centre, scale + 16, tick);
-          return (
-            <g key={tick}>
-              <line x1={x1} y1={y1} x2={x2} y2={y2} stroke="var(--line)" />
-              <text
-                x={lx}
-                y={ly + 4}
-                textAnchor="middle"
-                fontSize="11"
-                fill="var(--ink-3)"
-              >
-                {tickLabels[ticks.indexOf(tick)]}
-              </text>
-            </g>
-          );
-        })}
+    <div className="flex flex-col items-center gap-4">
+      <div className="relative rounded-2xl border border-line-soft bg-raised/50 p-4 shadow-sm">
+        <svg
+          viewBox={`0 0 ${size} ${size}`}
+          width={size}
+          height={size}
+          className="mx-auto max-w-full overflow-visible"
+          role="img"
+          aria-label="Phase disk: one ring per basis state, angle is relative phase"
+        >
+          <defs>
+            <radialGradient id="phaseDiskGrad" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stopColor="var(--bg)" stopOpacity="0.9" />
+              <stop offset="70%" stopColor="var(--raised)" stopOpacity="0.7" />
+              <stop offset="100%" stopColor="var(--panel, var(--hover))" stopOpacity="0.5" />
+            </radialGradient>
+            <filter id="phaseGlow" x="-20%" y="-20%" width="140%" height="140%">
+              <feGaussianBlur stdDeviation="3" result="blur" />
+              <feMerge>
+                <feMergeNode in="blur" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+          </defs>
 
-        {indices.map((index, slot) => {
-          const ring = (slot + 1) / total;
-          const angle = (phases[index] * 180) / Math.PI;
-          const magnitude = cabs(amps[index]);
-          const probability = probs[index];
-          const inner = ring - (1 / total) * 0.92 * (1 - magnitude);
-          const [ox, oy] = polar(centre, centre, ring * scale, angle);
-          const [sx, sy] = polar(centre, centre, Math.max(0, inner) * scale, angle);
-          const [mx, my] = polar(centre, centre, ring * scale, angle);
-          const radius = (10 + 26 * Math.sqrt(probability)) / 3.2;
-          return (
-            <g key={index}>
-              <circle
-                cx={centre}
-                cy={centre}
-                r={ring * scale}
-                fill="none"
-                stroke="var(--line-soft)"
-                strokeWidth="1"
-              />
-              <line x1={sx} y1={sy} x2={ox} y2={oy} stroke="var(--ink-3)" strokeWidth="2" />
-              <circle
-                cx={mx}
-                cy={my}
-                r={radius}
-                fill={phaseColour(angle)}
-                stroke="var(--line)"
-                strokeWidth="1"
-              />
-              {(() => {
-                const [lx, ly] = polar(centre, centre, ring * scale + 14, angle);
-                return (
-                  <text
-                    x={lx}
-                    y={ly + 4}
-                    textAnchor="middle"
-                    fontSize="10"
-                    fill="var(--ink-3)"
-                  >
-                    |{index.toString(2).padStart(n, "0")}⟩
-                  </text>
-                );
-              })()}
-            </g>
-          );
-        })}
-      </svg>
+          {/* Background Tinted Disc */}
+          <circle
+            cx={centre}
+            cy={centre}
+            r={scale + 8}
+            fill="url(#phaseDiskGrad)"
+            stroke="var(--line)"
+            strokeWidth="1.5"
+          />
 
-      <p className="text-xs leading-relaxed text-ink-3">
-        Each basis state sits on its <strong className="text-ink-2">own ring</strong>, so
-        states that share a phase no longer overlap. The angle is the phase{" "}
-        <strong className="text-ink-2">relative</strong> to the first populated state
-        (global phase is unobservable); marker size grows with probability.
+          {/* Radial Spokes & Degree Labels */}
+          {ticks.map((tick, i) => {
+            const [x1, y1] = polar(centre, centre, 12, tick);
+            const [x2, y2] = polar(centre, centre, scale + 8, tick);
+            const [lx, ly] = polar(centre, centre, scale + 24, tick);
+            return (
+              <g key={tick}>
+                <line
+                  x1={x1}
+                  y1={y1}
+                  x2={x2}
+                  y2={y2}
+                  stroke="var(--line-soft)"
+                  strokeWidth="1"
+                  strokeDasharray="3 3"
+                />
+                <text
+                  x={lx}
+                  y={ly}
+                  textAnchor="middle"
+                  dominantBaseline="middle"
+                  fontSize="11"
+                  fontWeight="500"
+                  fill="var(--ink-3)"
+                  className="font-mono select-none"
+                >
+                  {tickLabels[i]}
+                </text>
+              </g>
+            );
+          })}
+
+          {/* State Rings and Markers */}
+          {indices.map((index, slot) => {
+            const ring = total === 1 ? 0.65 : 0.3 + (slot / Math.max(1, total - 1)) * 0.62;
+            const angle = (phases[index] * 180) / Math.PI;
+            const magnitude = cabs(amps[index]);
+            const probability = probs[index];
+            const [mx, my] = polar(centre, centre, ring * scale, angle);
+            const markerRadius = Math.max(6, Math.min(22, 5 + 32 * Math.sqrt(probability)));
+            const color = phaseColour(angle);
+
+            // Avoid collision with outer 0° / 12 o'clock degree mark
+            const isNearTop = Math.abs(angle) < 25;
+            const labelDistance = isNearTop
+              ? ring * scale - markerRadius - 12
+              : ring * scale + markerRadius + 12;
+            const [lx, ly] = polar(centre, centre, Math.max(16, labelDistance), angle);
+
+            return (
+              <g key={index}>
+                {/* Concentric Ring */}
+                <circle
+                  cx={centre}
+                  cy={centre}
+                  r={ring * scale}
+                  fill="none"
+                  stroke="var(--line)"
+                  strokeWidth="1"
+                  strokeDasharray="4 4"
+                  strokeOpacity="0.7"
+                />
+
+                {/* Vector Stem from Center to Marker */}
+                <line
+                  x1={centre}
+                  y1={centre}
+                  x2={mx}
+                  y2={my}
+                  stroke={color}
+                  strokeWidth="2.5"
+                  strokeOpacity="0.6"
+                />
+
+                {/* State Marker Dot */}
+                <circle
+                  cx={mx}
+                  cy={my}
+                  r={markerRadius}
+                  fill={color}
+                  stroke="var(--bg)"
+                  strokeWidth="2"
+                  filter="url(#phaseGlow)"
+                  className="cursor-pointer transition-colors duration-150 hover:stroke-white hover:stroke-[2.5px]"
+                >
+                  <title>{`|${index.toString(2).padStart(n, "0")}⟩: prob=${(probability * 100).toFixed(2)}%, phase=${angle.toFixed(1)}°, mag=${magnitude.toFixed(3)}`}</title>
+                </circle>
+
+                {/* Non-Colliding State Ket Label */}
+                <text
+                  x={lx}
+                  y={ly}
+                  textAnchor="middle"
+                  dominantBaseline="middle"
+                  fontSize="11"
+                  fontWeight="600"
+                  fill="var(--ink)"
+                  className="font-mono select-none"
+                >
+                  |{index.toString(2).padStart(n, "0")}⟩
+                </text>
+              </g>
+            );
+          })}
+        </svg>
+
+        {/* Phase Color Wheel Legend Bar */}
+        <div className="mt-4 flex flex-col items-center gap-1.5 border-t border-line-soft pt-3">
+          <div className="flex w-full max-w-[280px] items-center justify-between text-[10px] font-mono text-ink-3">
+            <span>-180° (-π)</span>
+            <span>0°</span>
+            <span>+180° (+π)</span>
+          </div>
+          <div
+            className="h-3 w-full max-w-[280px] rounded-full shadow-inner"
+            style={{
+              background:
+                "linear-gradient(to right, rgb(225,124,255), rgb(255,93,93), rgb(61,214,198), rgb(91,157,255), rgb(225,124,255))",
+            }}
+          />
+          <span className="text-[11px] text-ink-3">Relative Phase Hue Spectrum</span>
+        </div>
+      </div>
+
+      <p className="max-w-md text-center text-xs leading-relaxed text-ink-3">
+        Each basis state gets its <strong className="text-ink-2">own ring</strong>.
+        Angle represents <strong className="text-ink-2">relative phase</strong> with respect to the first populated state,
+        and marker radius is proportional to <strong className="text-ink-2">amplitude magnitude</strong>.
       </p>
     </div>
   );
@@ -170,6 +255,13 @@ export function QSphere({ result }: { result: RunResult }) {
   const probs = probabilities(amps);
   const phases = relativePhases(amps);
 
+  const [yaw, setYaw] = useState(-30);
+  const [pitch, setPitch] = useState(20);
+  const [showStateLabels, setShowStateLabels] = useState(true);
+  const [showPhaseLabels, setShowPhaseLabels] = useState(true);
+  const [isDragging, setIsDragging] = useState(false);
+  const dragRef = useRef<{ startX: number; startY: number; startYaw: number; startPitch: number } | null>(null);
+
   // Bucket by Hamming weight: latitude. North pole is all-zeros.
   const byWeight = new Map<number, number[]>();
   amps.forEach((_, index) => {
@@ -182,9 +274,31 @@ export function QSphere({ result }: { result: RunResult }) {
   });
   if (byWeight.size === 0) return <Notice>Statevector is empty.</Notice>;
 
-  const size = 420;
+  const size = 340;
   const centre = size / 2;
-  const radius = centre - 46;
+  const radius = centre - 40;
+
+  // 3D Euler rotation: Yaw (around Z) then Pitch (around X)
+  const radYaw = (yaw * Math.PI) / 180;
+  const radPitch = (pitch * Math.PI) / 180;
+  const cosY = Math.cos(radYaw);
+  const sinY = Math.sin(radYaw);
+  const cosP = Math.cos(radPitch);
+  const sinP = Math.sin(radPitch);
+
+  const project3D = (x: number, y: number, z: number) => {
+    // 1. Rotate by yaw around Z
+    const x1 = x * cosY - y * sinY;
+    const y1 = x * sinY + y * cosY;
+    // 2. Rotate by pitch around X
+    const y2 = y1 * cosP - z * sinP;
+    const z2 = y1 * sinP + z * cosP;
+    return {
+      sx: centre + x1 * radius,
+      sy: centre - z2 * radius,
+      depth: y2, // Positive depth is towards viewer
+    };
+  };
 
   type Marker = {
     index: number;
@@ -205,12 +319,12 @@ export function QSphere({ result }: { result: RunResult }) {
       const x = Math.sin(theta) * Math.cos(phi);
       const y = Math.sin(theta) * Math.sin(phi);
       const z = Math.cos(theta);
+      const proj = project3D(x, y, z);
       markers.push({
         index,
-        sx: centre + x * radius,
-        sy: centre - z * radius,
-        // y is depth: positive is towards the viewer.
-        depth: y,
+        sx: proj.sx,
+        sy: proj.sy,
+        depth: proj.depth,
         probability: probs[index],
         degrees: (phases[index] * 180) / Math.PI,
         label: index.toString(2).padStart(n, "0"),
@@ -218,94 +332,380 @@ export function QSphere({ result }: { result: RunResult }) {
     });
   }
 
-  // Far markers first so the near ones sit on top.
+  // Rotate North and South poles
+  const northProj = project3D(0, 0, 1);
+  const southProj = project3D(0, 0, -1);
+
+  // Far markers first so the near ones sit on top
   const ordered = markers.slice().sort((a, b) => a.depth - b.depth);
+
+  // Generate 3D latitude rings for each weight level
+  const latitudeRings: { weight: number; path: string; depth: number }[] = [];
+  if (n > 1) {
+    for (let w = 1; w < n; w += 1) {
+      const theta = (Math.PI * w) / n;
+      const r_w = Math.sin(theta);
+      const z_w = Math.cos(theta);
+      const points: string[] = [];
+      let avgDepth = 0;
+      const steps = 36;
+      for (let s = 0; s <= steps; s += 1) {
+        const phi = (2 * Math.PI * s) / steps;
+        const x = r_w * Math.cos(phi);
+        const y = r_w * Math.sin(phi);
+        const proj = project3D(x, y, z_w);
+        points.push(`${proj.sx.toFixed(1)},${proj.sy.toFixed(1)}`);
+        avgDepth += proj.depth;
+      }
+      latitudeRings.push({
+        weight: w,
+        path: `M ${points.join(" L ")}`,
+        depth: avgDepth / (steps + 1),
+      });
+    }
+  }
+
+  const handlePointerDown = (e: React.PointerEvent<SVGSVGElement>) => {
+    (e.target as Element).setPointerCapture?.(e.pointerId);
+    dragRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      startYaw: yaw,
+      startPitch: pitch,
+    };
+    setIsDragging(true);
+  };
+
+  const handlePointerMove = (e: React.PointerEvent<SVGSVGElement>) => {
+    if (!dragRef.current) return;
+    const dx = e.clientX - dragRef.current.startX;
+    const dy = e.clientY - dragRef.current.startY;
+    setYaw(((dragRef.current.startYaw + dx * 0.6 + 180) % 360) - 180);
+    setPitch(Math.max(-85, Math.min(85, dragRef.current.startPitch - dy * 0.6)));
+  };
+
+  const handlePointerUp = () => {
+    dragRef.current = null;
+    setIsDragging(false);
+  };
 
   return (
     <div className="flex flex-col gap-3">
+      {/* 3D Orbit Controls Header */}
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-line-soft bg-raised px-3 py-2 text-xs text-ink-2">
+        <span className="flex items-center gap-1.5 font-medium text-ink">
+          <Move3d className="h-4 w-4 text-accent" />
+          3D Interactive Q-Sphere
+          <span className="ml-1 text-[11px] font-normal text-ink-3">
+            (click &amp; drag to rotate)
+          </span>
+        </span>
+        <div className="flex items-center gap-3">
+          <span className="font-mono text-[11px] text-ink-3">
+            yaw {Math.round(yaw)}° · pitch {Math.round(pitch)}°
+          </span>
+          <button
+            onClick={() => {
+              setYaw(-30);
+              setPitch(20);
+            }}
+            title="Reset rotation angles"
+            className="flex items-center gap-1 rounded border border-line px-2 py-0.5 text-[11px] text-ink-2 hover:bg-hover hover:text-ink"
+          >
+            <RotateCcw className="h-3 w-3" /> Reset view
+          </button>
+        </div>
+      </div>
+
       <svg
         viewBox={`0 0 ${size} ${size}`}
-        className="mx-auto w-full max-w-[420px]"
+        className={`mx-auto w-full max-w-[340px] max-h-[280px] touch-none select-none ${
+          isDragging ? "cursor-grabbing" : "cursor-grab"
+        }`}
         role="img"
-        aria-label="Q-sphere: latitude is Hamming weight, colour is relative phase"
+        aria-label="3D Interactive Q-sphere: click and drag to rotate, latitude is Hamming weight, colour is relative phase"
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerUp}
       >
+        <defs>
+          <radialGradient id="qsphereShading" cx="35%" cy="30%" r="70%">
+            <stop offset="0%" stopColor="#1e293b" stopOpacity="0.4" />
+            <stop offset="65%" stopColor="#0f172a" stopOpacity="0.75" />
+            <stop offset="100%" stopColor="#020617" stopOpacity="0.95" />
+          </radialGradient>
+          <filter id="qGlow" x="-30%" y="-30%" width="160%" height="160%">
+            <feGaussianBlur stdDeviation="3" result="blur" />
+            <feComposite in="SourceGraphic" in2="blur" operator="over" />
+          </filter>
+        </defs>
+
+        {/* Outer Sphere Silhouette & Shading */}
         <circle
           cx={centre}
           cy={centre}
           r={radius}
-          fill="none"
-          stroke="var(--line)"
-          strokeWidth="1.5"
+          fill="url(#qsphereShading)"
+          stroke="rgba(255, 255, 255, 0.2)"
+          strokeWidth="1.2"
         />
-        <ellipse
-          cx={centre}
-          cy={centre}
-          rx={radius}
-          ry={radius * 0.28}
-          fill="none"
-          stroke="var(--line-soft)"
-        />
-        <line
-          x1={centre}
-          y1={centre - radius}
-          x2={centre}
-          y2={centre + radius}
-          stroke="var(--line-soft)"
-        />
-        <text x={centre} y={centre - radius - 8} textAnchor="middle" fontSize="10" fill="var(--ink-3)">
-          |{"0".repeat(n)}⟩
-        </text>
-        <text x={centre} y={centre + radius + 16} textAnchor="middle" fontSize="10" fill="var(--ink-3)">
-          |{"1".repeat(n)}⟩
-        </text>
 
-        {ordered.map((m) => (
-          <g key={m.index}>
+        {/* 3D Latitude Parallels */}
+        {latitudeRings.map((ring) => (
+          <path
+            key={ring.weight}
+            d={ring.path}
+            fill="none"
+            stroke="var(--line-soft)"
+            strokeWidth="1"
+            strokeDasharray="3 3"
+            strokeOpacity={ring.depth < 0 ? 0.35 : 0.75}
+          />
+        ))}
+
+        {/* Central Axis connecting Poles */}
+        <line
+          x1={northProj.sx}
+          y1={northProj.sy}
+          x2={southProj.sx}
+          y2={southProj.sy}
+          stroke="var(--line-soft)"
+          strokeWidth="1.2"
+          strokeDasharray="4 3"
+        />
+
+        {/* Subtle North/South Pole Reference Points */}
+        <circle
+          cx={northProj.sx}
+          cy={northProj.sy}
+          r="2.5"
+          fill="rgba(255,255,255,0.4)"
+          opacity={northProj.depth < 0 ? 0.3 : 0.7}
+        />
+        <circle
+          cx={southProj.sx}
+          cy={southProj.sy}
+          r="2.5"
+          fill="rgba(255,255,255,0.4)"
+          opacity={southProj.depth < 0 ? 0.3 : 0.7}
+        />
+
+        {/* State Stems from Center */}
+        {ordered.map((m) => {
+          const color = phaseColour(m.degrees);
+          return (
             <line
+              key={`stem-${m.index}`}
               x1={centre}
               y1={centre}
               x2={m.sx}
               y2={m.sy}
-              stroke="var(--line)"
-              strokeWidth="2"
+              stroke={color}
+              strokeWidth={m.depth < 0 ? 1.5 : 2.5}
+              strokeOpacity={m.depth < 0 ? 0.45 : 0.9}
             />
-          </g>
-        ))}
+          );
+        })}
+
+        {/* State Nodes */}
         {ordered.map((m) => {
-          const r = (8 + 26 * Math.sqrt(m.probability)) / 4.6;
+          const r = Math.max(7, Math.min(22, 6 + 26 * Math.sqrt(m.probability)));
+          const isFront = m.depth >= 0;
+          const color = phaseColour(m.degrees);
+          const phaseStr = Math.abs(m.degrees) < 0.5 ? "0" : `${m.degrees >= 0 ? "+" : ""}${Math.round(m.degrees)}°`;
+          
+          let badgeText = `|${m.label}⟩`;
+          if (showPhaseLabels && showStateLabels) {
+            badgeText = `|${m.label}⟩  ${phaseStr}`;
+          } else if (showPhaseLabels) {
+            badgeText = phaseStr;
+          }
+
+          const badgeWidth = badgeText.length * 7.5 + 16;
+
           return (
-            <g key={m.index}>
+            <g key={`marker-${m.index}`}>
+              {/* Outer Glow Halo for Front Nodes */}
+              {isFront && (
+                <circle
+                  cx={m.sx}
+                  cy={m.sy}
+                  r={r + 3}
+                  fill="none"
+                  stroke={color}
+                  strokeWidth={1.5}
+                  strokeOpacity={0.6}
+                  filter="url(#qGlow)"
+                />
+              )}
+
+              {/* Nodal Cap Marker with dynamic phase color */}
               <circle
                 cx={m.sx}
                 cy={m.sy}
                 r={r}
-                fill={phaseColour(m.degrees)}
-                stroke="var(--line)"
-                strokeWidth="1"
-                opacity={m.depth < 0 ? 0.75 : 1}
+                fill={color}
+                stroke="#0b101d"
+                strokeWidth={isFront ? 2 : 1.2}
+                opacity={isFront ? 1 : 0.55}
+                filter={isFront ? "url(#qGlow)" : undefined}
+                className="cursor-pointer transition-colors duration-150 hover:stroke-white hover:stroke-[2.5px]"
               />
+
+              {/* Specular 3D Highlight for depth */}
+              {isFront && r > 9 && (
+                <circle
+                  cx={m.sx - r * 0.28}
+                  cy={m.sy - r * 0.28}
+                  r={r * 0.32}
+                  fill="#ffffff"
+                  fillOpacity={0.4}
+                  className="pointer-events-none"
+                />
+              )}
+
               <title>
-                {`|${m.label}⟩ · p=${m.probability.toFixed(4)} · rel. phase ${m.degrees >= 0 ? "+" : ""}${m.degrees.toFixed(1)}°`}
+                {`|${m.label}⟩ · p=${m.probability.toFixed(4)} (${(m.probability * 100).toFixed(1)}%) · phase ${m.degrees >= 0 ? "+" : ""}${m.degrees.toFixed(1)}°`}
               </title>
-              <text
-                x={m.sx}
-                y={m.sy - r - 4}
-                textAnchor="middle"
-                fontSize="9"
-                fill="var(--ink-2)"
-              >
-                {m.label}
-              </text>
+
+              {/* Dark Rounded Badge Card */}
+              {(showStateLabels || showPhaseLabels) && (
+                <g className="pointer-events-none select-none">
+                  <rect
+                    x={m.sx - badgeWidth / 2}
+                    y={m.sy - r - 23}
+                    width={badgeWidth}
+                    height={19}
+                    rx={4}
+                    ry={4}
+                    fill="#0b101d"
+                    stroke={color}
+                    strokeWidth={1}
+                    strokeOpacity={0.7}
+                    opacity={isFront ? 0.95 : 0.6}
+                  />
+                  <text
+                    x={m.sx}
+                    y={m.sy - r - 10}
+                    textAnchor="middle"
+                    fontSize="10"
+                    fontFamily="var(--font-mono), monospace"
+                    fontWeight="600"
+                    fill={isFront ? "#f8fafc" : "#94a3b8"}
+                  >
+                    {badgeText}
+                  </text>
+                </g>
+              )}
             </g>
           );
         })}
       </svg>
 
+      {/* Prominent, Highly Readable Quantum Phase Spectrum & Wheel Reference */}
+      <div className="flex flex-col gap-3 rounded-2xl border border-line-soft bg-raised/90 p-4 backdrop-blur-md shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          {/* Large Cyclic Phase Color Wheel Reference */}
+          <div className="flex items-center gap-4">
+            <svg
+              width="90"
+              height="90"
+              viewBox="-48 -48 96 96"
+              className="select-none overflow-visible shrink-0"
+              role="img"
+              aria-label="Quantum phase cyclic hue wheel"
+            >
+              {Array.from({ length: 36 }).map((_, i) => {
+                const a1 = (i * 10 * Math.PI) / 180;
+                const a2 = ((i + 1) * 10 * Math.PI) / 180;
+                const r1 = 20;
+                const r2 = 32;
+                const x1 = r1 * Math.cos(a1);
+                const y1 = -r1 * Math.sin(a1);
+                const x2 = r2 * Math.cos(a1);
+                const y2 = -r2 * Math.sin(a1);
+                const x3 = r2 * Math.cos(a2);
+                const y3 = -r2 * Math.sin(a2);
+                const x4 = r1 * Math.cos(a2);
+                const y4 = -r1 * Math.sin(a2);
+                const deg = i * 10 - 180;
+                return (
+                  <path
+                    key={i}
+                    d={`M ${x1} ${y1} L ${x2} ${y2} A ${r2} ${r2} 0 0 0 ${x3} ${y3} L ${x4} ${y4} A ${r1} ${r1} 0 0 1 ${x1} ${y1} Z`}
+                    fill={phaseColour(deg)}
+                  />
+                );
+              })}
+              <circle cx="0" cy="0" r="18" fill="#090d16" stroke="rgba(255,255,255,0.08)" strokeWidth="1" />
+              <text x="0" y="3" textAnchor="middle" fontSize="8" fontWeight="bold" fill="#f8fafc" fontFamily="var(--font-mono)">
+                Phase
+              </text>
+              {/* Prominent Radian Labels around Wheel */}
+              <text x="36" y="3" fontSize="9" fontWeight="bold" fill="#3dd6c6" fontFamily="var(--font-mono)">
+                0
+              </text>
+              <text x="0" y="-35" textAnchor="middle" fontSize="9" fontWeight="bold" fill="#5b9dff" fontFamily="var(--font-mono)">
+                +π/2
+              </text>
+              <text x="-36" y="3" textAnchor="end" fontSize="9" fontWeight="bold" fill="#ff5d5d" fontFamily="var(--font-mono)">
+                ±π
+              </text>
+              <text x="0" y="42" textAnchor="middle" fontSize="9" fontWeight="bold" fill="#e17cff" fontFamily="var(--font-mono)">
+                -π/2
+              </text>
+            </svg>
+
+            <div className="space-y-1">
+              <span className="block text-sm font-bold text-white tracking-tight">Quantum Phase Spectrum</span>
+              <span className="block text-xs text-ink-3">
+                Complex argument <code className="text-accent font-mono font-medium">arg(ψ)</code> mapped to continuous hue wheel
+              </span>
+              <div className="flex flex-wrap items-center gap-2 pt-1 text-[11px] font-mono">
+                <span className="inline-flex items-center gap-1 rounded bg-[#3dd6c6]/15 px-2 py-0.5 font-medium text-[#3dd6c6] border border-[#3dd6c6]/30">
+                  <span className="h-1.5 w-1.5 rounded-full bg-[#3dd6c6]" /> 0 rad (0°)
+                </span>
+                <span className="inline-flex items-center gap-1 rounded bg-[#5b9dff]/15 px-2 py-0.5 font-medium text-[#5b9dff] border border-[#5b9dff]/30">
+                  <span className="h-1.5 w-1.5 rounded-full bg-[#5b9dff]" /> +π/2 rad (+90°)
+                </span>
+                <span className="inline-flex items-center gap-1 rounded bg-[#ff5d5d]/15 px-2 py-0.5 font-medium text-[#ff5d5d] border border-[#ff5d5d]/30">
+                  <span className="h-1.5 w-1.5 rounded-full bg-[#ff5d5d]" /> ±π rad (180°)
+                </span>
+                <span className="inline-flex items-center gap-1 rounded bg-[#e17cff]/15 px-2 py-0.5 font-medium text-[#e17cff] border border-[#e17cff]/30">
+                  <span className="h-1.5 w-1.5 rounded-full bg-[#e17cff]" /> -π/2 rad (-90°)
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Labels & Overlay Controls */}
+          <div className="flex items-center gap-3 rounded-xl border border-line bg-subtle p-2 text-xs">
+            <span className="text-[11px] font-bold text-ink-3 uppercase tracking-wider font-mono">Display:</span>
+            <label className="flex items-center gap-1.5 cursor-pointer font-medium text-ink hover:text-white select-none">
+              <input
+                type="checkbox"
+                checked={showStateLabels}
+                onChange={(e) => setShowStateLabels(e.target.checked)}
+                className="rounded accent-accent h-4 w-4"
+              />
+              State (|x⟩)
+            </label>
+            <label className="flex items-center gap-1.5 cursor-pointer font-medium text-ink hover:text-white select-none">
+              <input
+                type="checkbox"
+                checked={showPhaseLabels}
+                onChange={(e) => setShowPhaseLabels(e.target.checked)}
+                className="rounded accent-accent h-4 w-4"
+              />
+              Phase angle (deg)
+            </label>
+          </div>
+        </div>
+      </div>
+
       <p className="text-xs leading-relaxed text-ink-3">
-        Latitude is Hamming weight: north pole is all-zeros, south pole is all-ones. Blob
-        size is probability, colour is relative phase. This shows the{" "}
-        <strong className="text-ink-2">ideal statevector</strong> — it is not a Bloch
-        sphere and cannot show a mixed state.
+        Latitude represents Hamming weight (|00…0⟩ at north pole, |11…1⟩ at south pole). Marker radius scales with probability P(x), and node/stem color shows quantum phase arg(ψ). Click and drag to orbit in 3D.
       </p>
     </div>
   );

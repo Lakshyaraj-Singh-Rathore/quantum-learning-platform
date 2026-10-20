@@ -181,6 +181,7 @@ const PALETTE_FAMILY: Record<string, keyof typeof FAMILY> = {
   while: "structural",
   box: "structural",
   ctrl: "xFamily",
+  negctrl: "xFamily",
 };
 
 export function paletteStyle(id: string) {

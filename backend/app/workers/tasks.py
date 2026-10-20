@@ -26,6 +26,7 @@ log = logging.getLogger(__name__)
 
 STATIC_RUNNERS = {
     "qiskit_aer": qiskit_aer.run,
+    "openqasm3": qiskit_aer.run,
     "cirq": cirq_sim.run,
     "pennylane": pennylane_sim.run,
     "qbraid": qbraid_sim.run,
@@ -71,7 +72,14 @@ def run_simulation(self, job_id: int) -> dict:
             engine, notes = resolve_backend(ir, job.backend, job.mode)
 
             if engine == "qiskit_dynamic":
-                result = dynamic_qiskit.run(ir, shots=job.shots)
+                from app.quantum.noise import NoiseParams
+
+                noise_params = (
+                    NoiseParams(**job.noise)
+                    if job.noise and job.noise.get("enabled", True)
+                    else None
+                )
+                result = dynamic_qiskit.run(ir, shots=job.shots, noise=noise_params)
             elif engine in {"qiskit_aer", "cudaq"} and job.noise:
                 from app.quantum.noise import NoiseParams
 

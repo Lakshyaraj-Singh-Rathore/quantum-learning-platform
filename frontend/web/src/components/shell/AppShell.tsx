@@ -1,64 +1,83 @@
 import { useState } from "react";
-import { Outlet, useLocation } from "react-router-dom";
-import { Sidebar } from "./Sidebar";
+import { Outlet } from "react-router-dom";
+import { Sidebar, useSidebarStore } from "./Sidebar";
 import { TopBar } from "./TopBar";
-import { NarrowViewportNotice } from "./NarrowViewportNotice";
 import { CommandPalette } from "./CommandPalette";
 import { ErrorBoundary } from "./ErrorBoundary";
-
-/**
- * Pages where the expanded sidebar should push the content aside rather than
- * float over it. These are the reading pages: covering the text you are
- * reading is annoying, whereas re-laying it out is not.
- *
- * The Composer is deliberately absent. Its canvas is width-sensitive and
- * drag-driven, so it keeps the overlay: the sidebar slides over it and the
- * grid's geometry never changes mid-interaction.
- */
-const PUSH_PAGES = new Set(["/learn", "/curriculum"]);
+import { ToastProvider, cn } from "../ui";
+import { X } from "lucide-react";
 
 export function AppShell() {
-  // Owned here, not inside the palette, so the top bar's search button and the
-  // global shortcut drive the same thing.
   const [paletteOpen, setPaletteOpen] = useState(false);
-
-  // Route state, not hover state: this changes when you navigate, so it costs
-  // nothing while the pointer is merely moving in and out of the rail.
-  const { pathname } = useLocation();
-  const pushes = PUSH_PAGES.has(pathname);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const { isCollapsed } = useSidebarStore();
 
   return (
-    /* The rail is position:fixed, so the shell reserves only its collapsed
-     * width (w-[60px]) rather than the expanded 240px. Pages therefore get the
-     * extra ~180px permanently, and the sidebar expands over them on hover
-     * instead of pushing them around.
-     *
-     * The push/overlay choice is made in CSS via Tailwind's `peer`, driven by
-     * the `peer` class on the rail. It is deliberately NOT React state: a
-     * hover state flag here would re-render this shell — and so the current
-     * page, Composer included — on every pointer entry and exit, which reads
-     * as a stutter on the very canvas the overlay exists to protect. */
-    <div className="flex h-full">
-      <Sidebar />
-      <div
-        className={[
-          "flex min-w-0 flex-1 flex-col pl-[60px]",
-          pushes &&
-            "transition-[padding] duration-200 ease-out peer-hover:pl-[240px] [.peer:focus-within~&]:pl-[240px]",
-        ]
-          .filter(Boolean)
-          .join(" ")}
+    <div className="flex h-screen w-screen overflow-hidden bg-bg text-ink">
+      <ToastProvider />
+
+      {/* Accessible Skip to Content Link */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:rounded-md focus:bg-accent focus:px-4 focus:py-2 focus:text-accent-ink focus:shadow-lg focus:outline-none"
       >
-        <TopBar onOpenPalette={() => setPaletteOpen(true)} />
-        <NarrowViewportNotice />
-        <main className="min-h-0 flex-1 overflow-y-auto">
-          {/* Around the page, not the app: a crash should cost the page and
-              leave the shell standing, so you can navigate away. */}
+        Skip to main content
+      </a>
+
+      {/* Desktop Persistent Sidebar */}
+      <div className="hidden lg:block shrink-0">
+        <Sidebar />
+      </div>
+
+      {/* Mobile Slide-Over Drawer */}
+      {mobileNavOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 bg-black/70 backdrop-blur-xs transition-opacity"
+            onClick={() => setMobileNavOpen(false)}
+            aria-hidden="true"
+          />
+
+          {/* Drawer container */}
+          <div className="fixed inset-y-0 left-0 flex w-[260px] max-w-[85vw] flex-col bg-raised shadow-2xl z-50 animate-in slide-in-from-left duration-200">
+            <div className="absolute right-2 top-3 z-10">
+              <button
+                onClick={() => setMobileNavOpen(false)}
+                className="p-1.5 rounded-lg text-ink-3 hover:text-ink hover:bg-hover transition-colors"
+                aria-label="Close menu"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <Sidebar mobile onNavigate={() => setMobileNavOpen(false)} />
+          </div>
+        </div>
+      )}
+
+      {/* Main App Layout */}
+      <div
+        className={cn(
+          "flex min-w-0 flex-1 flex-col transition-all duration-200 h-full overflow-hidden",
+          isCollapsed ? "lg:pl-[64px]" : "lg:pl-[230px]",
+        )}
+      >
+        <TopBar
+          onOpenPalette={() => setPaletteOpen(true)}
+          onOpenMobileNav={() => setMobileNavOpen(true)}
+        />
+
+        <main
+          id="main-content"
+          tabIndex={-1}
+          className="min-h-0 flex-1 overflow-y-auto focus:outline-none"
+        >
           <ErrorBoundary label="This page">
             <Outlet />
           </ErrorBoundary>
         </main>
       </div>
+
       <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
     </div>
   );

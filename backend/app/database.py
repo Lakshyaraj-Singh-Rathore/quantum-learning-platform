@@ -56,8 +56,19 @@ class VectorType(TypeDecorator):
 settings = get_settings()
 _engine_kwargs: dict = {"pool_pre_ping": True}
 if settings.database_url.startswith("sqlite"):
-    _engine_kwargs = {"connect_args": {"check_same_thread": False}}
+    _engine_kwargs = {"connect_args": {"check_same_thread": False, "timeout": 30.0}}
 engine = create_engine(settings.database_url, **_engine_kwargs)
+
+if settings.database_url.startswith("sqlite"):
+    from sqlalchemy import event
+
+    @event.listens_for(engine, "connect")
+    def set_sqlite_pragma(dbapi_connection, connection_record):
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA journal_mode=WAL")
+        cursor.execute("PRAGMA synchronous=NORMAL")
+        cursor.close()
+
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 
 
@@ -85,8 +96,5 @@ def init_db() -> None:
             conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
             conn.commit()
     from app import models  # noqa: F401  register models
-
-    if inspect(engine).has_table("alembic_version"):
-        return
 
     Base.metadata.create_all(bind=engine)

@@ -22,11 +22,14 @@ import {
   placeOp,
   requiredClbits,
   describeOp,
+  involvedQubits,
+  sortOps,
 } from "./ir"
 import Grid from "./Grid"
 import type { PendingSelection } from "./Grid"
 import BlockEditor from "./BlockEditor"
 import { paletteStyle } from "./theme"
+import { EditGatePanel } from "./EditGatePanel"
 
 /** Walk an index path (["body",0,"else_body",1]) down to a nested op. */
 /** Floor for the reported iframe height, so a 0 measurement can never
@@ -74,10 +77,48 @@ export interface ComposerProps {
   theme?: { base?: string }
 }
 
+const ALL_PALETTE_ITEMS: Record<string, PaletteItem> = (() => {
+  const m: Record<string, PaletteItem> = {}
+  for (const item of [...PALETTE, ...MULTI_PALETTE, ...STRUCTURAL, ...BLOCKS]) m[item.id] = item
+  return m
+})()
+
+const sanitizeOps = (ops: Op[], nQubits: number): Op[] => {
+  const normalized = ops.map((o) => {
+    if (o.gate === "swap") {
+      let q0 = o.qubits[0] ?? 0
+      let q1 = o.qubits[1] ?? (nQubits === 2 ? (q0 === 0 ? 1 : 0) : (q0 < nQubits - 1 ? q0 + 1 : q0 - 1))
+      if (q0 === q1) {
+        q1 = q0 === 0 ? 1 : 0
+      }
+      return { ...o, qubits: [q0, q1], controls: [] }
+    }
+    return o
+  })
+
+  // Deduplicate exact collisions at the same layer and qubits
+  const seen = new Set<string>()
+  const deduped: Op[] = []
+  for (const op of normalized) {
+    const key = `${op.kind}:${op.gate}:${op.layer}:${[...op.qubits].sort().join(",")}:${[...op.controls].sort().join(",")}`
+    if (!seen.has(key)) {
+      seen.add(key)
+      deduped.push(op)
+    }
+  }
+  return deduped
+}
+
 export function ComposerInner({ value, nQubits, onChange, onHeight, theme }: ComposerProps) {
   const incoming = value ?? null
   const initial = useMemo<CircuitIR>(
-    () => (incoming && incoming.ops ? incoming : emptyCircuit(nQubits ?? 2)),
+    () => {
+      const raw = incoming && incoming.ops ? incoming : emptyCircuit(nQubits ?? 2)
+      return {
+        ...raw,
+        ops: sanitizeOps(raw.ops, raw.n_qubits),
+      }
+    },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
   )
@@ -86,6 +127,7 @@ export function ComposerInner({ value, nQubits, onChange, onHeight, theme }: Com
   const [dragging, setDragging] = useState<PaletteItem | null>(null)
   const [selectedTool, setSelectedTool] = useState<PaletteItem | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [isEditPanelOpen, setIsEditPanelOpen] = useState(false)
   const [pending, setPending] = useState<PendingSelection | null>(null)
   const [paramExpr, setParamExpr] = useState("pi/2")
   const [error, setError] = useState("")
@@ -94,6 +136,57 @@ export function ComposerInner({ value, nQubits, onChange, onHeight, theme }: Com
 
   const lastSent = useRef<string>("")
   const rootRef = useRef<HTMLDivElement>(null)
+  const lastDropTimeRef = useRef<number>(0)
+  const lastMoveTimeRef = useRef<number>(0)
+
+  const handleSelect = (id: string | null) => {
+    setSelectedId(id)
+    if (!id) {
+      setIsEditPanelOpen(false)
+    } else {
+      const op = ir.ops.find((o) => o.id === id)
+      if (op && op.params && op.params.length > 0 && op.params[0]?.expr) {
+        setParamExpr(op.params[0].expr)
+      }
+    }
+  }
+
+  const handleUpdateOp = (updated: Op) => {
+    update((prev) => ({
+      ...prev,
+      ops: prev.ops.map((o) => (o.id === updated.id ? updated : o)),
+    }))
+  }
+
+  const handleParamChange = (newExpr: string) => {
+    setParamExpr(newExpr)
+    if (selectedId) {
+      update((prev) => {
+        const op = prev.ops.find((o) => o.id === selectedId)
+        if (!op || !op.params || op.params.length === 0) return prev
+        const updatedOp: Op = {
+          ...op,
+          params: [makeParam(newExpr)],
+        }
+        return {
+          ...prev,
+          ops: prev.ops.map((o) => (o.id === selectedId ? updatedOp : o)),
+        }
+      })
+    }
+  }
+
+  const cancelPending = () => {
+    if (!pending) return
+    const pendingOp = pending.op
+    setPending(null)
+    setNotice("")
+    update((prev) => ({
+      ...prev,
+      ops: prev.ops.filter((o) => o.id !== pendingOp.id),
+    }))
+    if (selectedId === pendingOp.id) setSelectedId(null)
+  }
 
   // theme -> css variables
   useEffect(() => {
@@ -168,7 +261,11 @@ export function ComposerInner({ value, nQubits, onChange, onHeight, theme }: Com
     setError("")
     setIr((prev) => {
       try {
-        return fn(prev)
+        const next = fn(prev)
+        return {
+          ...next,
+          ops: sanitizeOps(next.ops, next.n_qubits),
+        }
       } catch (e) {
         setError(String((e as Error).message))
         return prev
@@ -211,57 +308,251 @@ export function ComposerInner({ value, nQubits, onChange, onHeight, theme }: Com
     return null
   }
 
-  const handleDrop = (qubit: number, layer: number) => {
-    const item = dragging ?? selectedTool
+
+  const handleDrop = (qubit: number, layer: number, paletteId?: string) => {
+    // Prevent duplicate drop invocations from browser event bubbling / re-render
+    const now = Date.now()
+    if (now - lastDropTimeRef.current < 350) {
+      return
+    }
+    lastDropTimeRef.current = now
+
+    const item = dragging ?? (paletteId ? ALL_PALETTE_ITEMS[paletteId] : null)
     setDragging(null)
+    setSelectedTool(null)
     if (!item) return
 
-    // "Control+" adds a control to the currently selected gate.
-    if (item.id === "ctrl") {
-      if (!selectedId) {
-        setError("Select a gate first, then use Control+ and click a control qubit.")
+    // "Control+" or "NegCtrl+" adds a control modifier to the targeted or selected gate (IBM Quantum Composer behavior)
+    if (item.id === "ctrl" || item.id === "negctrl") {
+      const isNeg = item.id === "negctrl"
+      // Find a gate directly at (qubit, layer), or in the same column (layer), or currently selected
+      const exactOp = ir.ops.find(
+        (o) => o.layer === layer && (o.qubits.includes(qubit) || o.controls.includes(qubit) || (o.neg_controls || []).includes(qubit))
+      )
+      const columnOps = ir.ops.filter((o) => o.layer === layer && o.kind === "gate" && o.gate !== "barrier")
+      const currentSelected = ir.ops.find((o) => o.id === selectedId)
+
+      const targetOp =
+        exactOp ||
+        (currentSelected && currentSelected.layer === layer ? currentSelected : columnOps[0]) ||
+        currentSelected
+
+      if (!targetOp || targetOp.kind !== "gate" || targetOp.gate === "barrier") {
+        setError(`Drag ${item.label} onto an existing gate on the circuit to add a control.`)
         return
       }
+
+      // Determine which wire gets the new control dot
+      const usedWires = new Set([...targetOp.qubits, ...targetOp.controls, ...(targetOp.neg_controls || [])])
+      let newCtrlWire: number | null = null
+
+      if (!usedWires.has(qubit)) {
+        // User dropped Control on a free wire in the gate's column
+        newCtrlWire = qubit
+      } else {
+        // User dropped Control directly ON the gate tile -> pick nearest available wire
+        const candidates: number[] = []
+        for (let offset = 1; offset < ir.n_qubits; offset++) {
+          if (qubit + offset < ir.n_qubits) candidates.push(qubit + offset)
+          if (qubit - offset >= 0) candidates.push(qubit - offset)
+        }
+        newCtrlWire = candidates.find((w) => !usedWires.has(w)) ?? null
+      }
+
+      let nextNq = ir.n_qubits
+      if (newCtrlWire === null) {
+        newCtrlWire = ir.n_qubits
+        nextNq = Math.min(ir.n_qubits + 1, 16)
+      }
+
+      // Update operation, select it, and open the Edit Gate panel
       update((prev) => {
         const ops = prev.ops.map((o) => {
-          if (o.id !== selectedId) return o
-          if (o.qubits.includes(qubit) || o.controls.includes(qubit)) return o
-          return { ...o, controls: [...o.controls, qubit] }
+          if (o.id !== targetOp.id) return o
+          if (isNeg) {
+            return { ...o, neg_controls: [...(o.neg_controls || []), newCtrlWire!] }
+          } else {
+            return { ...o, controls: [...o.controls, newCtrlWire!] }
+          }
         })
-        return { ...prev, ops }
+        return {
+          ...prev,
+          n_qubits: Math.max(prev.n_qubits, nextNq),
+          n_clbits: Math.max(prev.n_clbits, nextNq),
+          ops,
+        }
       })
+
+      setSelectedId(targetOp.id)
+      setIsEditPanelOpen(true)
+      setError("")
+      setNotice(`Added ${isNeg ? "negative control (○)" : "control (•)"} on q[${newCtrlWire}] to ${(targetOp.gate ?? "").toUpperCase()} gate.`)
       return
+    }
+
+    // If an incomplete pending gate was active, clean it up before placing a new one
+    if (pending) {
+      const staleId = pending.op.id
+      update((prev) => ({
+        ...prev,
+        ops: prev.ops.filter((o) => o.id !== staleId),
+      }))
+      setPending(null)
+      setNotice("")
     }
 
     try {
       const op = buildOp(item, qubit)
       if (!op) return
 
-      // multi-qubit palette items enter a click-to-pick phase
-      if (item.controls && item.controls !== 0) {
-        update((prev) => ({ ...prev, ops: placeOp(prev, { ...op, layer }, layer) }))
-        setPending({ op: { ...op, layer }, need: item.controls, mode: "controls" })
-        // Name the target explicitly. "Click 1 control qubit" gave no clue
-        // which qubit had just become the target, so it was very easy to end
-        // up with the control and target the wrong way round -- an H on q0
-        // plus a reversed CNOT yields a separable |00>+|01>, not a Bell pair.
-        setNotice(
-          item.controls < 0
-            ? `Target is q[${qubit}]. Click control qubits in the same column, then press Done.`
-            : `Target is q[${qubit}] (it flips). Now click ${item.controls} control qubit${
-                item.controls > 1 ? "s" : ""
-              } in the same column.`,
-        )
-        return
-      }
-      if (item.targets === 2) {
-        update((prev) => ({ ...prev, ops: placeOp(prev, { ...op, layer }, layer) }))
-        setPending({ op: { ...op, layer }, need: 1, mode: "target2" })
-        setNotice("Click the second SWAP qubit.")
+      // SWAP gate: drop first qubit, then prompt user to click target qubit
+      if (item.targets === 2 || item.id === "swap" || item.gate === "swap") {
+        const swapOp: Op = { ...op, gate: "swap", qubits: [qubit], controls: [], layer }
+        update((prev) => {
+          const nq = Math.max(prev.n_qubits, qubit + 1, 2)
+          return {
+            ...prev,
+            n_qubits: nq,
+            n_clbits: Math.max(prev.n_clbits, nq),
+            ops: placeOp({ ...prev, n_qubits: nq }, swapOp, layer),
+          }
+        })
+        setSelectedId(swapOp.id)
+        setPending({ op: swapOp, need: 1, mode: "target2" })
+        setNotice("Select target qubit for SWAP — click a wire on the circuit")
         return
       }
 
+      // CNOT (CX): drop control, then prompt user to click target qubit
+      if (item.id === "cx" || (item.controls === 1 && (item.gate === "x" || item.id === "cnot"))) {
+        const cOp: Op = { ...op, gate: "x", qubits: [], controls: [qubit], layer }
+        update((prev) => {
+          const nq = Math.max(prev.n_qubits, qubit + 1, 2)
+          return {
+            ...prev,
+            n_qubits: nq,
+            n_clbits: Math.max(prev.n_clbits, nq),
+            ops: placeOp({ ...prev, n_qubits: nq }, cOp, layer),
+          }
+        })
+        setSelectedId(cOp.id)
+        setPending({ op: cOp, need: 1, mode: "target" })
+        setNotice("Select target qubit for CNOT — click a wire on the circuit")
+        return
+      }
+
+      // CY: drop control, then prompt user to click target qubit
+      if (item.id === "cy" || (item.controls === 1 && item.gate === "y")) {
+        const cyOp: Op = { ...op, gate: "y", qubits: [], controls: [qubit], layer }
+        update((prev) => {
+          const nq = Math.max(prev.n_qubits, qubit + 1, 2)
+          return {
+            ...prev,
+            n_qubits: nq,
+            n_clbits: Math.max(prev.n_clbits, nq),
+            ops: placeOp({ ...prev, n_qubits: nq }, cyOp, layer),
+          }
+        })
+        setSelectedId(cyOp.id)
+        setPending({ op: cyOp, need: 1, mode: "target" })
+        setNotice("Select target qubit for CY — click a wire on the circuit")
+        return
+      }
+
+      // CZ: drop control, then prompt user to click target qubit
+      if (item.id === "cz" || (item.controls === 1 && item.gate === "z")) {
+        const czOp: Op = { ...op, gate: "z", qubits: [], controls: [qubit], layer }
+        update((prev) => {
+          const nq = Math.max(prev.n_qubits, qubit + 1, 2)
+          return {
+            ...prev,
+            n_qubits: nq,
+            n_clbits: Math.max(prev.n_clbits, nq),
+            ops: placeOp({ ...prev, n_qubits: nq }, czOp, layer),
+          }
+        })
+        setSelectedId(czOp.id)
+        setPending({ op: czOp, need: 1, mode: "target" })
+        setNotice("Select target qubit for CZ — click a wire on the circuit")
+        return
+      }
+
+      // CH: drop control, then prompt user to click target qubit
+      if (item.id === "ch" || (item.controls === 1 && item.gate === "h")) {
+        const chOp: Op = { ...op, gate: "h", qubits: [], controls: [qubit], layer }
+        update((prev) => {
+          const nq = Math.max(prev.n_qubits, qubit + 1, 2)
+          return {
+            ...prev,
+            n_qubits: nq,
+            n_clbits: Math.max(prev.n_clbits, nq),
+            ops: placeOp({ ...prev, n_qubits: nq }, chOp, layer),
+          }
+        })
+        setSelectedId(chOp.id)
+        setPending({ op: chOp, need: 1, mode: "target" })
+        setNotice("Select target qubit for CH — click a wire on the circuit")
+        return
+      }
+
+      // General 1-control gate
+      if (item.controls === 1) {
+        const cOp: Op = { ...op, qubits: [], controls: [qubit], layer }
+        update((prev) => {
+          const nq = Math.max(prev.n_qubits, qubit + 1, 2)
+          return {
+            ...prev,
+            n_qubits: nq,
+            n_clbits: Math.max(prev.n_clbits, nq),
+            ops: placeOp({ ...prev, n_qubits: nq }, cOp, layer),
+          }
+        })
+        setSelectedId(cOp.id)
+        setPending({ op: cOp, need: 1, mode: "target" })
+        setNotice(`Select target qubit for ${item.label} — click a wire on the circuit`)
+        return
+      }
+
+      // Toffoli (CCX): 2 controls, 1 target (drop target first, then select 2 controls)
+      if (item.id === "ccx" || item.controls === 2) {
+        const ccxOp: Op = { ...op, gate: "x", qubits: [qubit], controls: [], layer }
+        update((prev) => {
+          const nq = Math.max(prev.n_qubits, qubit + 1, 3)
+          return {
+            ...prev,
+            n_qubits: nq,
+            n_clbits: Math.max(prev.n_clbits, nq),
+            ops: placeOp({ ...prev, n_qubits: nq }, ccxOp, layer),
+          }
+        })
+        setSelectedId(ccxOp.id)
+        setPending({ op: ccxOp, need: 2, mode: "controls" })
+        setNotice("Select 2 control qubits for CCX — click two wires on the circuit")
+        return
+      }
+
+      // MCX
+      if (item.id === "mcx" || (item.controls && item.controls < 0)) {
+        const mcxOp: Op = { ...op, gate: "x", qubits: [qubit], controls: [], layer }
+        update((prev) => {
+          const nq = Math.max(prev.n_qubits, qubit + 1, 2)
+          return {
+            ...prev,
+            n_qubits: nq,
+            n_clbits: Math.max(prev.n_clbits, nq),
+            ops: placeOp({ ...prev, n_qubits: nq }, mcxOp, layer),
+          }
+        })
+        setSelectedId(mcxOp.id)
+        setPending({ op: mcxOp, need: -1, mode: "controls" })
+        setNotice(`Click wires to add controls for MCX, then click Done`)
+        return
+      }
+
+      // Single-qubit gates, measurement, reset, barrier, flow control blocks
       update((prev) => ({ ...prev, ops: placeOp(prev, { ...op, layer }, layer) }))
+      setNotice("")
+      setPending(null)
     } catch (e) {
       setError(String((e as Error).message))
     }
@@ -270,22 +561,47 @@ export function ComposerInner({ value, nQubits, onChange, onHeight, theme }: Com
   /** Click during a pending control/target selection. */
   const handlePick = (qubit: number) => {
     if (!pending) return
-    const next: Op =
+    const used = involvedQubits(pending.op)
+    if (used.includes(qubit)) return
+
+    let next: Op
+    if (pending.mode === "target") {
+      next = { ...pending.op, qubits: [qubit] }
+    } else if (pending.mode === "target2") {
+      next = { ...pending.op, qubits: [...pending.op.qubits, qubit] }
+    } else {
+      next = { ...pending.op, controls: [...pending.op.controls, qubit] }
+    }
+
+    update((prev) => {
+      const nq = Math.max(prev.n_qubits, qubit + 1)
+      return {
+        ...prev,
+        n_qubits: nq,
+        n_clbits: Math.max(prev.n_clbits, nq),
+        ops: prev.ops.map((o) => (o.id === next.id ? next : o)),
+      }
+    })
+
+    if (pending.mode === "target" || pending.mode === "target2") {
+      setPending(null)
+      setNotice("")
+      return
+    }
+
+    const got =
       pending.mode === "controls"
-        ? { ...pending.op, controls: [...pending.op.controls, qubit] }
-        : { ...pending.op, qubits: [...pending.op.qubits, qubit] }
-
-    update((prev) => ({
-      ...prev,
-      ops: prev.ops.map((o) => (o.id === next.id ? next : o)),
-    }))
-
-    const got = pending.mode === "controls" ? next.controls.length : next.qubits.length - 1
+        ? next.controls.length
+        : next.qubits.length - 1
     if (pending.need > 0 && got >= pending.need) {
       setPending(null)
       setNotice("")
     } else {
       setPending({ ...pending, op: next })
+      if (pending.mode === "controls") {
+        const remaining = pending.need - got
+        setNotice(`Select ${remaining} more control qubit(s) — click wire on circuit`)
+      }
     }
   }
 
@@ -298,19 +614,64 @@ export function ComposerInner({ value, nQubits, onChange, onHeight, theme }: Com
     setNotice("")
   }
 
-  const moveOp = (id: string, qubit: number, layer: number) => {
+  const moveOp = (id: string, qubit: number, layer: number, handleType?: string) => {
+    const now = Date.now()
+    if (now - lastMoveTimeRef.current < 150) {
+      return
+    }
+    lastMoveTimeRef.current = now
+
     update((prev) => {
       const op = prev.ops.find((o) => o.id === id)
       if (!op) return prev
-      const delta = qubit - (op.qubits[0] ?? 0)
-      const moved: Op = {
-        ...op,
-        qubits: op.qubits.map((q) => q + delta),
-        controls: op.controls.map((q) => q + delta),
+
+      let moved: Op
+      if (handleType === "swap-0") {
+        const other = op.qubits[1] ?? (qubit === 0 ? 1 : 0)
+        if (qubit === other) return prev // cannot swap qubit with itself
+        moved = { ...op, qubits: [qubit, other], layer }
+      } else if (handleType === "swap-1") {
+        const other = op.qubits[0] ?? (qubit === 0 ? 1 : 0)
+        if (qubit === other) return prev
+        moved = { ...op, qubits: [other, qubit], layer }
+      } else if (handleType === "control" || handleType?.startsWith("control-")) {
+        const cIdx = handleType.includes("-") ? parseInt(handleType.split("-")[1] ?? "0", 10) : 0
+        if (op.qubits.includes(qubit)) return prev // control cannot overlap target
+        const newControls = [...op.controls]
+        if (newControls.length === 0) newControls.push(qubit)
+        else newControls[cIdx] = qubit
+        moved = { ...op, controls: newControls, layer }
+      } else if (handleType?.startsWith("neg-control-")) {
+        const cIdx = parseInt(handleType.split("-")[2] ?? "0", 10)
+        if (op.qubits.includes(qubit)) return prev // control cannot overlap target
+        const newNegControls = [...(op.neg_controls || [])]
+        if (newNegControls.length === 0) newNegControls.push(qubit)
+        else newNegControls[cIdx] = qubit
+        moved = { ...op, neg_controls: newNegControls, layer }
+      } else if (handleType === "target") {
+        if (op.controls.includes(qubit) || (op.neg_controls || []).includes(qubit)) return prev // target cannot overlap control
+        moved = { ...op, qubits: [qubit], layer }
+      } else {
+        // Move entire gate: delta applies across all involved qubits
+        const refQ = op.qubits[0] ?? op.controls[0] ?? (op.neg_controls && op.neg_controls[0]) ?? 0
+        const delta = qubit - refQ
+        const nextQubits = op.qubits.map((q) => q + delta)
+        const nextControls = op.controls.map((q) => q + delta)
+        const nextNegControls = (op.neg_controls || []).map((q) => q + delta)
+        const all = [...nextQubits, ...nextControls, ...nextNegControls]
+        if (all.some((q) => q < 0 || q >= prev.n_qubits)) {
+          // If vertical shift would put any wire out of bounds, keep wires and only change column
+          moved = { ...op, layer }
+        } else {
+          moved = { ...op, qubits: nextQubits, controls: nextControls, neg_controls: nextNegControls, layer }
+        }
       }
-      const all = [...moved.qubits, ...moved.controls]
-      if (all.some((q) => q < 0 || q >= prev.n_qubits)) return prev
-      return { ...prev, ops: placeOp({ ...prev, ops: prev.ops }, moved, layer) }
+
+      const remainingOps = prev.ops.filter((o) => o.id !== id)
+      return {
+        ...prev,
+        ops: placeOp({ ...prev, ops: remainingOps }, moved, layer),
+      }
     })
   }
 
@@ -318,6 +679,79 @@ export function ComposerInner({ value, nQubits, onChange, onHeight, theme }: Com
     update((prev) => ({ ...prev, ops: prev.ops.filter((o) => o.id !== id) }))
     if (selectedId === id) setSelectedId(null)
   }
+
+  const handleFlipGate = (id: string) => {
+    update((prev) => {
+      const ops = prev.ops.map((o) => {
+        if (o.id !== id) return o
+        const allControls = [...(o.controls || []), ...(o.neg_controls || [])]
+        if (allControls.length > 0 && o.qubits.length > 0) {
+          const nextQubits = [...o.qubits]
+          if (o.controls.length > 0) {
+            const nextControls = [...o.controls]
+            const temp = nextQubits[0]
+            nextQubits[0] = nextControls[0]
+            nextControls[0] = temp
+            return { ...o, qubits: nextQubits, controls: nextControls }
+          } else {
+            const nextNegControls = [...(o.neg_controls || [])]
+            const temp = nextQubits[0]
+            nextQubits[0] = nextNegControls[0]
+            nextNegControls[0] = temp
+            return { ...o, qubits: nextQubits, neg_controls: nextNegControls }
+          }
+        } else if (o.qubits.length > 1) {
+          return { ...o, qubits: [...o.qubits].reverse() }
+        }
+        return o
+      })
+      return { ...prev, ops }
+    })
+  }
+
+  const handleDuplicateGate = (id: string) => {
+    let duplicatedId = ""
+    update((prev) => {
+      const op = prev.ops.find((o) => o.id === id)
+      if (!op) return prev
+      const nextLayer = op.layer + 1
+      duplicatedId = `op-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
+      const duplicated: Op = {
+        ...op,
+        id: duplicatedId,
+        layer: nextLayer,
+      }
+      return { ...prev, ops: placeOp(prev, duplicated, nextLayer) }
+    })
+    if (duplicatedId) {
+      setSelectedId(duplicatedId)
+    }
+  }
+
+  // Keyboard shortcut: Escape cancels pending gate; Delete/Backspace deletes selected gate
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const activeTag = (document.activeElement?.tagName ?? "").toLowerCase()
+      if (activeTag === "input" || activeTag === "textarea" || activeTag === "select") {
+        return
+      }
+      if (e.key === "Escape") {
+        if (pending) {
+          e.preventDefault()
+          cancelPending()
+        }
+        return
+      }
+      if (e.key === "Delete" || e.key === "Backspace") {
+        if (selectedId) {
+          e.preventDefault()
+          deleteOp(selectedId)
+        }
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [selectedId, pending])
 
   const dynamic = circuitIsDynamic(ir)
   const nested = hasNestedMeasure(ir.ops)
@@ -408,22 +842,78 @@ export function ComposerInner({ value, nQubits, onChange, onHeight, theme }: Com
 
   /* -------------------------------------------------------------- palette */
 
-  const byId = useMemo(() => {
-    const m: Record<string, PaletteItem> = {};
-    for (const item of [...PALETTE, ...MULTI_PALETTE, ...STRUCTURAL, ...BLOCKS]) m[item.id] = item;
-    return m;
-  }, []);
+  const byId = ALL_PALETTE_ITEMS;
 
-  // The reference layout is a six-column grid. The grouping is by colour:
+  // The reference layout is a six-column grid with full multi-qubit gate support:
   // red Hadamard, blue X-family and multi-qubit, pale blue single-qubit,
-  // pink rotations, grey everything-that-is-not-an-operation.
+  // pink rotations, grey structural/control flow.
   const GRID: string[][] = [
-    ["h", "x", "cx", "cy", "swap", "id"],
+    ["h", "x", "cx", "cy", "cz", "ch"],
+    ["swap", "ccx", "mcx", "id", "ctrl", "barrier"],
     ["t", "s", "z", "tdg", "sdg", "p"],
-    ["rz", "p", "reset", "barrier", "measure", "if"],
-    ["for", "while", "box", "sx", "y", "rx"],
-    ["ry"],
+    ["rz", "rx", "ry", "sx", "y", "measure"],
+    ["reset", "if", "for", "while", "box", "negctrl"],
   ];
+
+function renderPaletteLabel(label: string) {
+  if (label === "Control+") {
+    return (
+      <span className="gate-btn-stack">
+        <span style={{ fontSize: 13, fontWeight: 800, lineHeight: 1 }}>•</span>
+        <span style={{ fontSize: 8.5, fontWeight: 700, lineHeight: 1 }}>Ctrl+</span>
+      </span>
+    );
+  }
+  if (label === "NegCtrl+") {
+    return (
+      <span className="gate-btn-stack">
+        <span style={{ fontSize: 13, fontWeight: 800, lineHeight: 1 }}>○</span>
+        <span style={{ fontSize: 8.5, fontWeight: 700, lineHeight: 1 }}>Ctrl-</span>
+      </span>
+    );
+  }
+  const paramMatch = label.match(/^([A-Za-z]+)\((.+)\)$/);
+  if (paramMatch) {
+    return (
+      <span className="gate-btn-stack">
+        <span style={{ fontSize: 11, fontWeight: 800, lineHeight: 1.05 }}>{paramMatch[1]}</span>
+        <span style={{ fontSize: 8.5, fontWeight: 600, lineHeight: 1, opacity: 0.92 }}>({paramMatch[2]})</span>
+      </span>
+    );
+  }
+  if (label === "If / Else") {
+    return (
+      <span className="gate-btn-stack">
+        <span style={{ fontSize: 8.5, fontWeight: 700, lineHeight: 1.05 }}>If /</span>
+        <span style={{ fontSize: 8.5, fontWeight: 700, lineHeight: 1.05 }}>Else</span>
+      </span>
+    );
+  }
+  const len = label.length;
+  const fontSize =
+    len === 1 ? 14 :
+    len <= 3 ? 11.5 :
+    len <= 5 ? 9 :
+    8;
+  return (
+    <span
+      style={{
+        fontSize,
+        fontWeight: 700,
+        letterSpacing: len >= 6 ? "-0.035em" : len >= 4 ? "-0.02em" : "0",
+        lineHeight: 1.05,
+        maxWidth: "38px",
+        overflow: "hidden",
+        textOverflow: "ellipsis",
+        whiteSpace: "nowrap",
+        display: "block",
+        textAlign: "center",
+      }}
+    >
+      {label}
+    </span>
+  );
+}
 
   const paletteButton = (id: string, key: string) => {
     const item = byId[id];
@@ -436,67 +926,116 @@ export function ComposerInner({ value, nQubits, onChange, onHeight, theme }: Com
     return (
       <div
         key={key}
-        className={`gate-btn${selectedTool?.id === item.id ? " selected" : ""}`}
-        style={{ background: style.bg, color: style.fg }}
+        role="button"
+        tabIndex={0}
+        aria-label={`Drag ${item.label} gate: ${item.hint}`}
+        className="gate-btn"
+        style={{ background: style.bg, color: style.fg, cursor: "grab" }}
         draggable
-        title={item.hint}
-        onDragStart={() => setDragging(item)}
+        title={`${item.hint} — drag onto circuit wire`}
+        onDragStart={(e) => {
+          setDragging(item);
+          try {
+            e.dataTransfer.setData("text/plain", item.id);
+            e.dataTransfer.setData("palette-id", item.id);
+            e.dataTransfer.effectAllowed = "copyMove";
+          } catch (_) {}
+        }}
         onDragEnd={() => setDragging(null)}
-        onClick={() => setSelectedTool(selectedTool?.id === item.id ? null : item)}
+        onClick={() => {
+          setNotice(`Drag the ${item.label} gate onto a circuit wire to place it.`);
+          setTimeout(() => setNotice((n) => (n.includes("Drag") ? "" : n)), 4000);
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            setNotice(`Drag the ${item.label} gate onto a circuit wire to place it.`);
+          }
+        }}
       >
-        {item.label}
+        {renderPaletteLabel(item.label)}
       </div>
     );
   };
+
 
   return (
     <div className="composer" ref={rootRef}>
       <div className="composer-columns">
         {/* ------------------------------------------------ left: operations */}
         <aside className="ops-sidebar">
-          <div className="ops-header">
-            <span className="ops-title">Operations</span>
-            <div className="ops-header-icons">
-              <button
-                className="ops-icon"
-                title="Search operations"
-                onClick={() => setShowSearch((v) => !v)}
-              >
-                &#8983;
-              </button>
-              <button className="ops-icon" title="Palette view" onClick={() => setSearch("")}>
-                &#9638;
-              </button>
-            </div>
-          </div>
-
-          {showSearch && (
-            <input
-              className="ops-search"
-              value={search}
-              placeholder="filter gates…"
-              onChange={(e) => setSearch(e.target.value)}
+          {isEditPanelOpen && selectedOp ? (
+            <EditGatePanel
+              op={selectedOp}
+              nQubits={ir.n_qubits}
+              onUpdateOp={handleUpdateOp}
+              onClose={() => setIsEditPanelOpen(false)}
+              onDuplicate={() => handleDuplicateGate(selectedOp.id)}
+              onDelete={() => {
+                deleteOp(selectedOp.id);
+                setIsEditPanelOpen(false);
+              }}
+              onAddQubit={() => {
+                let nextIdx = ir.n_qubits;
+                update((prev) => {
+                  nextIdx = prev.n_qubits;
+                  const nq = Math.min(prev.n_qubits + 1, 16);
+                  return {
+                    ...prev,
+                    n_qubits: nq,
+                    n_clbits: Math.max(prev.n_clbits, nq),
+                  };
+                });
+                return nextIdx;
+              }}
             />
+          ) : (
+            <>
+              <div className="ops-header">
+                <span className="ops-title">Operations</span>
+                <div className="ops-header-icons">
+                  <button
+                    className="ops-icon"
+                    title="Search operations"
+                    onClick={() => setShowSearch((v) => !v)}
+                  >
+                    &#8983;
+                  </button>
+                  <button className="ops-icon" title="Palette view" onClick={() => setSearch("")}>
+                    &#9638;
+                  </button>
+                </div>
+              </div>
+
+              {showSearch && (
+                <input
+                  className="ops-search"
+                  value={search}
+                  placeholder="filter gates…"
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+              )}
+
+              <div className="gate-grid">
+                {GRID.map((row, r) =>
+                  row.map((id, c) => paletteButton(id, `${id}-${r}-${c}`)),
+                )}
+              </div>
+
+              <div className="palette-param">
+                <span className="palette-label">Param</span>
+                <input
+                  className="field"
+                  value={paramExpr}
+                  onChange={(e) => handleParamChange(e.target.value)}
+                  title="Used for P/RX/RY/RZ. Only pi, numbers and + - * / ( )"
+                />
+                <span className="hint">
+                  only <code>pi</code>, numbers and <code>+ - * / ( )</code>
+                </span>
+              </div>
+            </>
           )}
-
-          <div className="gate-grid">
-            {GRID.map((row, r) =>
-              row.map((id, c) => paletteButton(id, `${id}-${r}-${c}`)),
-            )}
-          </div>
-
-          <div className="palette-param">
-            <span className="palette-label">Param</span>
-            <input
-              className="field"
-              value={paramExpr}
-              onChange={(e) => setParamExpr(e.target.value)}
-              title="Used for P/RX/RY/RZ. Only pi, numbers and + - * / ( )"
-            />
-            <span className="hint">
-              only <code>pi</code>, numbers and <code>+ - * / ( )</code>
-            </span>
-          </div>
         </aside>
 
         {/* ------------------------------------------------ centre: workspace */}
@@ -552,8 +1091,8 @@ export function ComposerInner({ value, nQubits, onChange, onHeight, theme }: Com
               onClick={() =>
                 update((prev) => ({
                   ...prev,
-                  n_qubits: Math.min(prev.n_qubits + 1, 15),
-                  n_clbits: Math.max(prev.n_clbits, Math.min(prev.n_qubits + 1, 15)),
+                  n_qubits: Math.min(prev.n_qubits + 1, 16),
+                  n_clbits: Math.max(prev.n_clbits, Math.min(prev.n_qubits + 1, 16)),
                 }))
               }
             >
@@ -603,11 +1142,18 @@ export function ComposerInner({ value, nQubits, onChange, onHeight, theme }: Com
 
           <div className="canvas-col">
             {pending && (
-              <div className="banner info">
-                {notice}{" "}
-                <button className="tb" onClick={finishPick} style={{ marginLeft: 8 }}>
-                  Done
-                </button>
+              <div className="banner info pending-banner">
+                <span>{notice}</span>
+                <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                  {pending.mode === "controls" && (
+                    <button className="tb" onClick={finishPick}>
+                      Done
+                    </button>
+                  )}
+                  <button className="tb tb-cancel" onClick={cancelPending}>
+                    ✕ Cancel
+                  </button>
+                </div>
               </div>
             )}
             {!pending && notice && <div className="banner warn">{notice}</div>}
@@ -629,11 +1175,12 @@ export function ComposerInner({ value, nQubits, onChange, onHeight, theme }: Com
               ir={ir}
               nCols={nCols}
               selectedId={selectedId}
+              selectedTool={selectedTool}
               pending={pending}
               dragging={dragging}
               onDropAt={handleDrop}
               onPick={handlePick}
-              onSelect={setSelectedId}
+              onSelect={handleSelect}
               onDelete={deleteOp}
               onMoveOp={moveOp}
               onOpenBlock={(id) => {
@@ -641,6 +1188,12 @@ export function ComposerInner({ value, nQubits, onChange, onHeight, theme }: Com
                 if (idx >= 0) setEditing({ rootIndex: idx, path: [] });
               }}
               onRemoveWire={removeWire}
+              onOpenEditPanel={(id) => {
+                setSelectedId(id);
+                setIsEditPanelOpen(true);
+              }}
+              onFlipGate={handleFlipGate}
+              onDuplicateGate={handleDuplicateGate}
             />
 
             {inspect && (
@@ -704,7 +1257,7 @@ export function ComposerInner({ value, nQubits, onChange, onHeight, theme }: Com
             </div>
             <div className="code-body">
               {ir.ops.length === 0 && <div className="code-empty">empty circuit</div>}
-              {ir.ops.map((op, i) => (
+              {sortOps(ir.ops).map((op, i) => (
                 <div className="code-line" key={op.id}>
                   <span className="ln">{i + 1}</span>
                   <span className="src">{describeOp(op)}</span>

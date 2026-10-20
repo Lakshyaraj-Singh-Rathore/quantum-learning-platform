@@ -512,7 +512,7 @@ TOPICS: list[dict[str, object]] = [
         "module": "mathematical-foundations",
         "position": 11,
         "difficulty": "beginner",
-        "status": "draft",
+        "status": "published",
         "description": (
             "Complex arithmetic, the polar form and Euler's formula, and why "
             "quantum amplitudes are complex."
@@ -536,7 +536,7 @@ TOPICS: list[dict[str, object]] = [
         "module": "mathematical-foundations",
         "position": 12,
         "difficulty": "beginner",
-        "status": "draft",
+        "status": "published",
         "description": (
             "Vectors, matrices and change of basis, the language every "
             "quantum state is written in."
@@ -567,7 +567,7 @@ TOPICS: list[dict[str, object]] = [
         "module": "mathematical-foundations",
         "position": 13,
         "difficulty": "beginner",
-        "status": "draft",
+        "status": "published",
         "description": (
             "Expectation, variance and the sampling statistics that govern "
             "finite-shot results."
@@ -591,7 +591,7 @@ TOPICS: list[dict[str, object]] = [
         "module": "mathematical-foundations",
         "position": 14,
         "difficulty": "intermediate",
-        "status": "draft",
+        "status": "published",
         "description": (
             "Eigenvalues, eigenvectors and the operator classes whose spectra "
             "carry physical meaning."
@@ -622,7 +622,7 @@ TOPICS: list[dict[str, object]] = [
         "module": "mathematical-foundations",
         "position": 15,
         "difficulty": "intermediate",
-        "status": "draft",
+        "status": "published",
         "description": (
             "Groups, generators and the matrix groups that later underpin "
             "Clifford circuits and stabilisers."
@@ -655,7 +655,7 @@ TOPICS: list[dict[str, object]] = [
         "module": "core-quantum-theory",
         "position": 12,
         "difficulty": "beginner",
-        "status": "draft",
+        "status": "published",
         "description": (
             "The postulates of quantum mechanics stated as a whole: states, "
             "evolution, measurement and composition."
@@ -686,7 +686,7 @@ TOPICS: list[dict[str, object]] = [
         "module": "core-quantum-theory",
         "position": 13,
         "difficulty": "intermediate",
-        "status": "draft",
+        "status": "published",
         "description": (
             "The no-cloning and no-deleting theorems, their proofs, and what "
             "they forbid and permit."
@@ -717,7 +717,7 @@ TOPICS: list[dict[str, object]] = [
         "module": "core-quantum-theory",
         "position": 14,
         "difficulty": "advanced",
-        "status": "draft",
+        "status": "published",
         "description": (
             "The density operator, mixed states, purity and the partial trace "
             "used to describe subsystems."
@@ -749,7 +749,7 @@ TOPICS: list[dict[str, object]] = [
         "module": "core-quantum-theory",
         "position": 15,
         "difficulty": "advanced",
-        "status": "draft",
+        "status": "published",
         "description": (
             "Von Neumann entropy, concurrence and monogamy as quantitative "
             "measures of entanglement."
@@ -783,7 +783,7 @@ TOPICS: list[dict[str, object]] = [
         "module": "intro-quantum-computing",
         "position": 14,
         "difficulty": "beginner",
-        "status": "draft",
+        "status": "published",
         "description": (
             "Bra-ket notation, inner and outer products, and the conventions "
             "used throughout the curriculum."
@@ -814,7 +814,7 @@ TOPICS: list[dict[str, object]] = [
         "module": "intro-quantum-computing",
         "position": 15,
         "difficulty": "beginner",
-        "status": "draft",
+        "status": "published",
         "description": (
             "Reading circuits and results: gate order, bit ordering and "
             "interpreting an outcome distribution."
@@ -840,7 +840,7 @@ TOPICS: list[dict[str, object]] = [
         "module": "intro-quantum-computing",
         "position": 16,
         "difficulty": "intermediate",
-        "status": "draft",
+        "status": "published",
         "description": (
             "Building multi-qubit spaces with the tensor product, and why "
             "state space grows exponentially."
@@ -867,7 +867,7 @@ TOPICS: list[dict[str, object]] = [
         "module": "intro-quantum-computing",
         "position": 17,
         "difficulty": "advanced",
-        "status": "draft",
+        "status": "published",
         "description": (
             "The teleportation protocol, why it needs two classical bits, and "
             "why it does not permit signalling."
@@ -901,7 +901,7 @@ TOPICS: list[dict[str, object]] = [
         "module": "intro-qiskit",
         "position": 7,
         "difficulty": "beginner",
-        "status": "draft",
+        "status": "published",
         "description": (
             "Using the Composer: placing gates, controls, parameters, "
             "barriers and measurement."
@@ -927,7 +927,7 @@ TOPICS: list[dict[str, object]] = [
         "module": "intro-qiskit",
         "position": 8,
         "difficulty": "intermediate",
-        "status": "draft",
+        "status": "published",
         "description": (
             "The Estimator primitive: computing expectation values of "
             "observables and its relation to Sampler."
@@ -961,7 +961,7 @@ TOPICS: list[dict[str, object]] = [
         "module": "quantum-algorithms",
         "position": 19,
         "difficulty": "intermediate",
-        "status": "draft",
+        "status": "published",
         "description": (
             "The Bernstein-Vazirani algorithm: recovering a hidden string in "
             "one query."
@@ -992,7 +992,7 @@ TOPICS: list[dict[str, object]] = [
         "module": "quantum-algorithms",
         "position": 20,
         "difficulty": "intermediate",
-        "status": "draft",
+        "status": "published",
         "description": (
             "Simon's algorithm and the exponential oracle separation it "
             "establishes."
@@ -1023,7 +1023,7 @@ TOPICS: list[dict[str, object]] = [
         "module": "quantum-algorithms",
         "position": 21,
         "difficulty": "advanced",
-        "status": "draft",
+        "status": "published",
         "description": (
             "The quantum Fourier transform: circuit structure, gate count and "
             "role as an algorithmic primitive."
@@ -1049,7 +1049,7 @@ TOPICS: list[dict[str, object]] = [
         "module": "quantum-algorithms",
         "position": 22,
         "difficulty": "advanced",
-        "status": "draft",
+        "status": "published",
         "description": (
             "Quantum phase estimation: extracting an eigenphase of a unitary "
             "into a register."
@@ -1075,7 +1075,7 @@ TOPICS: list[dict[str, object]] = [
         "module": "quantum-algorithms",
         "position": 23,
         "difficulty": "advanced",
-        "status": "draft",
+        "status": "published",
         "description": (
             "Amplitude estimation: quadratic speed-up over sampling, and its "
             "relation to phase estimation."
@@ -1107,7 +1107,7 @@ TOPICS: list[dict[str, object]] = [
         "module": "quantum-algorithms",
         "position": 24,
         "difficulty": "advanced",
-        "status": "draft",
+        "status": "published",
         "description": (
             "The HHL algorithm for linear systems, its speed-up and its "
             "well-known fine print."
@@ -1133,7 +1133,7 @@ TOPICS: list[dict[str, object]] = [
         "module": "quantum-algorithms",
         "position": 25,
         "difficulty": "advanced",
-        "status": "draft",
+        "status": "published",
         "description": (
             "Discrete and continuous-time quantum walks and their algorithmic "
             "uses."
@@ -1164,7 +1164,7 @@ TOPICS: list[dict[str, object]] = [
         "module": "quantum-algorithms",
         "position": 26,
         "difficulty": "advanced",
-        "status": "draft",
+        "status": "published",
         "description": (
             "Shor's algorithm: order finding, its reduction from factoring, "
             "and its caveats."
@@ -1193,7 +1193,7 @@ TOPICS: list[dict[str, object]] = [
         "module": "advanced-gates-circuits",
         "position": 15,
         "difficulty": "beginner",
-        "status": "draft",
+        "status": "published",
         "description": (
             "Circuit identities and simplification: cancelling gates and "
             "reducing depth."
@@ -1220,7 +1220,7 @@ TOPICS: list[dict[str, object]] = [
         "module": "advanced-gates-circuits",
         "position": 16,
         "difficulty": "intermediate",
-        "status": "draft",
+        "status": "published",
         "description": (
             "Toffoli, multi-controlled X and controlled rotations, and their "
             "decomposition cost."
@@ -1246,7 +1246,7 @@ TOPICS: list[dict[str, object]] = [
         "module": "advanced-gates-circuits",
         "position": 17,
         "difficulty": "intermediate",
-        "status": "draft",
+        "status": "published",
         "description": (
             "U3, iSWAP and fSim: the parameterised two-qubit gates native to "
             "real hardware."
@@ -1283,7 +1283,7 @@ TOPICS: list[dict[str, object]] = [
         "module": "advanced-gates-circuits",
         "position": 18,
         "difficulty": "advanced",
-        "status": "draft",
+        "status": "published",
         "description": (
             "Native gate sets, connectivity constraints and the routing that "
             "inserts SWAPs."
@@ -1310,7 +1310,7 @@ TOPICS: list[dict[str, object]] = [
         "module": "advanced-gates-circuits",
         "position": 19,
         "difficulty": "advanced",
-        "status": "draft",
+        "status": "published",
         "description": (
             "GHZ and W states, their differing robustness, and multipartite "
             "entanglement classes."
@@ -1341,7 +1341,7 @@ TOPICS: list[dict[str, object]] = [
         "module": "advanced-gates-circuits",
         "position": 20,
         "difficulty": "advanced",
-        "status": "draft",
+        "status": "published",
         "description": (
             "Counting qubits, gates and depth to decide whether an algorithm "
             "is feasible."
@@ -1374,7 +1374,7 @@ TOPICS: list[dict[str, object]] = [
         "module": "variational-nisq",
         "position": 10,
         "difficulty": "advanced",
-        "status": "draft",
+        "status": "published",
         "description": (
             "Approximation ratios as the quality measure for approximate "
             "optimisation."
@@ -1400,7 +1400,7 @@ TOPICS: list[dict[str, object]] = [
         "module": "variational-nisq",
         "position": 11,
         "difficulty": "advanced",
-        "status": "draft",
+        "status": "published",
         "description": (
             "The classical optimisation loop around a parameterised circuit, "
             "including the parameter-shift rule."
@@ -1426,7 +1426,7 @@ TOPICS: list[dict[str, object]] = [
         "module": "variational-nisq",
         "position": 12,
         "difficulty": "advanced",
-        "status": "draft",
+        "status": "published",
         "description": (
             "Quantum machine learning: feature maps, kernels and variational "
             "classifiers."
@@ -1455,7 +1455,7 @@ TOPICS: list[dict[str, object]] = [
         "module": "error-correction",
         "position": 15,
         "difficulty": "intermediate",
-        "status": "draft",
+        "status": "published",
         "description": (
             "The three-qubit bit-flip code: encoding, syndrome measurement "
             "and correction."
@@ -1487,7 +1487,7 @@ TOPICS: list[dict[str, object]] = [
         "module": "error-correction",
         "position": 16,
         "difficulty": "intermediate",
-        "status": "draft",
+        "status": "published",
         "description": (
             "The three-qubit phase-flip code and its relation to the bit-flip "
             "code by basis change."
@@ -1518,7 +1518,7 @@ TOPICS: list[dict[str, object]] = [
         "module": "error-correction",
         "position": 17,
         "difficulty": "advanced",
-        "status": "draft",
+        "status": "published",
         "description": (
             "Error mitigation: zero-noise extrapolation, probabilistic error "
             "cancellation and readout correction."
@@ -1549,7 +1549,7 @@ TOPICS: list[dict[str, object]] = [
         "module": "error-correction",
         "position": 18,
         "difficulty": "advanced",
-        "status": "draft",
+        "status": "published",
         "description": (
             "The stabiliser formalism: describing codes by the operators that "
             "fix them."
@@ -1581,7 +1581,7 @@ TOPICS: list[dict[str, object]] = [
         "module": "error-correction",
         "position": 19,
         "difficulty": "advanced",
-        "status": "draft",
+        "status": "published",
         "description": (
             "Surface codes: lattice stabilisers, decoding and why they are "
             "the leading practical family."
@@ -1607,7 +1607,7 @@ TOPICS: list[dict[str, object]] = [
         "module": "error-correction",
         "position": 20,
         "difficulty": "advanced",
-        "status": "draft",
+        "status": "published",
         "description": "Logical versus physical qubits and the overhead a code demands.",
         "objectives": [
             "Define a logical qubit in terms of physical qubits",
@@ -1635,7 +1635,7 @@ TOPICS: list[dict[str, object]] = [
         "module": "error-correction",
         "position": 21,
         "difficulty": "advanced",
-        "status": "draft",
+        "status": "published",
         "description": (
             "The threshold theorem and the fault-tolerant construction it "
             "licenses."
@@ -1668,7 +1668,7 @@ TOPICS: list[dict[str, object]] = [
         "module": "hardware-ecosystem",
         "position": 21,
         "difficulty": "beginner",
-        "status": "draft",
+        "status": "published",
         "description": (
             "A survey of the quantum software ecosystem and the roles of the "
             "major frameworks."
@@ -1694,7 +1694,7 @@ TOPICS: list[dict[str, object]] = [
         "module": "hardware-ecosystem",
         "position": 22,
         "difficulty": "intermediate",
-        "status": "draft",
+        "status": "published",
         "description": (
             "Neutral-atom arrays: encoding, Rydberg gates and reconfigurable "
             "geometry."
@@ -1720,7 +1720,7 @@ TOPICS: list[dict[str, object]] = [
         "module": "hardware-ecosystem",
         "position": 23,
         "difficulty": "intermediate",
-        "status": "draft",
+        "status": "published",
         "description": (
             "What NISQ devices can and cannot do, and why depth is the "
             "binding constraint."
@@ -1747,7 +1747,7 @@ TOPICS: list[dict[str, object]] = [
         "module": "hardware-ecosystem",
         "position": 24,
         "difficulty": "intermediate",
-        "status": "draft",
+        "status": "published",
         "description": (
             "Photonic quantum computing: qubit encodings, gates and the loss "
             "challenge."
@@ -1773,7 +1773,7 @@ TOPICS: list[dict[str, object]] = [
         "module": "hardware-ecosystem",
         "position": 25,
         "difficulty": "intermediate",
-        "status": "draft",
+        "status": "published",
         "description": (
             "Spin qubits in semiconductors: encoding, control and integration "
             "prospects."
@@ -1799,7 +1799,7 @@ TOPICS: list[dict[str, object]] = [
         "module": "hardware-ecosystem",
         "position": 26,
         "difficulty": "intermediate",
-        "status": "draft",
+        "status": "published",
         "description": (
             "Superconducting qubits: the transmon, its control and its "
             "characteristic error budget."
@@ -1825,7 +1825,7 @@ TOPICS: list[dict[str, object]] = [
         "module": "hardware-ecosystem",
         "position": 27,
         "difficulty": "intermediate",
-        "status": "draft",
+        "status": "published",
         "description": (
             "Trapped-ion qubits: encoding, gates and the connectivity "
             "advantage."
@@ -1851,7 +1851,7 @@ TOPICS: list[dict[str, object]] = [
         "module": "hardware-ecosystem",
         "position": 28,
         "difficulty": "intermediate",
-        "status": "draft",
+        "status": "published",
         "description": (
             "Comparing platforms through calibrated noise models and "
             "connectivity topologies."
@@ -1903,7 +1903,7 @@ TOPICS: list[dict[str, object]] = [
         "module": "hardware-ecosystem",
         "position": 29,
         "difficulty": "intermediate",
-        "status": "draft",
+        "status": "published",
         "description": (
             "Benchmarking quantum devices: randomised benchmarking, quantum "
             "volume and beyond."
@@ -1930,7 +1930,7 @@ TOPICS: list[dict[str, object]] = [
         "module": "hardware-ecosystem",
         "position": 30,
         "difficulty": "advanced",
-        "status": "draft",
+        "status": "published",
         "description": (
             "BQP and its relation to P, NP and BPP, and what separations are "
             "known or believed."
@@ -1958,7 +1958,7 @@ TOPICS: list[dict[str, object]] = [
         "module": "communication-simulation",
         "position": 11,
         "difficulty": "intermediate",
-        "status": "draft",
+        "status": "published",
         "description": (
             "Quantum cryptography, QKD and the post-quantum response to "
             "Shor's algorithm."
@@ -1989,7 +1989,7 @@ TOPICS: list[dict[str, object]] = [
         "module": "communication-simulation",
         "position": 12,
         "difficulty": "intermediate",
-        "status": "draft",
+        "status": "published",
         "description": (
             "Superdense coding: sending two classical bits with one qubit "
             "using shared entanglement."
@@ -2015,7 +2015,7 @@ TOPICS: list[dict[str, object]] = [
         "module": "communication-simulation",
         "position": 13,
         "difficulty": "advanced",
-        "status": "draft",
+        "status": "published",
         "description": (
             "Quantum repeaters and the quantum internet: extending "
             "entanglement across distance."
@@ -2046,7 +2046,7 @@ TOPICS: list[dict[str, object]] = [
         "module": "communication-simulation",
         "position": 14,
         "difficulty": "advanced",
-        "status": "draft",
+        "status": "published",
         "description": (
             "Simulating quantum systems, and why it was the original "
             "motivation for quantum computing."
@@ -2073,7 +2073,7 @@ TOPICS: list[dict[str, object]] = [
         "module": "communication-simulation",
         "position": 15,
         "difficulty": "advanced",
-        "status": "draft",
+        "status": "published",
         "description": (
             "Trotterisation: decomposing Hamiltonian evolution into gates and "
             "controlling the error."

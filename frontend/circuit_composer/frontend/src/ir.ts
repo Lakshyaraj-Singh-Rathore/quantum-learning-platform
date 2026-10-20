@@ -29,7 +29,7 @@ export function makeOp(kind: OpKind, patch: Partial<Op> = {}): Op {
 
 /** Every qubit row an op occupies, including nested block contents. */
 export function involvedQubits(op: Op): number[] {
-  const out = new Set<number>([...op.qubits, ...op.controls])
+  const out = new Set<number>([...op.qubits, ...op.controls, ...(op.neg_controls || [])])
   for (const child of [...op.body, ...op.else_body]) {
     for (const q of involvedQubits(child)) out.add(q)
   }
@@ -63,14 +63,19 @@ export function hasCollision(
   nQubits: number,
   ignoreId?: string,
 ): boolean {
-  const want = new Set(qubits)
+  const loWant = Math.min(...qubits)
+  const hiWant = Math.max(...qubits)
+  const wantSpan = qubits.length > 1 ? range(loWant, hiWant) : qubits
+  const want = new Set(wantSpan)
+
   return ops.some((o) => {
     if (o.layer !== layer || o.id === ignoreId) return false
     if (o.kind === "barrier" && o.qubits.length === 0) return true
     const [lo, hi] = rowSpan(o, nQubits)
-    // blocks and barriers occupy their whole span, leaf gates only their rows
+    const isMulti = o.controls.length + (o.neg_controls?.length || 0) + o.qubits.length > 1
+    // blocks, barriers and multi-qubit gates occupy their whole vertical span
     const occupies =
-      o.kind === "barrier" || o.body.length > 0 || o.else_body.length > 0
+      o.kind === "barrier" || o.body.length > 0 || o.else_body.length > 0 || isMulti
         ? range(lo, hi)
         : involvedQubits(o)
     return occupies.some((q) => want.has(q))
@@ -83,9 +88,13 @@ export function range(lo: number, hi: number): number[] {
   return out
 }
 
+export function sortOps(ops: Op[]): Op[] {
+  return [...ops].sort((a, b) => a.layer - b.layer || (a.qubits[0] ?? 0) - (b.qubits[0] ?? 0))
+}
+
 /**
  * Place an op at a layer, auto-inserting a global column on collision.
- * Returns the new op list.
+ * Returns the new op list, chronologically sorted by column.
  */
 export function placeOp(ir: CircuitIR, op: Op, layer: number): Op[] {
   const qubits = involvedQubits(op)
@@ -93,14 +102,15 @@ export function placeOp(ir: CircuitIR, op: Op, layer: number): Op[] {
   if (hasCollision(ops, layer, qubits, ir.n_qubits, op.id)) {
     ops = insertColumn(ops, layer)
   }
-  return [...ops.filter((o) => o.id !== op.id), { ...op, layer }]
+  const nextOps = [...ops.filter((o) => o.id !== op.id), { ...op, layer }]
+  return sortOps(nextOps)
 }
 
 /** Remove empty columns, keeping relative order. */
 export function compact(ops: Op[]): Op[] {
   const used = [...new Set(ops.map((o) => o.layer))].sort((a, b) => a - b)
   const remap = new Map(used.map((l, i) => [l, i]))
-  return ops.map((o) => ({ ...o, layer: remap.get(o.layer) ?? o.layer }))
+  return sortOps(ops.map((o) => ({ ...o, layer: remap.get(o.layer) ?? o.layer })))
 }
 
 export function isDynamic(op: Op): boolean {

@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any, Literal, Optional
 from uuid import uuid4
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.quantum.params import eval_param_expr
 
@@ -127,11 +127,15 @@ class Condition(BaseModel):
 
 
 class Op(BaseModel):
+    model_config = ConfigDict(extra="ignore")
     id: str = Field(default_factory=lambda: uuid4().hex[:12])
     kind: Literal["gate", "measure", "reset", "barrier", "if", "for", "while", "box"]
     gate: Optional[str] = None
     qubits: list[int] = Field(default_factory=list)
     controls: list[int] = Field(default_factory=list)
+    neg_controls: list[int] = Field(default_factory=list)
+    inv: bool = False
+    power: Optional[float | str | int] = None
     params: list[Param] = Field(default_factory=list)
     clbits: list[int] = Field(default_factory=list)
     # A layer is a column index, so it can never be negative. Allowing it made
@@ -182,11 +186,16 @@ class Op(BaseModel):
                 raise ValueError("swap requires two different target qubits")
             if self.gate != "swap" and len(self.qubits) != 1:
                 raise ValueError(f"gate {self.gate} requires exactly 1 target qubit")
-            overlap = set(self.controls) & set(self.qubits)
+            all_controls = set(self.controls) | set(self.neg_controls)
+            overlap = all_controls & set(self.qubits)
             if overlap:
                 raise ValueError(f"control and target qubits overlap: {sorted(overlap)}")
             if len(set(self.controls)) != len(self.controls):
-                raise ValueError("duplicate control qubits")
+                raise ValueError("duplicate positive control qubits")
+            if len(set(self.neg_controls)) != len(self.neg_controls):
+                raise ValueError("duplicate negative control qubits")
+            if set(self.controls) & set(self.neg_controls):
+                raise ValueError("a qubit cannot be both positive and negative control simultaneously")
 
         if self.kind == "measure":
             if len(self.qubits) != 1:
@@ -222,7 +231,7 @@ class Op(BaseModel):
 
     # ------------------------------------------------------------------ utils
     def involved_qubits(self) -> set[int]:
-        qs: set[int] = set(self.qubits) | set(self.controls)
+        qs: set[int] = set(self.qubits) | set(self.controls) | set(self.neg_controls)
         for child in list(self.body) + list(self.else_body):
             qs |= child.involved_qubits()
         return qs

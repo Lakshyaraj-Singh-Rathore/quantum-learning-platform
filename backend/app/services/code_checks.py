@@ -152,9 +152,12 @@ def check_qasm3(source: str) -> list[Finding]:
 def check(source: str, framework: str) -> list[Finding]:
     """Validate ``source`` for ``framework``. Never raises."""
     try:
-        if framework == "qasm3":
+        from app.services.codelab import normalize_framework
+
+        norm_fw = normalize_framework(framework)
+        if norm_fw == "qasm3":
             return check_qasm3(source)
-        return check_python(source, framework)
+        return check_python(source, norm_fw)
     except Exception:  # noqa: BLE001 - a broken checker must not break the page
         return []
 

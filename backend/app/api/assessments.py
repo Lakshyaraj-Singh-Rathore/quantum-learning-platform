@@ -63,17 +63,50 @@ def list_lessons(db: Session = Depends(get_db)) -> list[dict[str, Any]]:
 @router.get("/lessons/{slug}")
 def get_lesson(slug: str, db: Session = Depends(get_db)) -> dict[str, Any]:
     lesson = db.scalar(select(Lesson).where(Lesson.slug == slug))
-    if lesson is None:
-        raise HTTPException(status_code=404, detail="Lesson not found")
-    path = Path(lesson.path)
-    if not path.exists():
-        path = Path(get_settings().content_dir) / f"{slug}.md"
-    content = path.read_text(encoding="utf-8") if path.exists() else "_Lesson content missing._"
+    
+    candidates = []
+    if lesson and lesson.path:
+        candidates.append(Path(lesson.path))
+    candidates.extend([
+        Path(get_settings().content_dir) / f"{slug}.md",
+        Path(__file__).resolve().parents[3] / "content" / f"{slug}.md",
+        Path.cwd() / "content" / f"{slug}.md",
+        Path.cwd().parent / "content" / f"{slug}.md",
+    ])
+    
+    target_path = None
+    for p in candidates:
+        if p.exists() and p.is_file():
+            target_path = p
+            break
+
+    if target_path is None and lesson is None:
+        raise HTTPException(status_code=404, detail=f"Lesson '{slug}' not found")
+
+    content = target_path.read_text(encoding="utf-8") if target_path else "_Lesson content missing._"
     # The "<!-- track: circuit -->" marker is metadata for the ingester.
     # Streamlit escapes HTML, so left in place it renders as literal text at
     # the top of the lesson.
     content = TRACK_MARKER_RE.sub("", content, count=1).lstrip()
-    return {"slug": lesson.slug, "title": lesson.title, "tags": lesson.tags or [], "content": content}
+
+    title = lesson.title if lesson else slug.replace("_", " ").title()
+    tags = lesson.tags or [] if lesson else []
+
+    if lesson is None and target_path:
+        from app.ai.rag import infer_tags, infer_track, _title_of
+        lesson = Lesson(
+            slug=slug,
+            title=_title_of(content, slug),
+            path=str(target_path.resolve()),
+            tags=infer_tags(content),
+            track=infer_track(content),
+        )
+        db.add(lesson)
+        db.commit()
+        title = lesson.title
+        tags = lesson.tags
+
+    return {"slug": slug, "title": title, "tags": tags, "content": content}
 
 
 # --------------------------------------------------------------------------- #
@@ -363,3 +396,59 @@ def list_games(
         entry["total"] = len(entry["levels"])
 
     return {"games": sorted(games.values(), key=lambda g: g["game_id"])}
+
+
+# --------------------------------------------------------------------------- #
+# AI Real-time Assignment Generator & Evaluator (Gemini API + RAG)
+# --------------------------------------------------------------------------- #
+
+@router.get("/assessments/topics")
+def get_assessment_topics() -> list[dict[str, Any]]:
+    from app.services.assignment_ai import AVAILABLE_TOPICS
+    return AVAILABLE_TOPICS
+
+
+@router.post("/assessments/generate-assignment")
+def generate_ai_assignment(
+    payload: dict[str, Any],
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> dict[str, Any]:
+    from app.services.assignment_ai import generate_assignment
+    topics = payload.get("topics") or []
+    num_questions = int(payload.get("num_questions") or 5)
+    difficulty = payload.get("difficulty") or "mixed"
+    return generate_assignment(db, topics, num_questions, difficulty)
+
+
+@router.post("/assessments/evaluate-assignment")
+def evaluate_ai_assignment(
+    payload: dict[str, Any],
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> dict[str, Any]:
+    from app.services.assignment_ai import evaluate_assignment
+    assignment = payload.get("assignment") or {}
+    answers = payload.get("answers") or {}
+    return evaluate_assignment(assignment, answers)
+
+
+@router.get("/assessments/daily-challenge")
+def get_daily_quantum_challenge(
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> dict[str, Any]:
+    from app.services.assignment_ai import get_daily_challenge
+    return get_daily_challenge(db)
+
+
+@router.post("/assessments/daily-challenge/verify")
+def verify_daily_quantum_challenge(
+    payload: dict[str, Any],
+    user: User = Depends(get_current_user),
+) -> dict[str, Any]:
+    from app.services.assignment_ai import verify_daily_challenge
+    challenge_id = payload.get("challenge_id") or "daily_1"
+    circuit_ir = payload.get("circuit_ir") or {}
+    return verify_daily_challenge(challenge_id, circuit_ir)
+

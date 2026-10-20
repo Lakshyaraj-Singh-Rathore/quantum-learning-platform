@@ -297,8 +297,6 @@ def test_empty_section_has_no_topics(seeded: Session):
     tree = build_curriculum(seeded, None)
     for section in tree["sections"]:
         assert isinstance(section["topics"], list)
-    empty = [s for s in tree["sections"] if s["slug"] == "mathematical-foundations"][0]
-    assert empty["topics"] == []
 
 
 def test_ordering(seeded: Session):
