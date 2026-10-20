@@ -257,7 +257,8 @@ export function LevelPlay({ level, onBack }: { level: GameLevel; onBack: () => v
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showLiveSim, setShowLiveSim] = useState(false);
 
-  // Client-side real-time analytical simulation (< 1ms)
+  // Client-side live analytical preview. Capped at PREVIEW_MAX_QUBITS (12);
+  // game levels are 2-6 qubits so the cap is never hit in practice.
   const liveResult = useMemo(() => simulateCircuit(ir), [ir]);
 
   useEffect(() => {

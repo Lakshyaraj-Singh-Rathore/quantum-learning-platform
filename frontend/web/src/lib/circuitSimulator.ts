@@ -107,8 +107,36 @@ function getParamGate(gateName: string, paramVal: number): Matrix2 {
   return GATES_1Q.id;
 }
 
-export function simulateCircuit(ir: CircuitIR): RunResult {
-  const n = Math.max(1, Math.min(20, ir.n_qubits));
+/**
+ * Highest qubit count the *live preview* will simulate.
+ *
+ * The preview runs synchronously inside `useMemo` on every circuit edit, so its
+ * cost is paid on the main thread while the user is still typing. Statevector
+ * simulation is O(2^n) in both time and memory; measured on this code:
+ *
+ *     2-8q  <0.4ms   12q  8.8ms    16q   82.7ms
+ *    10q     2.7ms   14q 21.8ms    18q  296.7ms   20q 1551.3ms
+ *
+ * 12 qubits is the last size that stays inside a 16ms frame, so it is the last
+ * size where "live" is honest. Building larger circuits is still allowed (the
+ * backend runs up to `max_static_qubits` = 20) — the preview simply stops
+ * following past this point and says so in the UI. See PREVIEW_TRUNCATED below.
+ *
+ * Do not raise this without re-measuring. Raising it to 20 costs ~1.5s of
+ * blocked main thread per keystroke.
+ */
+export const PREVIEW_MAX_QUBITS = 12;
+
+/**
+ * Simulate a circuit analytically and return exact probabilities.
+ *
+ * When `ir.n_qubits > maxQubits` the result is computed over the first
+ * `maxQubits` wires only, and `RunResult.preview_truncated` is set so callers
+ * can tell the user. Every gate branch below skips qubits >= n, so truncating
+ * is safe — it never reads out of bounds.
+ */
+export function simulateCircuit(ir: CircuitIR, maxQubits = PREVIEW_MAX_QUBITS): RunResult {
+  const n = Math.max(1, Math.min(maxQubits, ir.n_qubits));
   const dim = 1 << n;
   let state: Complex[] = Array.from({ length: dim }, (_, i) => (i === 0 ? cx(1, 0) : cx(0, 0)));
 
@@ -208,17 +236,29 @@ export function simulateCircuit(ir: CircuitIR): RunResult {
     }
   }
 
+  // True when the caller's circuit is wider than the preview window. Both the
+  // flag and a metadata warning are set, so the UI cannot silently show a
+  // partial result as if it were the whole circuit.
+  const truncated = n < ir.n_qubits;
+  const warnings = truncated
+    ? [
+        `Live preview covers only the first ${n} of ${ir.n_qubits} qubits. ` +
+          `Run the circuit on a backend for the full result.`,
+      ]
+    : [];
+
   return {
-    counts,
-    probabilities: probs,
-    statevector: svPairs,
-    metadata: {
-      backend: "Analytical Simulator",
-      shots: 1024,
-      n_qubits: n,
-      runtime_seconds: 0.001,
-      bit_order: "qiskit (qubit 0 = rightmost)",
-      warnings: [],
-    },
-  };
-}
+      counts,
+      probabilities: probs,
+      statevector: svPairs,
+      preview_truncated: truncated,
+      metadata: {
+        backend: "Analytical Simulator",
+        shots: 1024,
+        n_qubits: n,
+        runtime_seconds: 0.001,
+        bit_order: "qiskit (qubit 0 = rightmost)",
+        warnings,
+      },
+    };
+  }

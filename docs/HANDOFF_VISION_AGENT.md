@@ -255,23 +255,37 @@ It is in the web SPA's `ComposerPage` palette. The *separate*
 (`role="button"`, `tabIndex={0}`, `onKeyDown`). Do not start this without the senior
 agent's go-ahead — it touches working render code.
 
-### T4 — 20-qubit preview lag (low priority; may not be worth doing)
+### T4 — 20-qubit preview lag — **DONE** (2026-10-20)
 
-Measured, synchronous in `useMemo` on every edit:
+Was: synchronous statevector in `useMemo` on every edit, unbounded to 20 qubits.
 
 ```
- 2-8 qubits   0.1-0.4 ms   instant
-10 qubits     2.7 ms
-12 qubits     8.8 ms
+ 2-8 qubits   0.1-0.4 ms      16 qubits    82.7 ms
+10 qubits     2.7 ms          18 qubits   296.7 ms
+12 qubits     8.8 ms          20 qubits  1551.3 ms   <-- blocked the main thread
 14 qubits    21.8 ms
-16 qubits    82.7 ms
-18 qubits   296.7 ms
-20 qubits  1551.3 ms
 ```
 
-Lessons/games/challenges run 2–6 qubits, where it is sub-millisecond. **The user's
-standing rule is "refactor only if it adds measurable stability — otherwise don't."**
-Recommendation on file is to leave it. Do not fix without explicit approval.
+**Fix:** `PREVIEW_MAX_QUBITS = 12` in `circuitSimulator.ts` — the last size that fits
+inside a 16 ms frame. Wider circuits still **build and run on a backend** (cap stays
+20); only the live preview stops following, and it says so.
+
+Truncation is never silent — three layers of disclosure:
+
+1. `RunResult.preview_truncated` (new optional field, frontend-only — the API never
+   sets it, so backend results stay valid unchanged).
+2. A `metadata.warnings[]` entry.
+3. An amber `role="status"` banner in ComposerPage naming both numbers.
+
+After (median of 30 runs, JIT warmed):
+
+```
+ 2q 0.00ms   8q 0.09ms   12q 1.50ms   16q 1.70ms   20q 1.44ms
+ 5q 0.02ms  10q 0.36ms   14q 1.64ms   18q 1.57ms   worst case 6.45ms
+```
+
+**Do not raise `PREVIEW_MAX_QUBITS` without re-measuring.** The measuring script
+pattern is in section 5A — if you change it, leave a perf harness behind.
 
 ### Deferred — do not touch
 
@@ -279,6 +293,57 @@ Recommendation on file is to leave it. Do not fix without explicit approval.
   plan later". Still not delivered.
 - **Streamlit-Cloud dashboard cutover** — never flagged to the user.
 - Registry/DB divergence — **resolved** (71 published, was 17 + 54 draft).
+
+---
+
+## 5A. Automation mandate — the standing rule
+
+**The user does the manual testing. Your job is to make manual testing unnecessary.**
+
+Every time you find something by hand, the first question is: **can a script catch this
+next time?** Usually yes. Write it.
+
+This applies to everything, not just tests:
+
+| You find… | Automate it as |
+|---|---|
+| a visual defect (overlap, clipping, contrast) | a check in `scripts/` that fails on regression |
+| a console error on page load | a headless load of that route asserting zero `pageerror` |
+| a wrong number in the UI | a golden fixture compared against numpy |
+| a missing/incorrect label | a render assertion on that page |
+| an a11y gap | an `a11y-check.mts` case |
+| a slow interaction | a perf harness with a threshold that fails |
+
+### Rules for what you write
+
+1. **Every new script must be wired into `package.json`** as an npm script, so it runs
+   in the suite. An unwired script is dead code. (Verify the name against
+   `package.json` — do not assume.)
+2. **Every new check must be able to fail.** A test that cannot fail is decoration.
+   Prove it by temporarily breaking the thing it guards and confirming it goes red;
+   revert afterwards.
+3. **Do not weaken an existing test to make room for yours.**
+4. **Prefer an independent reference over self-consistency.** The project already has
+   one bad example: `verify-all-demos.mts` reports 12,671 passing checks, but ~30 of
+   them are tautological (`:119-123` computes `states = 2 ** n` then asserts
+   `states === 2 ** n`) and the suite reads no external reference. Compare against
+   numpy, a fixture, or the API — not against your own arithmetic.
+5. **Keep the evidence honest:** if your new test is weaker than it looks, say so in
+   the report rather than letting the count speak.
+6. **Naming:** `scripts/<area>-check.mts` or `scripts/golden-<area>.mts`, matching
+   the existing convention.
+
+### Where the suite stands
+
+| | Count | Notes |
+|---|---|---|
+| Frontend harnesses | **283 PASS / 57 FAIL** | 57 are known stale copy assertions (T1) |
+| `test:demos` | 12,671 | internal-consistency only; **treat as weak evidence** |
+| Golden numerics | **4,300 values @1e-9** | strong — compared against numpy |
+| Backend pytest | **708 passed / 5 skipped** | |
+| a11y | **0 criticals** | |
+
+Aim to leave the suite with *more* real coverage than you found, not just a green tick.
 
 ---
 

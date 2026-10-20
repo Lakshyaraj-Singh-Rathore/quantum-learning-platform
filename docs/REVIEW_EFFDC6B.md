@@ -315,25 +315,40 @@ phase-colour is confirmed present at `ResultsViews.tsx:314/378/425`.
 **Recommendation:** refresh these four the same way — update expected strings to the
 new copy. Do not change the app to satisfy them.
 
-### 6.6 New finding: 20-qubit preview is ~1000× slower than documented (S2) ⚠
+### 6.6 New finding: 20-qubit preview ~1000× slower than documented (S2) — **FIXED**
 
 Raising the preview cap 16→20 makes it `2**20 = 1,048,576` amplitudes. Measured:
 
-| Qubits | Preview time |
-|---|---|
-| 16 | 87.8 ms |
-| 18 | 221.4 ms |
-| **20** | **1018.0 ms** |
+| Qubits | Preview time | |
+|---|---|---|
+| 16 | 87.8 ms | |
+| 18 | 221.4 ms | |
+| **20** | **1018.0 ms** | blocked the main thread |
 
-The code comment says *"Real-time Analytical Statevector Simulation (< 1ms)"* and the
-UI labels it **"Live Analytical Preview"**. At 20 qubits it is **1.0 second**, and
-`ComposerPage.tsx:108` runs it **synchronously inside `useMemo` on every circuit
-edit** — so each gate change on a 20-qubit circuit blocks the main thread for ~1 s.
+The code comment claimed *"< 1ms"* and the UI labels it **"Live Analytical Preview"**,
+and `ComposerPage.tsx` ran it **synchronously inside `useMemo` on every edit** — so
+each gate change on a 20-qubit circuit froze the UI for ~1 s. Numerics were correct;
+this was purely the performance cliff the cap change introduced.
 
-The numerics are correct (a Bell circuit correctly reports 2 occupied basis states at
-every size); this is purely a performance/UX defect, and it is a direct consequence of
-the cap change. Options: keep the 20-qubit *build* cap but cap the *live preview*
-lower with a visible notice, or move it off the main thread.
+**Resolution (user approved, 2026-10-20).** Capped the *preview* at
+`PREVIEW_MAX_QUBITS = 12` (`circuitSimulator.ts`) — the last size that fits inside a
+16 ms frame. The **build** cap stays 20; wider circuits still run on a backend.
+
+Truncation is disclosed three ways, so a partial result can never be mistaken for a
+whole one: `RunResult.preview_truncated` (new optional field in `api/jobs.ts`,
+frontend-only so backend results stay valid), a `metadata.warnings[]` entry, and an
+amber `role="status"` banner in ComposerPage naming both qubit counts.
+
+| Qubits | Before | After (median of 30) |
+|---|---|---|
+| 12 | 8.8 ms | 1.50 ms |
+| 16 | 82.7 ms | 1.70 ms |
+| 18 | 296.7 ms | 1.57 ms |
+| 20 | 1018–1551 ms | 1.44 ms |
+
+Worst case across all sizes: **6.45 ms**, inside one frame. A Web Worker was rejected:
+the `render-*` harnesses run `simulateCircuit` in Node via `react-dom/server`, where
+`Worker` does not exist.
 
 ### 6.7 No regressions ✅
 

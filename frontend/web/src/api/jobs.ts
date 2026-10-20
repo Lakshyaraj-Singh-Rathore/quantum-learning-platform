@@ -37,6 +37,13 @@ export interface RunResult {
   probabilities: Record<string, number>;
   statevector: [number, number][] | null;
   metadata: RunMetadata;
+  /**
+   * Frontend-only. Set by the local analytical preview when the circuit has
+   * more qubits than PREVIEW_MAX_QUBITS and the result covers only the first
+   * PREVIEW_MAX_QUBITS wires. Never set by the API — a backend run is never a
+   * truncated preview. Optional so backend results stay valid unchanged.
+   */
+  preview_truncated?: boolean;
 }
 
 export interface JobResultOut {

@@ -19,16 +19,17 @@ import {
   Code2,
   BarChart3,
   Globe,
-  Copy,
-  ExternalLink,
-} from "lucide-react";
+    Copy,
+    ExternalLink,
+    AlertTriangle,
+  } from "lucide-react";
 import { ComposerInner } from "@composer/Composer";
 import { circuitIsDynamic, maxLayer } from "@composer/ir";
 import { bell, ghz, wState, qft3, emptyCircuit, useCircuit } from "../state/circuit";
 import { backends } from "../api/backends";
 import { inspectCircuit, submitJob, type NoiseIn } from "../api/jobs";
 import { buildCircuit } from "../api/codelab";
-import { simulateCircuit } from "../lib/circuitSimulator";
+import { simulateCircuit, PREVIEW_MAX_QUBITS } from "../lib/circuitSimulator";
 import {
   EXPORT_TARGETS,
   downloadCircuitFile,
@@ -104,7 +105,10 @@ export function ComposerPage() {
   const [showQasm, setShowQasm] = useState(false);
   const [bottomView, setBottomView] = useState<"ibm_dual" | "advanced" | "noise">("ibm_dual");
 
-  // Real-time Analytical Statevector Simulation (< 1ms)
+  // Live analytical statevector preview. Capped at PREVIEW_MAX_QUBITS (12) —
+  // statevector cost is O(2^n) and it runs synchronously on every edit, so
+  // wider circuits would block the main thread. Wider circuits still build and
+  // still run on a backend; the preview just stops following and says so.
   const liveResult = useMemo(() => simulateCircuit(ir), [ir]);
 
   // Live OpenQASM 3.0 Code Generation
@@ -753,11 +757,25 @@ export function ComposerPage() {
                           ({Object.keys(liveResult.probabilities).length} basis states)
                         </span>
                       </div>
-                      <span className="text-[11px] text-ink-3 font-mono">Live Analytical Preview</span>
-                    </div>
-                    <div className="flex-1 overflow-auto">
-                      <Histogram result={liveResult} circuitLabel={circuitName || "Current Circuit"} />
-                    </div>
+                        <span className="text-[11px] text-ink-3 font-mono">Live Analytical Preview</span>
+                      </div>
+                      {liveResult.preview_truncated && (
+                        <div
+                          role="status"
+                          className="mb-3 flex items-start gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2"
+                        >
+                          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
+                          <p className="text-[11px] leading-relaxed text-amber-200">
+                            Preview limited to the first {PREVIEW_MAX_QUBITS} of{" "}
+                            {ir.n_qubits} qubits — statevector preview is exponential in
+                            width and runs on every edit. Your circuit is unchanged and
+                            still runs in full on any backend.
+                          </p>
+                        </div>
+                      )}
+                      <div className="flex-1 overflow-auto">
+                        <Histogram result={liveResult} circuitLabel={circuitName || "Current Circuit"} />
+                      </div>
                   </div>
 
                   {/* Right Panel: 3D Q-Sphere */}
