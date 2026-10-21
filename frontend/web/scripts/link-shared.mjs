@@ -21,7 +21,11 @@ const web = path.resolve(here, "..");
 const shared = path.resolve(web, "..", "node_modules");
 const own = path.join(web, "node_modules");
 
-const LINKS = ["react", "react-dom", "@types"];
+// streamlit-component-lib is listed too because the Streamlit host entry
+// points (index.tsx, streamlit.tsx) live in the component tree and import it
+// from there. Same reasoning as react: one installed copy, resolved from this
+// app, linked into frontend/node_modules so tsc and Vite both find it.
+const LINKS = ["react", "react-dom", "@types", "streamlit-component-lib"];
 
 if (!fs.existsSync(own)) {
   console.error("[link-shared] run `npm install` in frontend/web first");

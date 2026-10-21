@@ -189,9 +189,19 @@ export function SmartComposerPanel({
               <div className="flex flex-col gap-1.5">
                 {rulesQuery.data?.slice(0, 5).map((rule) => (
                   <div key={rule.id} className="p-2 rounded bg-bg/50 border border-white/5 flex flex-col gap-0.5">
-                    <div className="flex items-center justify-between">
-                      <span className="font-bold text-white text-[11px] font-mono">{rule.id}</span>
-                      <span className="text-[10px] text-accent font-mono">{rule.mathematical_formula}</span>
+                    {/* Neither child could shrink, so a long formula
+                        (R03_PAULI_PUSH) ran into the rule id and spilled a
+                        character onto the description line below. Allow the
+                        pair to wrap instead of collide: nothing is hidden, the
+                        formula simply takes a second line when it needs one. */}
+                    <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
+                      <span className="font-bold text-white text-[11px] font-mono shrink-0">{rule.id}</span>
+                      <span
+                        className="text-[10px] text-accent font-mono break-all text-right"
+                        title={rule.mathematical_formula}
+                      >
+                        {rule.mathematical_formula}
+                      </span>
                     </div>
                     <span className="text-[10px] text-ink-3 line-clamp-1">{rule.description}</span>
                   </div>

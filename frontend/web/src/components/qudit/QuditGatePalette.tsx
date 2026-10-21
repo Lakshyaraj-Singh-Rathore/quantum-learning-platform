@@ -62,7 +62,11 @@ export const QuditGatePalette: React.FC<QuditGatePaletteProps> = ({
                 <div className="text-base font-bold font-mono text-ink group-hover:text-accent tracking-wider">
                   {displaySymbol}
                 </div>
-                <div className="text-[11px] text-ink-3 group-hover:text-ink-2 truncate max-w-[85px] mt-0.5">
+                {/* The full name is what distinguishes these tiles. Truncating
+                    to one 85px line rendered four of the seven gates as the
+                    identical string "Generalized …", so the subtitle told the
+                    student nothing. Wrap to two lines instead. */}
+                <div className="mt-0.5 w-full px-0.5 text-center text-[11px] leading-tight text-ink-3 group-hover:text-ink-2">
                   {gate.name.split("(")[0].trim()}
                 </div>
 

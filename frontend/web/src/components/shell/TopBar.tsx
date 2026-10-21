@@ -24,10 +24,10 @@ export function TopBar({
   return (
     <header className="flex h-15 shrink-0 items-center justify-between border-b border-white/5 bg-bg/80 backdrop-blur-xl px-5 lg:px-8 z-20">
       {/* Left: Mobile Menu + Breadcrumbs */}
-      <div className="flex items-center gap-3.5 min-w-0">
+      <div className="flex items-center gap-2 sm:gap-3.5 min-w-0 flex-1">
         <button
           onClick={onOpenMobileNav}
-          className="lg:hidden p-2 rounded-xl text-ink-2 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
+          className="lg:hidden shrink-0 p-2 rounded-xl text-ink-2 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
           aria-label="Open navigation menu"
         >
           <Menu className="h-5 w-5" />
@@ -46,9 +46,21 @@ export function TopBar({
         </nav>
       </div>
 
-      {/* Right: Actions & User Chip */}
-      <div className="flex items-center gap-3">
-        <BackendBadge />
+      {/* Right: Actions & User Chip.
+
+          This cluster had no shrink affordance, so at 390px it kept its
+          intrinsic ~380px width: it overflowed the header (sign-out landed at
+          x=471 on a 390px viewport, i.e. off-screen and unclickable) and its
+          left edge was painted straight over the hamburger, which made the
+          navigation drawer unreachable on a phone even though the button was
+          rendered. Everything below is a width concession for small screens
+          only; at `sm` and up the bar is unchanged. */}
+      <div className="flex min-w-0 shrink items-center gap-2 sm:gap-3">
+        {/* Backend engine status is diagnostic, not navigation: it is the one
+            element that yields its space on a phone. */}
+        <span className="hidden sm:inline-flex">
+          <BackendBadge />
+        </span>
 
         <Button
           variant="ghost"
@@ -66,17 +78,17 @@ export function TopBar({
 
         {user && (
           <Tooltip content={`Signed in as ${user.email} (${user.display_name || "Learner"})`}>
-            <div className="flex items-center gap-2.5 rounded-full border border-white/10 bg-raised/90 backdrop-blur-md py-1 pl-1.5 pr-2 text-xs text-ink-2 shadow-sm">
-              <div className="grid h-6 w-6 place-items-center rounded-full bg-gradient-to-tr from-accent/30 to-accent-2/30 text-accent font-bold text-[10px] border border-accent/40">
+            <div className="flex min-w-0 items-center gap-1.5 sm:gap-2.5 rounded-full border border-white/10 bg-raised/90 backdrop-blur-md py-1 pl-1.5 pr-2 text-xs text-ink-2 shadow-sm">
+              <div className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-gradient-to-tr from-accent/30 to-accent-2/30 text-accent font-bold text-[10px] border border-accent/40">
                 <User className="h-3 w-3" />
               </div>
 
-              <span className="max-w-[14ch] md:max-w-[20ch] truncate font-medium text-white">
+              <span className="max-w-[7ch] sm:max-w-[14ch] md:max-w-[20ch] truncate font-medium text-white">
                 {user.display_name || user.email}
               </span>
 
               {user.role && user.role !== "student" && (
-                <span className="rounded-full bg-accent/20 px-2 py-0.5 text-[9px] font-bold text-accent uppercase tracking-wider border border-accent/30">
+                <span className="hidden sm:inline rounded-full bg-accent/20 px-2 py-0.5 text-[9px] font-bold text-accent uppercase tracking-wider border border-accent/30 shrink-0">
                   {user.role}
                 </span>
               )}
@@ -85,7 +97,7 @@ export function TopBar({
                 onClick={() => setSignOutOpen(true)}
                 title="Sign out"
                 aria-label="Sign out"
-                className="grid h-6 w-6 place-items-center rounded-full text-ink-3 hover:bg-danger/20 hover:text-danger transition-colors cursor-pointer"
+                className="grid h-6 w-6 shrink-0 place-items-center rounded-full text-ink-3 hover:bg-danger/20 hover:text-danger transition-colors cursor-pointer"
               >
                 <LogOut className="h-3 w-3" />
               </button>

@@ -58,20 +58,26 @@ export const QuditLabPage: React.FC = () => {
   const [seed, setSeed] = useState<number>(42);
   const [isSimulating, setIsSimulating] = useState<boolean>(false);
   const [simResult, setSimResult] = useState<SimulationResult | null>(null);
+  // Snapshot of the exact circuit + noise a displayed result was produced
+  // from, so the panel can say when it no longer describes the editor. The
+  // qubit Composer already does this (ComposerPage passes `stale` to
+  // ResultsPanel); the Qudit Lab was presenting a previous run as current.
+  const [resultSnapshot, setResultSnapshot] = useState<string | null>(null);
   const [activeSideTab, setActiveSideTab] = useState<"noise" | "learn">("noise");
 
   // Load limits, catalogue, and presets on mount
   useEffect(() => {
     async function loadInitial() {
       try {
-        const [limitsData, catData, presetsData] = await Promise.all([
+        // Presets are deliberately NOT fetched here: the [dimension] effect
+        // below already fetches them on mount and on every change, so asking
+        // for them here issued the same request twice on every page load.
+        const [limitsData, catData] = await Promise.all([
           quditLabApi.getLimits(),
           quditLabApi.getCatalogue(),
-          quditLabApi.getPresets(DEFAULT_DIMENSION),
         ]);
         setLimits(limitsData);
         setCatalogue(catData);
-        setPresets(presetsData);
       } catch (err) {
         console.error("Failed to load qudit lab metadata:", err);
       }
@@ -99,6 +105,7 @@ export const QuditLabPage: React.FC = () => {
   ) => {
     const targetCircuit = customCircuit || circuit;
     const targetNoise = customNoise || noiseConfig;
+    const snapshot = JSON.stringify({ c: targetCircuit, n: targetNoise, shots, seed });
 
     setIsSimulating(true);
     try {
@@ -110,9 +117,12 @@ export const QuditLabPage: React.FC = () => {
         calculate_entropy: true,
       });
       setSimResult(result);
+      setResultSnapshot(snapshot);
     } catch (err: any) {
       console.error("Simulation error:", err);
       toast.error(err.message || "Failed to execute qudit density-matrix simulation");
+      // A failed run must not leave the previous result looking current.
+      setResultSnapshot(null);
     } finally {
       setIsSimulating(false);
     }
@@ -437,7 +447,15 @@ export const QuditLabPage: React.FC = () => {
       )}
 
       {/* Simulation Results & Density Matrix Inspector */}
-      <DensityMatrixInspector result={simResult} loading={isSimulating} />
+      <DensityMatrixInspector
+        result={simResult}
+        loading={isSimulating}
+        stale={
+          simResult !== null &&
+          resultSnapshot !== JSON.stringify({ c: circuit, n: noiseConfig, shots, seed })
+        }
+        onRerun={() => handleRunSimulation()}
+      />
     </div>
   );
 };

@@ -17,6 +17,10 @@ import { Badge } from "../ui";
 interface DensityMatrixInspectorProps {
   result: SimulationResult | null;
   loading?: boolean;
+  /** True when the circuit or noise config has changed since this result was produced. */
+  stale?: boolean;
+  /** Invoked by the staleness banner's re-run action. */
+  onRerun?: () => void;
 }
 
 type ViewMode = "mag" | "real" | "imag" | "phase";
@@ -24,6 +28,8 @@ type ViewMode = "mag" | "real" | "imag" | "phase";
 export const DensityMatrixInspector: React.FC<DensityMatrixInspectorProps> = ({
   result,
   loading = false,
+  stale = false,
+  onRerun,
 }) => {
   const [viewMode, setViewMode] = useState<ViewMode>("mag");
   const [selectedCell, setSelectedCell] = useState<{
@@ -59,46 +65,113 @@ export const DensityMatrixInspector: React.FC<DensityMatrixInspectorProps> = ({
 
   const { state_validation: sv, total_dim, basis_labels, density_matrix, probabilities, samples, reduced_states } = result;
 
-  // Cell color mapping based on view mode
-  const getCellColor = (val: ComplexVal, isDiagonal: boolean): string => {
+  // Bra-ket formatting.
+  //
+  // `basis_labels` already arrive from the API as kets ("|0⟩", "|12⟩").
+  // Interpolating them straight into a ⟨row|ρ|col⟩ template therefore produced
+  // "⟨|0⟩|ρ||0⟩⟩" — doubled bars and an unbalanced bracket. This is a teaching
+  // surface, so the notation has to be the notation the lesson text uses:
+  // strip the decoration back to the bare index and rebuild the matrix element.
+  const ketIndex = (label: string) => label.replace(/[|⟩⟨]/g, "").trim();
+  const braket = (rowLabel: string, colLabel: string) =>
+    `⟨${ketIndex(rowLabel)}|ρ|${ketIndex(colLabel)}⟩`;
+
+  // "-0.00π" is not a phase. Math.atan2 returns tiny negative angles for
+  // entries that are real and positive up to floating-point noise, and
+  // toFixed() keeps the sign bit when it rounds them to zero. Round first,
+  // then drop a sign that only survives on a zero magnitude.
+  const fmtPhasePi = (phase: number, digits: number) => {
+    const s = (phase / Math.PI).toFixed(digits);
+    return /^-0(\.0+)?$/.test(s) ? s.slice(1) : s;
+  };
+
+  // Cell colour mapping.
+  //
+  // These values are computed per cell, so the colour CANNOT be expressed as a
+  // Tailwind utility: Tailwind generates CSS by statically scanning source for
+  // literal class strings, and a template literal like `bg-blue-500/${n}` is
+  // never emitted. An earlier version did exactly that, which is why every
+  // cell rendered with a transparent background and the heatmap carried no
+  // information at all. Inline styles are the correct tool for a continuous
+  // scale; the class list keeps only the static parts.
+  const clamp01 = (x: number) => Math.min(1, Math.max(0, x));
+  const mix = (rgb: string, a: number) => `rgba(${rgb}, ${(0.10 + 0.78 * clamp01(a)).toFixed(3)})`;
+  const EMPTY_CELL = { backgroundColor: "rgba(148, 163, 184, 0.06)", borderColor: "rgba(255,255,255,0.06)" };
+
+  // Magnitude ramp, extracted so the reduced-subsystem heatmap can use the
+  // identical encoding. It always displays |ρ_ij|, so it must not follow the
+  // main grid's view mode.
+  const magStyle = (val: ComplexVal, isDiagonal: boolean): React.CSSProperties => {
+    const a = clamp01(val.mag);
+    if (a < 0.001) return EMPTY_CELL;
+    return isDiagonal
+      ? { backgroundColor: mix("59, 130, 246", a), borderColor: "rgba(96,165,250,0.45)", color: "#dbeafe" }
+      : { backgroundColor: mix("99, 102, 241", a), borderColor: "rgba(129,140,248,0.35)", color: "#e0e7ff" };
+  };
+
+  const cellStyle = (val: ComplexVal, isDiagonal: boolean): React.CSSProperties => {
+    const EMPTY = EMPTY_CELL;
+
     if (viewMode === "mag") {
-      const alpha = Math.min(1.0, val.mag);
-      if (alpha < 0.001) return "bg-subtle/20 border-white/5";
-      return isDiagonal
-        ? `bg-blue-500/${Math.max(15, Math.round(alpha * 90))} border-blue-400/40 text-blue-200`
-        : `bg-indigo-500/${Math.max(15, Math.round(alpha * 80))} border-indigo-400/30 text-indigo-200`;
-    } else if (viewMode === "real") {
-      const r = val.real;
-      if (Math.abs(r) < 0.001) return "bg-subtle/20 border-white/5";
-      if (r > 0) {
-        const intensity = Math.min(90, Math.max(15, Math.round(r * 90)));
-        return `bg-emerald-500/${intensity} border-emerald-400/30 text-emerald-200`;
-      } else {
-        const intensity = Math.min(90, Math.max(15, Math.round(Math.abs(r) * 90)));
-        return `bg-rose-500/${intensity} border-rose-400/30 text-rose-200`;
-      }
-    } else if (viewMode === "imag") {
-      const i = val.imag;
-      if (Math.abs(i) < 0.001) return "bg-subtle/20 border-white/5";
-      if (i > 0) {
-        const intensity = Math.min(90, Math.max(15, Math.round(i * 90)));
-        return `bg-amber-500/${intensity} border-amber-400/30 text-amber-200`;
-      } else {
-        const intensity = Math.min(90, Math.max(15, Math.round(Math.abs(i) * 90)));
-        return `bg-purple-500/${intensity} border-purple-400/30 text-purple-200`;
-      }
-    } else {
-      // Phase angle (-pi to +pi)
-      return val.mag < 0.01
-        ? "bg-subtle/20 border-white/5"
-        : `border-accent/30 text-white`;
+      return magStyle(val, isDiagonal);
     }
+    if (viewMode === "real" || viewMode === "imag") {
+      const v = viewMode === "real" ? val.real : val.imag;
+      if (Math.abs(v) < 0.001) return EMPTY;
+      const a = clamp01(Math.abs(v));
+      return v > 0
+        ? { backgroundColor: mix(viewMode === "real" ? "16, 185, 129" : "245, 158, 11", a),
+            borderColor: viewMode === "real" ? "rgba(52,211,153,0.35)" : "rgba(251,191,36,0.35)",
+            color: viewMode === "real" ? "#d1fae5" : "#fef3c7" }
+        : { backgroundColor: mix(viewMode === "real" ? "244, 63, 94" : "168, 85, 247", a),
+            borderColor: viewMode === "real" ? "rgba(251,113,133,0.35)" : "rgba(192,132,252,0.35)",
+            color: viewMode === "real" ? "#ffe4e6" : "#f3e8ff" };
+    }
+    // Phase: hue encodes the angle, saturation fades out as magnitude -> 0, so
+    // a numerically meaningless phase on a zero entry cannot look significant.
+    if (val.mag < 0.01) return EMPTY;
+    const deg = ((val.phase + Math.PI) / (2 * Math.PI)) * 360;
+    return {
+      backgroundColor: `hsla(${deg.toFixed(1)}, 70%, 50%, ${(0.18 + 0.55 * clamp01(val.mag)).toFixed(3)})`,
+      borderColor: `hsla(${deg.toFixed(1)}, 70%, 65%, 0.45)`,
+      color: "#ffffff",
+    };
   };
 
   const isPure = sv.purity >= 0.999;
 
   return (
-    <div className="rounded-xl border border-line bg-card/60 backdrop-blur-md p-4 shadow-sm space-y-4">
+    <div
+      className={`rounded-xl border bg-card/60 backdrop-blur-md p-4 shadow-sm space-y-4 ${
+        stale ? "border-warn/50" : "border-line"
+      }`}
+    >
+      {/* These numbers describe a circuit the user has since edited. Saying so
+          is the whole point: a quantum result that silently belongs to a
+          different circuit is worse than no result. */}
+      {stale && (
+        <div
+          role="status"
+          className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border border-warn/40 bg-warn/10 px-3 py-2 text-xs text-warn"
+        >
+          <AlertTriangle className="h-4 w-4 shrink-0" />
+          <span>
+            <strong className="font-semibold">These results are out of date.</strong>{" "}
+            The circuit or noise configuration changed after this run, so the matrix and
+            metrics below do not describe what is currently on the canvas.
+          </span>
+          {onRerun && (
+            <button
+              type="button"
+              onClick={onRerun}
+              className="ml-auto rounded-md border border-warn/50 px-2 py-0.5 font-semibold text-warn transition-colors hover:bg-warn/20"
+            >
+              Re-run simulation
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Top Bar: Tabs & View Controls */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line/60 pb-3">
         {/* Navigation Tabs */}
@@ -275,23 +348,33 @@ export const DensityMatrixInspector: React.FC<DensityMatrixInspectorProps> = ({
                         const isCellSelected =
                           selectedCell?.r === r && selectedCell?.c === c;
 
+                        const select = () =>
+                          setSelectedCell({
+                            r,
+                            c,
+                            val: cell,
+                            rowLabel: basis_labels[r],
+                            colLabel: basis_labels[c],
+                          });
+
                         return (
                           <div
                             key={`cell-${r}-${c}`}
-                            onClick={() =>
-                              setSelectedCell({
-                                r,
-                                c,
-                                val: cell,
-                                rowLabel: basis_labels[r],
-                                colLabel: basis_labels[c],
-                              })
-                            }
-                            className={`w-14 h-11 flex flex-col items-center justify-center rounded border font-mono text-[10px] cursor-pointer transition-all duration-150 select-none ${getCellColor(
-                              cell,
-                              isDiag
-                            )} ${isCellSelected ? "ring-2 ring-accent scale-105 z-10" : ""}`}
-                            title={`⟨${basis_labels[r]}|ρ|${basis_labels[c]}⟩ = ${cell.real >= 0 ? "+" : ""}${cell.real.toFixed(3)} ${cell.imag >= 0 ? "+" : ""}${cell.imag.toFixed(3)}i`}
+                            role="button"
+                            tabIndex={0}
+                            aria-label={`Row ${ketIndex(basis_labels[r])}, column ${ketIndex(basis_labels[c])}: real ${cell.real.toFixed(3)}, imaginary ${cell.imag.toFixed(3)}`}
+                            onClick={select}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                select();
+                              }
+                            }}
+                            style={cellStyle(cell, isDiag)}
+                            className={`w-14 h-11 flex flex-col items-center justify-center rounded border font-mono text-[10px] cursor-pointer transition-all duration-150 select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+                              isCellSelected ? "ring-2 ring-accent scale-105 z-10" : ""
+                            }`}
+                            title={`${braket(basis_labels[r], basis_labels[c])} = ${cell.real >= 0 ? "+" : ""}${cell.real.toFixed(3)} ${cell.imag >= 0 ? "+" : ""}${cell.imag.toFixed(3)}i`}
                           >
                             <span className="font-bold leading-none">
                               {viewMode === "mag"
@@ -300,7 +383,7 @@ export const DensityMatrixInspector: React.FC<DensityMatrixInspectorProps> = ({
                                 ? cell.real.toFixed(3)
                                 : viewMode === "imag"
                                 ? cell.imag.toFixed(3)
-                                : `${(cell.phase / Math.PI).toFixed(2)}π`}
+                                : `${fmtPhasePi(cell.phase, 2)}π`}
                             </span>
                             {isDiag && (
                               <span className="text-[8px] text-ink-3/70 leading-none mt-0.5">
@@ -317,12 +400,17 @@ export const DensityMatrixInspector: React.FC<DensityMatrixInspectorProps> = ({
             </div>
           ) : null}
 
+          {/* Colour legend — without it the heatmap is not readable */}
+          {density_matrix && !result.density_matrix_truncated && (
+            <MatrixLegend viewMode={viewMode} />
+          )}
+
           {/* Cell Detail Card */}
           {selectedCell && (
             <div className="rounded-lg border border-accent/40 bg-accent/10 p-3 text-xs flex flex-wrap items-center justify-between gap-3 animate-in fade-in duration-150">
               <div className="space-y-0.5 font-mono">
                 <span className="text-accent font-semibold">
-                  ⟨{selectedCell.rowLabel} | ρ | {selectedCell.colLabel}⟩:
+                  {braket(selectedCell.rowLabel, selectedCell.colLabel)}:
                 </span>{" "}
                 <span className="text-ink font-bold">
                   {selectedCell.val.real >= 0 ? "+" : ""}
@@ -333,7 +421,7 @@ export const DensityMatrixInspector: React.FC<DensityMatrixInspectorProps> = ({
               </div>
               <div className="flex items-center gap-4 text-ink-2 font-mono">
                 <span>Magnitude: <b>{selectedCell.val.mag.toFixed(5)}</b></span>
-                <span>Phase: <b>{(selectedCell.val.phase / Math.PI).toFixed(4)}π rad</b></span>
+                <span>Phase: <b>{fmtPhasePi(selectedCell.val.phase, 4)}π rad</b></span>
                 <span>Type: <b>{selectedCell.r === selectedCell.c ? "Diagonal (Population)" : "Off-Diagonal (Coherence)"}</b></span>
               </div>
             </div>
@@ -455,24 +543,47 @@ export const DensityMatrixInspector: React.FC<DensityMatrixInspectorProps> = ({
                       </div>
                     </div>
 
-                    {/* Small Reduced Matrix Heatmap */}
-                    <div className="flex flex-col items-center justify-center p-2">
+                    {/* Small Reduced Matrix Heatmap.
+
+                        This grid used a single static `bg-card` for every
+                        entry, so ρ_q0 was rendered as a colourless table while
+                        the full matrix beside it was a heatmap — the same
+                        defect that was fixed for the main grid, left behind
+                        here. Reuse the magnitude ramp and label its scale, so
+                        a student comparing ρ with ρ_q0 reads one visual
+                        language rather than two. */}
+                    <div className="flex flex-col items-center justify-center gap-2 p-2">
                       <div className="grid gap-1.5" style={{ gridTemplateColumns: `repeat(${dim}, minmax(0, 1fr))` }}>
                         {red.density_matrix.map((row, r) =>
                           row.map((cell, c) => (
                             <div
                               key={`red-${r}-${c}`}
-                              className="w-16 h-12 flex flex-col items-center justify-center rounded border border-line bg-card p-1 text-center font-mono text-[11px]"
+                              style={magStyle(cell, r === c)}
+                              title={`${braket(String(r), String(c))} = ${cell.real >= 0 ? "+" : ""}${cell.real.toFixed(3)} ${cell.imag >= 0 ? "+" : ""}${cell.imag.toFixed(3)}i`}
+                              className="w-16 h-12 flex flex-col items-center justify-center rounded border p-1 text-center font-mono text-[11px]"
                             >
-                              <span className="font-bold text-accent">
+                              <span className="font-bold">
                                 {cell.mag.toFixed(3)}
                               </span>
-                              <span className="text-[9px] text-ink-3">
+                              <span className="text-[9px] opacity-70">
                                 |{r}⟩⟨{c}|
                               </span>
                             </div>
                           ))
                         )}
+                      </div>
+                      <div className="flex items-center gap-2 text-[10px] text-ink-3 font-mono">
+                        <span>|ρ_ij| 0.0</span>
+                        <span className="inline-flex overflow-hidden rounded border border-white/10">
+                          {[0, 0.25, 0.5, 0.75, 1].map((a) => (
+                            <span
+                              key={a}
+                              className="h-2.5 w-4"
+                              style={{ backgroundColor: `rgba(99, 102, 241, ${(0.1 + 0.78 * a).toFixed(3)})` }}
+                            />
+                          ))}
+                        </span>
+                        <span>1.0 · diagonal entries in blue</span>
                       </div>
                     </div>
 
@@ -498,3 +609,68 @@ export const DensityMatrixInspector: React.FC<DensityMatrixInspectorProps> = ({
     </div>
   );
 };
+
+/**
+ * Colour key for the density-matrix heatmap.
+ *
+ * The grid encodes a continuous value in cell colour; without a key the
+ * reader cannot tell a large entry from a small one, or a positive real part
+ * from a negative one. Swatches are generated from the same inline-style
+ * scale the cells use, so the legend cannot drift from the grid.
+ */
+function MatrixLegend({ viewMode }: { viewMode: ViewMode }) {
+  const ramp = (rgb: string) =>
+    [0, 0.25, 0.5, 0.75, 1].map((a) => `rgba(${rgb}, ${(0.1 + 0.78 * a).toFixed(3)})`);
+
+  const Swatches = ({ colors }: { colors: string[] }) => (
+    <span className="inline-flex overflow-hidden rounded border border-white/10">
+      {colors.map((c) => (
+        <span key={c} className="h-3 w-5" style={{ backgroundColor: c }} />
+      ))}
+    </span>
+  );
+
+  return (
+    <div className="flex flex-wrap items-center gap-x-5 gap-y-2 rounded-lg border border-line/60 bg-subtle/30 px-3 py-2 text-[11px] text-ink-3">
+      <span className="font-semibold text-ink-2">Colour scale:</span>
+
+      {viewMode === "mag" && (
+        <>
+          <span className="flex items-center gap-1.5">
+            diagonal (populations) 0.0 <Swatches colors={ramp("59, 130, 246")} /> 1.0
+          </span>
+          <span className="flex items-center gap-1.5">
+            off-diagonal (coherences) 0.0 <Swatches colors={ramp("99, 102, 241")} /> 1.0
+          </span>
+        </>
+      )}
+
+      {viewMode === "real" && (
+        <span className="flex items-center gap-1.5">
+          −1.0 <Swatches colors={[...ramp("244, 63, 94")].reverse()} /> 0
+          <Swatches colors={ramp("16, 185, 129")} /> +1.0
+        </span>
+      )}
+
+      {viewMode === "imag" && (
+        <span className="flex items-center gap-1.5">
+          −1.0 <Swatches colors={[...ramp("168, 85, 247")].reverse()} /> 0
+          <Swatches colors={ramp("245, 158, 11")} /> +1.0
+        </span>
+      )}
+
+      {viewMode === "phase" && (
+        <span className="flex items-center gap-1.5">
+          −π
+          <span className="inline-flex overflow-hidden rounded border border-white/10">
+            {[0, 60, 120, 180, 240, 300, 359].map((d) => (
+              <span key={d} className="h-3 w-5" style={{ backgroundColor: `hsla(${d}, 70%, 50%, 0.7)` }} />
+            ))}
+          </span>
+          +π
+          <span className="ml-1 text-ink-4">(cells with |ρ| ≈ 0 are greyed: their phase is undefined)</span>
+        </span>
+      )}
+    </div>
+  );
+}

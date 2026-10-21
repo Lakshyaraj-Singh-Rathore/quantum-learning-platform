@@ -4,6 +4,7 @@ import { Sidebar, useSidebarStore } from "./Sidebar";
 import { TopBar } from "./TopBar";
 import { CommandPalette } from "./CommandPalette";
 import { ErrorBoundary } from "./ErrorBoundary";
+import { NarrowViewportNotice } from "./NarrowViewportNotice";
 import { ToastProvider, cn } from "../ui";
 import { X } from "lucide-react";
 
@@ -41,7 +42,12 @@ export function AppShell() {
 
           {/* Drawer container */}
           <div className="fixed inset-y-0 left-0 flex w-[260px] max-w-[85vw] flex-col bg-raised shadow-2xl z-50 animate-in slide-in-from-left duration-200">
-            <div className="absolute right-2 top-3 z-10">
+            {/* The sidebar inside this drawer is a z-30 element, so a z-10
+                close button was painted underneath its header row: the X was
+                visible but every click landed on the sidebar instead. A
+                screenshot cannot show this — only a hit test can. Keep it
+                above the sidebar, below the drawer shell itself. */}
+            <div className="absolute right-2 top-3 z-40">
               <button
                 onClick={() => setMobileNavOpen(false)}
                 className="p-1.5 rounded-lg text-ink-3 hover:text-ink hover:bg-hover transition-colors"
@@ -66,6 +72,10 @@ export function AppShell() {
           onOpenPalette={() => setPaletteOpen(true)}
           onOpenMobileNav={() => setMobileNavOpen(true)}
         />
+
+        {/* The component existed but was never mounted, so the 900px minimum
+            the design targets was never actually communicated to anyone. */}
+        <NarrowViewportNotice />
 
         <main
           id="main-content"

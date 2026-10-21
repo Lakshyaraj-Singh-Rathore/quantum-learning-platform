@@ -30,6 +30,19 @@ export const QuditCircuitEditor: React.FC<QuditCircuitEditorProps> = ({
   const wires = circuit.wires;
   const ops = circuit.ops;
 
+  // One name per gate, everywhere. The canvas chip renders "X_3" while the
+  // configuration panel used to render the raw payload key ("X", "R_JK") plus
+  // the internal operation id — three different names for one gate in a single
+  // view, and an id the learner can neither use nor dismiss. The id stays on
+  // the panel as a data attribute for debugging.
+  const gateDisplayName = (gate: string) => {
+    const key = gate.toUpperCase();
+    if (gate === "sum") return `SUM_${dimension} (⊕ Controlled-Addition)`;
+    if (gate === "swap") return `SWAP_${dimension} (✕)`;
+    if (gate === "r_jk") return `R_JK_${dimension} (Subspace Rotation)`;
+    return `${key}_${dimension}`;
+  };
+
   const handleAddWire = () => {
     if (wires.length >= maxQudits) return;
     const newIndex = wires.length;
@@ -223,15 +236,27 @@ export const QuditCircuitEditor: React.FC<QuditCircuitEditorProps> = ({
                     return (
                       <div
                         key={`${op.id}-${wire.index}`}
+                        role="button"
+                        tabIndex={0}
+                        aria-pressed={isSelected}
+                        aria-label={`${gateDisplayName(op.gate)} gate on ${wire.id}${
+                          isControl ? " (control)" : ""
+                        } — press Enter to configure`}
                         onClick={() => setSelectedOpId(isSelected ? null : op.id)}
-                        className={`relative w-12 h-10 flex items-center justify-center rounded-lg border text-xs font-mono font-bold cursor-pointer transition-all duration-150 select-none shrink-0 ${
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            setSelectedOpId(isSelected ? null : op.id);
+                          }
+                        }}
+                        className={`relative w-12 h-10 flex items-center justify-center rounded-lg border text-xs font-mono font-bold cursor-pointer transition-all duration-150 select-none shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
                           isSelected
                             ? "border-accent bg-accent/20 text-accent shadow-[0_0_12px_rgba(59,130,246,0.5)] scale-105"
                             : isControl
                             ? "border-line bg-subtle text-ink hover:border-accent/40"
                             : "border-line bg-subtle text-ink hover:border-accent/40 hover:bg-accent/10"
                         }`}
-                        title={`Click to configure ${op.gate.toUpperCase()} gate`}
+                        title={`Click to configure ${gateDisplayName(op.gate)} gate`}
                       >
                         {isControl ? (
                           <div className="h-3 w-3 rounded-full bg-accent shadow-sm" />
@@ -261,12 +286,15 @@ export const QuditCircuitEditor: React.FC<QuditCircuitEditorProps> = ({
 
       {/* Selected Operation Parameter Inspector Panel */}
       {selectedOp && (
-        <div className="rounded-lg border border-accent/30 bg-accent/5 p-3 text-xs space-y-2 animate-in fade-in duration-150">
+        <div
+          className="rounded-lg border border-accent/30 bg-accent/5 p-3 text-xs space-y-2 animate-in fade-in duration-150"
+          data-op-id={selectedOp.id}
+        >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Settings2 className="h-4 w-4 text-accent" />
               <span className="font-semibold text-ink">
-                Configure Operation: {selectedOp.gate.toUpperCase()} (ID: {selectedOp.id})
+                Configure Operation: {gateDisplayName(selectedOp.gate)}
               </span>
             </div>
 
