@@ -1,0 +1,86 @@
+{
+ "campaign": "QuantumLearnAI — Qudit Lab (Beta) vision QA campaign",
+ "generated_at": "2026-10-21T09:07:32.552548+00:00",
+ "repository": "Lakshyaraj-Singh-Rathore/quantum-learning-platform",
+ "branch": "arena/63ae45b4-quantum-learning-platform",
+ "commit": "4de9eb2",
+ "runs": {
+  "total_distinct_end_to_end_runs": 52,
+  "mandatory_matrix_runs": 30,
+  "extended_runs": 14,
+  "wave2_retest_runs": 8,
+  "pass": 51,
+  "fail": 1,
+  "blocked": 0,
+  "not_tested": 0,
+  "note_on_the_single_fail": "QA-QUDIT-033 is the preserved original QL-008 failure record. The same test, unmodified, passes after the wave-2 fix; that passing re-run is in run-log.regression-wave2.jsonl."
+ },
+ "assertions": {
+  "total": 570,
+  "passed": 569,
+  "failed": 1
+ },
+ "screenshots": {
+  "post_fix_captured": 127,
+  "pre_fix_archived": 112,
+  "comparisons": 1,
+  "superseded_attempt_captures": 4,
+  "reviewed_set_unique_images": 180,
+  "reviewed_set_inspected": 180,
+  "wave2_new_images_inspected": 13,
+  "review_note": "Every unique image in the reviewed set was inspected: 74 post-fix at full resolution, 28 via 50% contact sheets with full-resolution follow-ups, 36 pre-fix images proven pixel-identical to an inspected post-fix image, and 42 differing pre-fix images triaged by pixel-diff change maps with 8 representatives read at full resolution. CAVEAT: a 50% contact-sheet tile is reliable for layout and colour, not for digits — one purity value was misread that way and corrected from a full-resolution crop. All numeric claims come from full-resolution reads or harness/oracle.py."
+ },
+ "defects": {
+  "total": 17,
+  "P0": 0,
+  "P1": 0,
+  "P2": 5,
+  "P3": 9,
+  "P4": 3,
+  "fixed_and_retested": 13,
+  "open": 4,
+  "open_ids": [
+   "QL-005 (API contract)",
+   "QL-015 (P4, shared toast anchor)",
+   "QL-016 (P4, preset title truncation)",
+   "QL-017 (P4, phase-view sub-label)"
+  ]
+ },
+ "regression_gates_after_fixes": {
+  "backend_pytest": "818 passed, 5 skipped (117.74s)",
+  "frontend_typecheck": "exit 0",
+  "vite_build": "exit 0",
+  "render:composer": "exit 0 — all composer render checks passed",
+  "a11y": "exit 0 — 0 a11y criticals across every page",
+  "states": "exit 0 — all pages handle empty, error and loading states",
+  "render:check": "exit 0 — anon, learner and instructor variants",
+  "golden:quantum": "exit 0 — 190 values agree with numpy @1e-9",
+  "golden:demos": "exit 0 — 804 demo values agree with numpy @1e-9",
+  "golden:grover": "exit 0 — 3306 Grover values agree with numpy @1e-9",
+  "wave1_retests": "6/6 PASS after the wave-2 changes",
+  "part2_rerun": "10/10 PASS",
+  "part4_rerun": "3/3 PASS",
+  "part5_rerun": "8/8 PASS (includes QA-QUDIT-033, the original failure, now passing unmodified)"
+ },
+ "headline_scientific_result": {
+  "question": "Earlier QA recorded both 0.6150 and 0.8480 for apparently equivalent qutrit depolarizing experiments.",
+  "verdict": "0.615000 is correct. 0.8480 was not reproducible by any configuration tested.",
+  "closed_form": "Tr(E(rho)^2) = (1-p)^2 + 2p(1-p)/d + p^2/d = 0.615000 for d=3, p=0.35",
+  "independent_numpy_oracle": 0.615,
+  "backend": 0.615,
+  "ui_displayed": 0.615,
+  "repeats": "10/10 API repeats bit-identical; 5/5 independent UI sessions identical"
+ },
+ "release_recommendation": "Ship as Beta. No P0 or P1 defect was found in either wave; all four quantitative pillars matched an independent numpy oracle to <=1e-9. Wave 2 found six further defects by looking at every screenshot, one of which (QL-009, malformed Dirac notation on a teaching surface) is an educational-correctness defect that 517 assertions did not catch. Conditions in report §K. Nothing here is self-approved.",
+ "waves": {
+  "wave_1": "44 campaign runs, 6 defects fixed",
+  "wave_2": "8 retest runs after inspecting every screenshot, 7 defects fixed (QL-008 re-graded P3->P2, plus QL-009..QL-014)"
+ },
+ "harness_defects_declared": [
+  "H-1/H-2 (wave 1): two harness bugs and four wrong assertions, declared in report §I.",
+  "H-3: lib.mjs seedAuth() wrote ql.token/ql.auth instead of the zustand key ql-session. Dead code — every run authenticates through the real login form — so no result was affected. Corrected.",
+  "H-4: wave-2 script assumed an empty canvas; the lab ships with one f gate. Three runs tested the wrong circuit and failed loudly. Corrected by resetting the canvas.",
+  "H-5: wave-2 anti-vacuity probe recomputed atan2 from rounded components, hiding the very value under test. Corrected to read the API phase field.",
+  "H-6: wave-2 \"banner in view\" check used a loose regex that matched an ancestor and reported a framed banner when none was in frame. Caught by opening the screenshot. Re-anchored on div[role=status] with its exact text."
+ ]
+}

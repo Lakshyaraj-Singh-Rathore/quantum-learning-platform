@@ -1,0 +1,46 @@
+{
+  "captured_at": "2026-10-20T16:51:55.741799+00:00",
+  "repository": "Lakshyaraj-Singh-Rathore/quantum-learning-platform",
+  "branch": "arena/63ae45b4-quantum-learning-platform",
+  "commit": "243f481",
+  "frontend_dev_server": "http://127.0.0.1:3001 (vite 6.4.3, React 18 StrictMode on)",
+  "frontend_preview_server": "http://127.0.0.1:4173 (production bundle, used to separate dev-only artifacts)",
+  "backend": "http://127.0.0.1:8000 (FastAPI/uvicorn, 58 OpenAPI paths)",
+  "database": "SQLite at /home/user/qa-local.db \u2014 Postgres and Redis are absent in this sandbox",
+  "browser": {
+    "name": "Chromium",
+    "version": "153.0.8010.0",
+    "executable": "/home/user/uitest/bin/chromium",
+    "driver": "playwright 1.64.0",
+    "args": [
+      "--no-sandbox",
+      "--disable-dev-shm-usage",
+      "--disable-gpu"
+    ]
+  },
+  "python": "Python 3.11.2",
+  "node": "v22.22.3",
+  "numerics": {
+    "cirq": "1.4.1",
+    "numpy": "1.26.4"
+  },
+  "accounts_used": [
+    {
+      "email": "admin@local.dev",
+      "role": "admin",
+      "source": "repository .env.example bootstrap credentials; no password or token appears in any artifact"
+    }
+  ],
+  "viewports": {
+    "desktop": "1440x900",
+    "laptop": "1366x768",
+    "tablet": "768x1024",
+    "mobile": "390x844"
+  },
+  "environment_limits_not_defects": [
+    "No Redis: Celery job dispatch is unavailable, so /jobs returns an enqueue error. Not exercised; not reported as a defect.",
+    "No Postgres: the API ran on SQLite. The pgvector paths were not exercised.",
+    "No GEMINI_API_KEY: Smart Composer's live AI path is unavailable. The deterministic/offline path was tested and the absence of a live-AI claim was asserted.",
+    "No GPU: the CUDA-Q backend and max_gpu_qubits=28 remain unverified config values."
+  ]
+}

@@ -70,7 +70,7 @@ pre-fix + 1 comparison), which deduplicate by MD5 to **180 unique images**. All
 sheet is reliable for layout, colour and overflow, and **not** reliable for
 digits. I misread a purity of `0.5000` as `0.5800` from a contact-sheet tile and
 only caught it by re-cropping the same region at full resolution
-(`vision-review/crops/c6_022_purity.png`). Every numeric claim in this report
+(`evidence/vision-review/crops/c6_022_purity.png`). Every numeric claim in this report
 therefore comes from a full-resolution read or from `harness/oracle.py`, never
 from a sheet.
 
@@ -96,50 +96,50 @@ All 30 mandatory scenarios executed. Runs with an `R` suffix are post-fix retest
 
 | Run | Scenario | Status | Asserts | Screenshots | Defects |
 |---|---|---|---|---|---|
-| **QA-QUDIT-001** | A1-initialization | PASS | 10/10 | `screenshots/qa-qudit-001/qa-qudit-001_initial-load_1440x900.png`, `screenshots/qa-qudit-001/qa-qudit-001_initial-load-full_1440x900.png` +1 | — |
-| **QA-QUDIT-002** | A-dimension-2 | PASS | 11/11 | `screenshots/qa-qudit-002/qa-qudit-002_dimension-2-circuit_1440x900.png`, `screenshots/qa-qudit-002/qa-qudit-002_dimension-2-results_1440x900.png` +1 | — |
-| **QA-QUDIT-003** | A-dimension-3 | PASS | 13/13 | `screenshots/qa-qudit-003/qa-qudit-003_dimension-3-circuit_1440x900.png`, `screenshots/qa-qudit-003/qa-qudit-003_dimension-3-results_1440x900.png` +1 | — |
-| **QA-QUDIT-004** | A-dimension-4 | PASS | 14/14 | `screenshots/qa-qudit-004/qa-qudit-004_dimension-4-circuit_1440x900.png`, `screenshots/qa-qudit-004/qa-qudit-004_dimension-4-results_1440x900.png` +1 | — |
-| **QA-QUDIT-005** | A-dimension-5 | PASS | 15/15 | `screenshots/qa-qudit-005/qa-qudit-005_dimension-5-circuit_1440x900.png`, `screenshots/qa-qudit-005/qa-qudit-005_dimension-5-results_1440x900.png` +1 | — |
-| **QA-QUDIT-006** | B-shift-gate-all-dimensions | PASS | 17/17 | `screenshots/qa-qudit-006/qa-qudit-006_shift-d4-probabilities_1440x900.png` | — |
-| **QA-QUDIT-007** | B-phase-gate-coherence | PASS | 5/5 | `screenshots/qa-qudit-007/qa-qudit-007_phase-experiment-magnitude_1440x900.png`, `screenshots/qa-qudit-007/qa-qudit-007_phase-experiment-phase-view_1440x900.png` | — |
-| **QA-QUDIT-008** | B-parameter-editing | PASS | 9/9 | `screenshots/qa-qudit-008/qa-qudit-008_rotation-inspector-default_1440x900.png`, `screenshots/qa-qudit-008/qa-qudit-008_rotation-theta-pi_1440x900.png` | — |
-| **QA-QUDIT-009** | B-reorder-and-delete | PASS | 6/6 | `screenshots/qa-qudit-009/qa-qudit-009_three-gates-before-reorder_1440x900.png`, `screenshots/qa-qudit-009/qa-qudit-009_after-move-left_1440x900.png` +1 | — |
-| **QA-QUDIT-010** | B-dimension-change-compatibility | PASS | 5/5 | `screenshots/qa-qudit-010/qa-qudit-010_d3-rotation-levels-1-2_1440x900.png`, `screenshots/qa-qudit-010/qa-qudit-010_after-switch-to-d2_1440x900.png` | — |
-| **QA-QUDIT-011** | C-entanglement-d2 | PASS | 22/22 | `screenshots/qa-qudit-011/qa-qudit-011_bell-d2-circuit_1440x900.png`, `screenshots/qa-qudit-011/qa-qudit-011_bell-d2-probabilities_1440x900.png` +2 | — |
-| **QA-QUDIT-012** | C-entanglement-d3 | PASS | 23/23 | `screenshots/qa-qudit-012/qa-qudit-012_bell-d3-circuit_1440x900.png`, `screenshots/qa-qudit-012/qa-qudit-012_bell-d3-probabilities_1440x900.png` +2 | — |
-| **QA-QUDIT-013** | C-entanglement-d4 | PASS | 24/24 | `screenshots/qa-qudit-013/qa-qudit-013_bell-d4-circuit_1440x900.png`, `screenshots/qa-qudit-013/qa-qudit-013_bell-d4-probabilities_1440x900.png` +2 | — |
-| **QA-QUDIT-014** | C-entanglement-d5 | PASS | 25/25 | `screenshots/qa-qudit-014/qa-qudit-014_bell-d5-circuit_1440x900.png`, `screenshots/qa-qudit-014/qa-qudit-014_bell-d5-probabilities_1440x900.png` +2 | — |
-| **QA-QUDIT-015** | C-reduced-subsystem-inspection | PASS | 16/16 | `screenshots/qa-qudit-015/qa-qudit-015_reduced-subsystem-tab_1440x900.png` | — |
-| **QA-QUDIT-016** | D-magnitude-view | PASS | 7/7 | `screenshots/qa-qudit-016/qa-qudit-016_density-matrix-magnitude_1440x900.png`, `screenshots/qa-qudit-016/qa-qudit-016_canvas-region_region.png` +1 | — |
-| **QA-QUDIT-016R** | D-magnitude-view (retest after QL-001 fix) | PASS | 9/9 | `screenshots/qa-qudit-016r/qa-qudit-016r_fixed-matrix-mag_1440x900.png`, `screenshots/qa-qudit-016r/qa-qudit-016r_fixed-matrix-real_1440x900.png` +2 | — |
-| **QA-QUDIT-017** | D-real-and-imaginary-views | PASS | 5/5 | `screenshots/qa-qudit-017/qa-qudit-017_density-matrix-real_1440x900.png`, `screenshots/qa-qudit-017/qa-qudit-017_density-matrix-imaginary_1440x900.png` | — |
-| **QA-QUDIT-018** | D-phase-view | PASS | 6/6 | `screenshots/qa-qudit-018/qa-qudit-018_density-matrix-phase_1440x900.png`, `screenshots/qa-qudit-018/qa-qudit-018_phase-grid_region.png` | — |
-| **QA-QUDIT-019** | D-measurement-and-sampling | PASS | 11/11 | `screenshots/qa-qudit-019/qa-qudit-019_measurement-distribution_1440x900.png`, `screenshots/qa-qudit-019/qa-qudit-019_measurement-4096-shots_1440x900.png` | — |
-| **QA-QUDIT-020** | D-matrix-viewport-and-large-D | PASS | 10/10 | `screenshots/qa-qudit-020/qa-qudit-020_large-D125-matrix_1440x900.png`, `screenshots/qa-qudit-020/qa-qudit-020_large-D125-full_1440x900.png` | — |
-| **QA-QUDIT-021** | E-generalized-depolarizing-p035 | PASS | 16/16 | `screenshots/qa-qudit-021/qa-qudit-021_ideal-baseline_1440x900.png`, `screenshots/qa-qudit-021/qa-qudit-021_noise-config-before-run_1440x900.png` +1 | — |
-| **QA-QUDIT-022** | E-zero-noise-baseline | PASS | 14/14 | `screenshots/qa-qudit-022/qa-qudit-022_noisy-before-clear_1440x900.png`, `screenshots/qa-qudit-022/qa-qudit-022_after-clear-noise_1440x900.png` | — |
-| **QA-QUDIT-023** | E-generalized-dephasing | PASS | 8/8 | `screenshots/qa-qudit-023/qa-qudit-023_dephasing-results_1440x900.png`, `screenshots/qa-qudit-023/qa-qudit-023_dephasing-matrix_1440x900.png` | — |
-| **QA-QUDIT-024** | E-multilevel-relaxation | PASS | 14/14 | `screenshots/qa-qudit-024/qa-qudit-024_relaxation-settings-and-results_1440x900.png`, `screenshots/qa-qudit-024/qa-qudit-024_relaxation-populations_1440x900.png` | — |
-| **QA-QUDIT-025** | F-resource-limits | PASS | 22/22 | `screenshots/qa-qudit-025/qa-qudit-025_qudit-cap-reached-d5_1440x900.png` | — |
-| **QA-QUDIT-026** | F-invalid-and-malformed | PASS | 22/22 | `screenshots/qa-qudit-026/qa-qudit-026_editor-after-rejected-requests_1440x900.png` | — |
-| **QA-QUDIT-027** | F-failure-and-recovery | PASS | 5/5 | `screenshots/qa-qudit-027/qa-qudit-027_before-induced-failure_1440x900.png`, `screenshots/qa-qudit-027/qa-qudit-027_induced-failure-error-state_1440x900.png` +1 | — |
-| **QA-QUDIT-028** | G-noise-lab-regression | PASS | 11/11 | `screenshots/qa-qudit-028/qa-qudit-028_noise-lab-main_1440x900.png`, `screenshots/qa-qudit-028/qa-qudit-028_noise-lab-ideal-results_1440x900.png` +1 | — |
-| **QA-QUDIT-029** | G-smart-composer | PASS | 11/11 | `screenshots/qa-qudit-029/qa-qudit-029_smart-composer-open_1440x900.png`, `screenshots/qa-qudit-029/qa-qudit-029_smart-composer-prompt-filled_1440x900.png` +1 | — |
-| **QA-QUDIT-030** | G-composer-regression-and-responsive | PASS | 35/35 | `screenshots/qa-qudit-030/qa-qudit-030_composer-before_1440x900.png`, `screenshots/qa-qudit-030/qa-qudit-030_composer-bell-loaded_1440x900.png` +5 | — |
-| **QA-QUDIT-030R** | G-responsive (retest after QL-003 fix) | PASS | 4/4 | `screenshots/qa-qudit-030r/qa-qudit-030r_fixed-desktop_1440x900.png`, `screenshots/qa-qudit-030r/qa-qudit-030r_fixed-laptop_1366x768.png` +2 | — |
-| **QA-QUDIT-031** | X-reliability-repeat-critical-workflow | PASS | 4/4 | `screenshots/qa-qudit-031/qa-qudit-031_preset-noise-run1_1440x900.png` | — |
-| **QA-QUDIT-032** | X-stale-result-after-edit | PASS | 4/4 | `screenshots/qa-qudit-032/qa-qudit-032_results-before-edit_1440x900.png`, `screenshots/qa-qudit-032/qa-qudit-032_circuit-edited-results-not-rerun_1440x900.png` +1 | — |
-| **QA-QUDIT-032R** | X-stale-result-after-edit (retest after QL-004 fix) | PASS | 5/5 | `screenshots/qa-qudit-032r/qa-qudit-032r_fixed-stale-banner_1440x900.png`, `screenshots/qa-qudit-032r/qa-qudit-032r_fixed-after-banner-rerun_1440x900.png` | — |
-| **QA-QUDIT-033** | X-narrow-viewport-chrome | FAIL | 3/4 | `screenshots/qa-qudit-033/qa-qudit-033_chrome-tablet_768x1024.png`, `screenshots/qa-qudit-033/qa-qudit-033_nav-drawer-tablet_768x1024.png` +1 | — |
-| **QA-QUDIT-034** | X-palette-label-legibility | PASS | 3/3 | `screenshots/qa-qudit-034/qa-qudit-034_palette-desktop_region.png` | — |
-| **QA-QUDIT-034R** | X-palette-label-legibility (retest after QL-002 fix) | PASS | 2/2 | `screenshots/qa-qudit-034r/qa-qudit-034r_fixed-palette_region.png` | — |
-| **QA-QUDIT-035** | X-keyboard-and-accessibility | PASS | 5/5 | `screenshots/qa-qudit-035/qa-qudit-035_keyboard-activated-run_1440x900.png`, `screenshots/qa-qudit-035/qa-qudit-035_a11y-state_1440x900.png` | — |
-| **QA-QUDIT-035R** | X-keyboard-and-accessibility (retest after QL-007 fix) | PASS | 7/7 | `screenshots/qa-qudit-035r/qa-qudit-035r_fixed-keyboard-cell-selected_1440x900.png`, `screenshots/qa-qudit-035r/qa-qudit-035r_fixed-keyboard-gate-config_1440x900.png` | — |
-| **QA-QUDIT-036** | X-preset-sweep-all-dimensions | PASS | 46/46 | `screenshots/qa-qudit-036/qa-qudit-036_preset-bell-d5_1440x900.png`, `screenshots/qa-qudit-036/qa-qudit-036_preset-noise-d5_1440x900.png` | — |
-| **QA-QUDIT-037** | X-rapid-interaction-robustness | PASS | 8/8 | `screenshots/qa-qudit-037/qa-qudit-037_after-double-click-run_1440x900.png`, `screenshots/qa-qudit-037/qa-qudit-037_after-rapid-dimension-switching_1440x900.png` +2 | — |
-| **QA-QUDIT-038** | X-navigation-and-state-integrity | PASS | 3/3 | `screenshots/qa-qudit-038/qa-qudit-038_qudit-lab-before-navigation_1440x900.png`, `screenshots/qa-qudit-038/qa-qudit-038_qudit-lab-after-return_1440x900.png` +1 | — |
-| **QA-QUDIT-038R** | X-duplicate-requests (retest after QL-006 fix) | PASS | 1/1 | `screenshots/qa-qudit-038r/qa-qudit-038r_fixed-fresh-load_1440x900.png` | — |
+| **QA-QUDIT-001** | A1-initialization | PASS | 10/10 | `evidence/screenshots/qa-qudit-001/qa-qudit-001_initial-load_1440x900.png`, `evidence/screenshots/qa-qudit-001/qa-qudit-001_initial-load-full_1440x900.png` +1 | — |
+| **QA-QUDIT-002** | A-dimension-2 | PASS | 11/11 | `evidence/screenshots/qa-qudit-002/qa-qudit-002_dimension-2-circuit_1440x900.png`, `evidence/screenshots/qa-qudit-002/qa-qudit-002_dimension-2-results_1440x900.png` +1 | — |
+| **QA-QUDIT-003** | A-dimension-3 | PASS | 13/13 | `evidence/screenshots/qa-qudit-003/qa-qudit-003_dimension-3-circuit_1440x900.png`, `evidence/screenshots/qa-qudit-003/qa-qudit-003_dimension-3-results_1440x900.png` +1 | — |
+| **QA-QUDIT-004** | A-dimension-4 | PASS | 14/14 | `evidence/screenshots/qa-qudit-004/qa-qudit-004_dimension-4-circuit_1440x900.png`, `evidence/screenshots/qa-qudit-004/qa-qudit-004_dimension-4-results_1440x900.png` +1 | — |
+| **QA-QUDIT-005** | A-dimension-5 | PASS | 15/15 | `evidence/screenshots/qa-qudit-005/qa-qudit-005_dimension-5-circuit_1440x900.png`, `evidence/screenshots/qa-qudit-005/qa-qudit-005_dimension-5-results_1440x900.png` +1 | — |
+| **QA-QUDIT-006** | B-shift-gate-all-dimensions | PASS | 17/17 | `evidence/screenshots/qa-qudit-006/qa-qudit-006_shift-d4-probabilities_1440x900.png` | — |
+| **QA-QUDIT-007** | B-phase-gate-coherence | PASS | 5/5 | `evidence/screenshots/qa-qudit-007/qa-qudit-007_phase-experiment-magnitude_1440x900.png`, `evidence/screenshots/qa-qudit-007/qa-qudit-007_phase-experiment-phase-view_1440x900.png` | — |
+| **QA-QUDIT-008** | B-parameter-editing | PASS | 9/9 | `evidence/screenshots/qa-qudit-008/qa-qudit-008_rotation-inspector-default_1440x900.png`, `evidence/screenshots/qa-qudit-008/qa-qudit-008_rotation-theta-pi_1440x900.png` | — |
+| **QA-QUDIT-009** | B-reorder-and-delete | PASS | 6/6 | `evidence/screenshots/qa-qudit-009/qa-qudit-009_three-gates-before-reorder_1440x900.png`, `evidence/screenshots/qa-qudit-009/qa-qudit-009_after-move-left_1440x900.png` +1 | — |
+| **QA-QUDIT-010** | B-dimension-change-compatibility | PASS | 5/5 | `evidence/screenshots/qa-qudit-010/qa-qudit-010_d3-rotation-levels-1-2_1440x900.png`, `evidence/screenshots/qa-qudit-010/qa-qudit-010_after-switch-to-d2_1440x900.png` | — |
+| **QA-QUDIT-011** | C-entanglement-d2 | PASS | 22/22 | `evidence/screenshots/qa-qudit-011/qa-qudit-011_bell-d2-circuit_1440x900.png`, `evidence/screenshots/qa-qudit-011/qa-qudit-011_bell-d2-probabilities_1440x900.png` +2 | — |
+| **QA-QUDIT-012** | C-entanglement-d3 | PASS | 23/23 | `evidence/screenshots/qa-qudit-012/qa-qudit-012_bell-d3-circuit_1440x900.png`, `evidence/screenshots/qa-qudit-012/qa-qudit-012_bell-d3-probabilities_1440x900.png` +2 | — |
+| **QA-QUDIT-013** | C-entanglement-d4 | PASS | 24/24 | `evidence/screenshots/qa-qudit-013/qa-qudit-013_bell-d4-circuit_1440x900.png`, `evidence/screenshots/qa-qudit-013/qa-qudit-013_bell-d4-probabilities_1440x900.png` +2 | — |
+| **QA-QUDIT-014** | C-entanglement-d5 | PASS | 25/25 | `evidence/screenshots/qa-qudit-014/qa-qudit-014_bell-d5-circuit_1440x900.png`, `evidence/screenshots/qa-qudit-014/qa-qudit-014_bell-d5-probabilities_1440x900.png` +2 | — |
+| **QA-QUDIT-015** | C-reduced-subsystem-inspection | PASS | 16/16 | `evidence/screenshots/qa-qudit-015/qa-qudit-015_reduced-subsystem-tab_1440x900.png` | — |
+| **QA-QUDIT-016** | D-magnitude-view | PASS | 7/7 | `evidence/screenshots/qa-qudit-016/qa-qudit-016_density-matrix-magnitude_1440x900.png`, `evidence/screenshots/qa-qudit-016/qa-qudit-016_canvas-region_region.png` +1 | — |
+| **QA-QUDIT-016R** | D-magnitude-view (retest after QL-001 fix) | PASS | 9/9 | `evidence/screenshots/qa-qudit-016r/qa-qudit-016r_fixed-matrix-mag_1440x900.png`, `evidence/screenshots/qa-qudit-016r/qa-qudit-016r_fixed-matrix-real_1440x900.png` +2 | — |
+| **QA-QUDIT-017** | D-real-and-imaginary-views | PASS | 5/5 | `evidence/screenshots/qa-qudit-017/qa-qudit-017_density-matrix-real_1440x900.png`, `evidence/screenshots/qa-qudit-017/qa-qudit-017_density-matrix-imaginary_1440x900.png` | — |
+| **QA-QUDIT-018** | D-phase-view | PASS | 6/6 | `evidence/screenshots/qa-qudit-018/qa-qudit-018_density-matrix-phase_1440x900.png`, `evidence/screenshots/qa-qudit-018/qa-qudit-018_phase-grid_region.png` | — |
+| **QA-QUDIT-019** | D-measurement-and-sampling | PASS | 11/11 | `evidence/screenshots/qa-qudit-019/qa-qudit-019_measurement-distribution_1440x900.png`, `evidence/screenshots/qa-qudit-019/qa-qudit-019_measurement-4096-shots_1440x900.png` | — |
+| **QA-QUDIT-020** | D-matrix-viewport-and-large-D | PASS | 10/10 | `evidence/screenshots/qa-qudit-020/qa-qudit-020_large-D125-matrix_1440x900.png`, `evidence/screenshots/qa-qudit-020/qa-qudit-020_large-D125-full_1440x900.png` | — |
+| **QA-QUDIT-021** | E-generalized-depolarizing-p035 | PASS | 16/16 | `evidence/screenshots/qa-qudit-021/qa-qudit-021_ideal-baseline_1440x900.png`, `evidence/screenshots/qa-qudit-021/qa-qudit-021_noise-config-before-run_1440x900.png` +1 | — |
+| **QA-QUDIT-022** | E-zero-noise-baseline | PASS | 14/14 | `evidence/screenshots/qa-qudit-022/qa-qudit-022_noisy-before-clear_1440x900.png`, `evidence/screenshots/qa-qudit-022/qa-qudit-022_after-clear-noise_1440x900.png` | — |
+| **QA-QUDIT-023** | E-generalized-dephasing | PASS | 8/8 | `evidence/screenshots/qa-qudit-023/qa-qudit-023_dephasing-results_1440x900.png`, `evidence/screenshots/qa-qudit-023/qa-qudit-023_dephasing-matrix_1440x900.png` | — |
+| **QA-QUDIT-024** | E-multilevel-relaxation | PASS | 14/14 | `evidence/screenshots/qa-qudit-024/qa-qudit-024_relaxation-settings-and-results_1440x900.png`, `evidence/screenshots/qa-qudit-024/qa-qudit-024_relaxation-populations_1440x900.png` | — |
+| **QA-QUDIT-025** | F-resource-limits | PASS | 22/22 | `evidence/screenshots/qa-qudit-025/qa-qudit-025_qudit-cap-reached-d5_1440x900.png` | — |
+| **QA-QUDIT-026** | F-invalid-and-malformed | PASS | 22/22 | `evidence/screenshots/qa-qudit-026/qa-qudit-026_editor-after-rejected-requests_1440x900.png` | — |
+| **QA-QUDIT-027** | F-failure-and-recovery | PASS | 5/5 | `evidence/screenshots/qa-qudit-027/qa-qudit-027_before-induced-failure_1440x900.png`, `evidence/screenshots/qa-qudit-027/qa-qudit-027_induced-failure-error-state_1440x900.png` +1 | — |
+| **QA-QUDIT-028** | G-noise-lab-regression | PASS | 11/11 | `evidence/screenshots/qa-qudit-028/qa-qudit-028_noise-lab-main_1440x900.png`, `evidence/screenshots/qa-qudit-028/qa-qudit-028_noise-lab-ideal-results_1440x900.png` +1 | — |
+| **QA-QUDIT-029** | G-smart-composer | PASS | 11/11 | `evidence/screenshots/qa-qudit-029/qa-qudit-029_smart-composer-open_1440x900.png`, `evidence/screenshots/qa-qudit-029/qa-qudit-029_smart-composer-prompt-filled_1440x900.png` +1 | — |
+| **QA-QUDIT-030** | G-composer-regression-and-responsive | PASS | 35/35 | `evidence/screenshots/qa-qudit-030/qa-qudit-030_composer-before_1440x900.png`, `evidence/screenshots/qa-qudit-030/qa-qudit-030_composer-bell-loaded_1440x900.png` +5 | — |
+| **QA-QUDIT-030R** | G-responsive (retest after QL-003 fix) | PASS | 4/4 | `evidence/screenshots/qa-qudit-030r/qa-qudit-030r_fixed-desktop_1440x900.png`, `evidence/screenshots/qa-qudit-030r/qa-qudit-030r_fixed-laptop_1366x768.png` +2 | — |
+| **QA-QUDIT-031** | X-reliability-repeat-critical-workflow | PASS | 4/4 | `evidence/screenshots/qa-qudit-031/qa-qudit-031_preset-noise-run1_1440x900.png` | — |
+| **QA-QUDIT-032** | X-stale-result-after-edit | PASS | 4/4 | `evidence/screenshots/qa-qudit-032/qa-qudit-032_results-before-edit_1440x900.png`, `evidence/screenshots/qa-qudit-032/qa-qudit-032_circuit-edited-results-not-rerun_1440x900.png` +1 | — |
+| **QA-QUDIT-032R** | X-stale-result-after-edit (retest after QL-004 fix) | PASS | 5/5 | `evidence/screenshots/qa-qudit-032r/qa-qudit-032r_fixed-stale-banner_1440x900.png`, `evidence/screenshots/qa-qudit-032r/qa-qudit-032r_fixed-after-banner-rerun_1440x900.png` | — |
+| **QA-QUDIT-033** | X-narrow-viewport-chrome | FAIL | 3/4 | `evidence/screenshots/qa-qudit-033/qa-qudit-033_chrome-tablet_768x1024.png`, `evidence/screenshots/qa-qudit-033/qa-qudit-033_nav-drawer-tablet_768x1024.png` +1 | — |
+| **QA-QUDIT-034** | X-palette-label-legibility | PASS | 3/3 | `evidence/screenshots/qa-qudit-034/qa-qudit-034_palette-desktop_region.png` | — |
+| **QA-QUDIT-034R** | X-palette-label-legibility (retest after QL-002 fix) | PASS | 2/2 | `evidence/screenshots/qa-qudit-034r/qa-qudit-034r_fixed-palette_region.png` | — |
+| **QA-QUDIT-035** | X-keyboard-and-accessibility | PASS | 5/5 | `evidence/screenshots/qa-qudit-035/qa-qudit-035_keyboard-activated-run_1440x900.png`, `evidence/screenshots/qa-qudit-035/qa-qudit-035_a11y-state_1440x900.png` | — |
+| **QA-QUDIT-035R** | X-keyboard-and-accessibility (retest after QL-007 fix) | PASS | 7/7 | `evidence/screenshots/qa-qudit-035r/qa-qudit-035r_fixed-keyboard-cell-selected_1440x900.png`, `evidence/screenshots/qa-qudit-035r/qa-qudit-035r_fixed-keyboard-gate-config_1440x900.png` | — |
+| **QA-QUDIT-036** | X-preset-sweep-all-dimensions | PASS | 46/46 | `evidence/screenshots/qa-qudit-036/qa-qudit-036_preset-bell-d5_1440x900.png`, `evidence/screenshots/qa-qudit-036/qa-qudit-036_preset-noise-d5_1440x900.png` | — |
+| **QA-QUDIT-037** | X-rapid-interaction-robustness | PASS | 8/8 | `evidence/screenshots/qa-qudit-037/qa-qudit-037_after-double-click-run_1440x900.png`, `evidence/screenshots/qa-qudit-037/qa-qudit-037_after-rapid-dimension-switching_1440x900.png` +2 | — |
+| **QA-QUDIT-038** | X-navigation-and-state-integrity | PASS | 3/3 | `evidence/screenshots/qa-qudit-038/qa-qudit-038_qudit-lab-before-navigation_1440x900.png`, `evidence/screenshots/qa-qudit-038/qa-qudit-038_qudit-lab-after-return_1440x900.png` +1 | — |
+| **QA-QUDIT-038R** | X-duplicate-requests (retest after QL-006 fix) | PASS | 1/1 | `evidence/screenshots/qa-qudit-038r/qa-qudit-038r_fixed-fresh-load_1440x900.png` | — |
 
 ---
 
@@ -159,15 +159,15 @@ Root cause, proven three ways:
 
 Fixed by replacing the interpolated classes with an inline-style scale (the correct tool for a continuous value) and adding a legend keyed to the same scale.
 
-- Before: `screenshots-prefix/qa-qudit-016/qa-qudit-016_density-matrix-magnitude_1440x900.png`
-- After: `screenshots/qa-qudit-016r/qa-qudit-016r_fixed-matrix-phase_1440x900.png`
+- Before: `evidence/screenshots-prefix/qa-qudit-016/qa-qudit-016_density-matrix-magnitude_1440x900.png`
+- After: `evidence/screenshots/qa-qudit-016r/qa-qudit-016r_fixed-matrix-phase_1440x900.png`
 
 ### C2 — Gate palette subtitles clipped, four gates reading identically (QL-002, P3, **fixed**)
 
 **7 of 7** subtitles overflowed an 85px single-line box (content 93–175px; `SUM_3` needed 175px). The visible consequence: `X_3`, `Z_3`, `F_3` and `SWAP_3` all rendered the identical string **"Generalized …"**. For four of seven gates the subtitle conveyed nothing.
 
-- Before: `screenshots-prefix/qa-qudit-034/qa-qudit-034_palette-desktop_region.png`
-- After: `screenshots/qa-qudit-034r/qa-qudit-034r_fixed-palette_region.png`
+- Before: `evidence/screenshots-prefix/qa-qudit-034/qa-qudit-034_palette-desktop_region.png`
+- After: `evidence/screenshots/qa-qudit-034r/qa-qudit-034r_fixed-palette_region.png`
 
 ### C3 — Top bar overflows at 390px, and navigation was unreachable (QL-008, P2, **fixed in wave 2**)
 
@@ -195,7 +195,7 @@ by diffing the header band against captures that predate every TopBar change:
   pixels of the header band.
 - **768px: changed, and changed for the better.** 2,626 pixels differ, all
   between x=97 and x=481. Reading the two bands side by side
-  (`vision-review/crops/c8_768_header_before_after.png`) shows why: the old bar
+  (`evidence/vision-review/crops/c8_768_header_before_after.png`) shows why: the old bar
   was compressed enough that "4/6 engines" wrapped onto two lines inside its
   pill and the `Ctrl-K` hint broke as "Ctrl-" / "K". Both now sit on one line.
   The cost is one character of breadcrumb truncation ("Qudit ..." → "Qudi...").
@@ -209,8 +209,8 @@ While re-testing it, a second defect surfaced that no screenshot could show:
 the drawer's close button was painted underneath the sidebar (`z-10` against
 `z-30`) and silently swallowed every click (**QL-014**, fixed).
 
-- Before: `screenshots-prefix/qa-qudit-033/qa-qudit-033_chrome-mobile_390x844.png`
-- After: `screenshots/qa-qudit-039/qa-qudit-039_fixed-topbar-mobile_390x844.png`
+- Before: `evidence/screenshots-prefix/qa-qudit-033/qa-qudit-033_chrome-mobile_390x844.png`
+- After: `evidence/screenshots/qa-qudit-039/qa-qudit-039_fixed-topbar-mobile_390x844.png`
   and `..._fixed-topbar-mobile-drawer-open_390x844.png`
 - The original failing test, unmodified, now passes: see §M.
 
@@ -251,8 +251,8 @@ For a quantum simulator this is the worst class of UI bug, because the numbers a
 
 The same product already solves this one screen over: `ComposerPage.tsx` passes `stale={runSnapshot !== irKey}` to `ResultsPanel`. The Qudit Lab had no equivalent. Fixed by mirroring that pattern — a snapshot of `{circuit, noise, shots, seed}` captured on success and cleared on failure, surfaced as a warning banner with a re-run action.
 
-- Before: `screenshots-prefix/qa-qudit-032/qa-qudit-032_circuit-edited-results-not-rerun_1440x900.png`
-- After: `screenshots/qa-qudit-032r/qa-qudit-032r_fixed-stale-banner_1440x900.png`
+- Before: `evidence/screenshots-prefix/qa-qudit-032/qa-qudit-032_circuit-edited-results-not-rerun_1440x900.png`
+- After: `evidence/screenshots/qa-qudit-032r/qa-qudit-032r_fixed-stale-banner_1440x900.png`
 
 ---
 
@@ -336,23 +336,23 @@ Sorted by severity. Full evidence packages in `defect-register.json`.
 
 | ID | Sev | Title | Run | Evidence | Status |
 |---|---|---|---|---|---|
-| QL-001 | **P2** | Density-matrix heatmap rendered with no colour in any mode; no legend | QA-QUDIT-016 | `screenshots-prefix/qa-qudit-016/…magnitude…png` → `screenshots/qa-qudit-016r/…fixed-matrix-phase…png`; computed style `rgba(0,0,0,0)`; 0 matching utilities in the built CSS | Fixed, re-tested |
-| QL-004 | **P2** | Previous run presented as current after an edit or a failed run | QA-QUDIT-027, 032 | `screenshots-prefix/qa-qudit-032/…not-rerun…png` → `screenshots/qa-qudit-032r/…fixed-stale-banner…png` | Fixed, re-tested |
-| QL-007 | **P2** | Matrix cells and gate tiles click-only; keyboard-unreachable | QA-QUDIT-035 | `screenshots-prefix/qa-qudit-035/…a11y-state…png` → `screenshots/qa-qudit-035r/…fixed-keyboard-gate-config…png`; 9 cells / 1 tile with 0 roles | Fixed, re-tested |
-| QL-002 | P3 | All 7 palette subtitles clipped; 4 gates render identical text | QA-QUDIT-034, 001 | `screenshots-prefix/qa-qudit-034/…palette-desktop_region.png` → `screenshots/qa-qudit-034r/…fixed-palette_region.png`; 93–175px into 85px | Fixed, re-tested |
-| QL-003 | P3 | Narrow-viewport notice never mounted; 900px minimum never announced | QA-QUDIT-030, 033 | `screenshots/qa-qudit-030r/…fixed-mobile…png`; "Narrow window" in 0 built chunks | Fixed, re-tested |
+| QL-001 | **P2** | Density-matrix heatmap rendered with no colour in any mode; no legend | QA-QUDIT-016 | `evidence/screenshots-prefix/qa-qudit-016/…magnitude…png` → `evidence/screenshots/qa-qudit-016r/…fixed-matrix-phase…png`; computed style `rgba(0,0,0,0)`; 0 matching utilities in the built CSS | Fixed, re-tested |
+| QL-004 | **P2** | Previous run presented as current after an edit or a failed run | QA-QUDIT-027, 032 | `evidence/screenshots-prefix/qa-qudit-032/…not-rerun…png` → `evidence/screenshots/qa-qudit-032r/…fixed-stale-banner…png` | Fixed, re-tested |
+| QL-007 | **P2** | Matrix cells and gate tiles click-only; keyboard-unreachable | QA-QUDIT-035 | `evidence/screenshots-prefix/qa-qudit-035/…a11y-state…png` → `evidence/screenshots/qa-qudit-035r/…fixed-keyboard-gate-config…png`; 9 cells / 1 tile with 0 roles | Fixed, re-tested |
+| QL-002 | P3 | All 7 palette subtitles clipped; 4 gates render identical text | QA-QUDIT-034, 001 | `evidence/screenshots-prefix/qa-qudit-034/…palette-desktop_region.png` → `evidence/screenshots/qa-qudit-034r/…fixed-palette_region.png`; 93–175px into 85px | Fixed, re-tested |
+| QL-003 | P3 | Narrow-viewport notice never mounted; 900px minimum never announced | QA-QUDIT-030, 033 | `evidence/screenshots/qa-qudit-030r/…fixed-mobile…png`; "Narrow window" in 0 built chunks | Fixed, re-tested |
 | QL-006 | P3 | `/qudit/presets` requested twice per page load | QA-QUDIT-038 | production `{presets: 2}` → `{presets: 1}` | Fixed, re-tested |
-| QL-008 | **P2** (was P3) | Top bar overflowed at 390px; the engine badge covered the hamburger, so navigation was unreachable | QA-QUDIT-033 | `screenshots-prefix/qa-qudit-033/…chrome-mobile…png` → `screenshots/qa-qudit-039/…fixed-topbar-mobile…png`; hit test COVERED → CLICKABLE | Fixed, re-tested |
-| QL-009 | **P2** | Matrix tooltip and detail card rendered `⟨\|0⟩\|ρ\|\|0⟩⟩` instead of `⟨0\|ρ\|0⟩` | vision pass over 016/017/018 | `vision-review/crops/c1_cell_inspector.png` → `screenshots/qa-qudit-040/…fixed-braket-and-phase…png` | Fixed, re-tested |
+| QL-008 | **P2** (was P3) | Top bar overflowed at 390px; the engine badge covered the hamburger, so navigation was unreachable | QA-QUDIT-033 | `evidence/screenshots-prefix/qa-qudit-033/…chrome-mobile…png` → `evidence/screenshots/qa-qudit-039/…fixed-topbar-mobile…png`; hit test COVERED → CLICKABLE | Fixed, re-tested |
+| QL-009 | **P2** | Matrix tooltip and detail card rendered `⟨\|0⟩\|ρ\|\|0⟩⟩` instead of `⟨0\|ρ\|0⟩` | vision pass over 016/017/018 | `evidence/vision-review/crops/c1_cell_inspector.png` → `evidence/screenshots/qa-qudit-040/…fixed-braket-and-phase…png` | Fixed, re-tested |
 | QL-010 | P3 | Phase view printed a negative zero `-0.00π` for real-positive diagonals | vision pass over 018 | API returns `phase = -8.327e-17`; crop `c5_phase_matrix.png` → run 040 | Fixed, re-tested |
-| QL-011 | P3 | Reduced-subsystem matrix never received the QL-001 colour fix: no colour, no legend | vision pass over 011–015 | `screenshots-prefix/qa-qudit-011/…bell-d2-reduced…png` (pixel-identical pre/post wave 1) → `screenshots/qa-qudit-041/…fixed-reduced-heatmap…png` | Fixed, re-tested |
-| QL-012 | P3 | Operation inspector leaked an internal op id and used a third spelling of the gate name | vision pass over 008–010 | `screenshots-prefix/qa-qudit-009/…after-move-left…png` → `screenshots/qa-qudit-042/…fixed-configure-panel…png` | Fixed, re-tested |
-| QL-013 | P3 | Smart Composer rule-library row collided with itself on a long formula | vision pass over 029 | `vision-review/crops/c2_rule_library.png` → `screenshots/qa-qudit-043/…fixed-rule-library…png` | Fixed, re-tested |
+| QL-011 | P3 | Reduced-subsystem matrix never received the QL-001 colour fix: no colour, no legend | vision pass over 011–015 | `evidence/screenshots-prefix/qa-qudit-011/…bell-d2-reduced…png` (pixel-identical pre/post wave 1) → `evidence/screenshots/qa-qudit-041/…fixed-reduced-heatmap…png` | Fixed, re-tested |
+| QL-012 | P3 | Operation inspector leaked an internal op id and used a third spelling of the gate name | vision pass over 008–010 | `evidence/screenshots-prefix/qa-qudit-009/…after-move-left…png` → `evidence/screenshots/qa-qudit-042/…fixed-configure-panel…png` | Fixed, re-tested |
+| QL-013 | P3 | Smart Composer rule-library row collided with itself on a long formula | vision pass over 029 | `evidence/vision-review/crops/c2_rule_library.png` → `evidence/screenshots/qa-qudit-043/…fixed-rule-library…png` | Fixed, re-tested |
 | QL-014 | P3 | Mobile drawer's close button was painted under the sidebar and ignored every click | QA-QUDIT-039 | hit test: `z-10` under `aside` `z-30`, `elementFromPoint` → sidebar DIV at 390 **and** 768. No before-screenshot can exist | Fixed, re-tested |
 | QL-005 | P3 | Probabilities rounded to 6 dp; d=3 distribution sums to 0.999999 | QA-QUDIT-012 | `diagonal_probability_mass_exact = 0.999999` with `trace = 1.0` | **Open** — API contract decision |
-| QL-015 | P4 | Toasts anchor bottom-right over live result content | vision pass over 013/014/044 | `screenshots/qa-qudit-044/…truncation-notice-in-view…png` | **Open** — shared component, deferred |
-| QL-016 | P4 | Preset card titles truncate at ≤1366px | vision pass over 030 | `vision-review/crops/c4_preset_cards.png` | **Open** — design call, deferred |
-| QL-017 | P4 | Diagonal cells keep the "pop" sub-label in the phase view | vision pass over 018 | `screenshots/qa-qudit-040/…fixed-braket-and-phase…png` | **Open** — teaching-design call, deferred |
+| QL-015 | P4 | Toasts anchor bottom-right over live result content | vision pass over 013/014/044 | `evidence/screenshots/qa-qudit-044/…truncation-notice-in-view…png` | **Open** — shared component, deferred |
+| QL-016 | P4 | Preset card titles truncate at ≤1366px | vision pass over 030 | `evidence/vision-review/crops/c4_preset_cards.png` | **Open** — design call, deferred |
+| QL-017 | P4 | Diagonal cells keep the "pop" sub-label in the phase view | vision pass over 018 | `evidence/screenshots/qa-qudit-040/…fixed-braket-and-phase…png` | **Open** — teaching-design call, deferred |
 
 ---
 

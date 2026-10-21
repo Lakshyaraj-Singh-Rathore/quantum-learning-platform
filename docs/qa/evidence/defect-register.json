@@ -1,0 +1,505 @@
+[
+  {
+    "id": "QL-001",
+    "severity": "P2",
+    "category": "Visual / data presentation",
+    "title": "Density-matrix heatmap rendered with no colour at all, in every display mode",
+    "feature": "Qudit Lab — Density Matrix Inspector",
+    "route": "/qudit-lab",
+    "found_in_runs": [
+      "QA-QUDIT-016"
+    ],
+    "browser": "Chromium 153.0.8010.0",
+    "viewport": "1440x900",
+    "repro": [
+      "Log in, open /qudit-lab.",
+      "Apply the 'Fourier Superposition (F_3)' preset.",
+      "Open the 'Density Matrix (ρ)' tab.",
+      "Inspect the cell backgrounds in |ρ|, Re(ρ), Im(ρ) and ∠ρ modes."
+    ],
+    "expected": "Cell colour encodes the value (the component advertises a magnitude-proportional heatmap), with a legend.",
+    "actual": "All 9 cells had computed backgroundColor rgba(0, 0, 0, 0) — fully transparent. No colour, no legend. The grid was a plain numeric table in all four modes.",
+    "evidence": {
+      "screenshot_before": "screenshots-prefix/qa-qudit-016/qa-qudit-016_density-matrix-magnitude_1440x900.png",
+      "screenshot_after": "screenshots/qa-qudit-016r/qa-qudit-016r_fixed-matrix-phase_1440x900.png",
+      "computed_style": "1 distinct cell background across 9 cells: rgba(0, 0, 0, 0)",
+      "css_bundle": "grep of dist/assets/index-CX1-WRPj.css: 0 occurrences of bg-blue-500/30, bg-blue-500/90, bg-indigo-500/26, bg-emerald-500/90, bg-rose-500/15, bg-amber-500/90 — while statically written utilities such as bg-accent are present",
+      "production_build": "reproduced on the built bundle served by vite preview :4173, so it is not a dev-server artifact"
+    },
+    "root_cause": "CONFIRMED. DensityMatrixInspector.getCellColor built class names by template-literal interpolation (`bg-blue-500/${Math.round(alpha*90)}`). Tailwind generates CSS by statically scanning source for literal class strings, so none of those utilities were ever emitted. The className referenced classes that do not exist.",
+    "source": "frontend/web/src/components/qudit/DensityMatrixInspector.tsx:63-96 (before fix)",
+    "fix": "Replaced the interpolated classes with an inline-style scale (cellStyle), which is the correct mechanism for a continuous value, and added a MatrixLegend component keyed to the same scale.",
+    "status": "Fixed, re-tested",
+    "retest_run": "QA-QUDIT-016R"
+  },
+  {
+    "id": "QL-004",
+    "severity": "P2",
+    "category": "Misleading result / stale state",
+    "title": "Results panel kept presenting a previous run as current after the circuit changed or a run failed",
+    "feature": "Qudit Lab — results",
+    "route": "/qudit-lab",
+    "found_in_runs": [
+      "QA-QUDIT-027",
+      "QA-QUDIT-032"
+    ],
+    "browser": "Chromium 153.0.8010.0",
+    "viewport": "1440x900",
+    "repro": [
+      "Apply 'Fourier Superposition (F_3)' and let it run (purity 1.0000).",
+      "Click X_3 in the palette to append a gate. Do NOT press Run.",
+      "Read the invariants panel.",
+      "Separately: make /qudit/simulate fail (HTTP 500) and press Run."
+    ],
+    "expected": "A result that no longer describes the circuit on the canvas is cleared or explicitly marked as out of date.",
+    "actual": "The canvas correctly updated to '2 Gates', but the matrix, purity (1.0000), entropy and measurement distribution continued to display the previous run with no marker of any kind. The same held after an induced HTTP 500: the stale success stayed on screen beneath the error toast.",
+    "evidence": {
+      "screenshot_before": "screenshots-prefix/qa-qudit-032/qa-qudit-032_circuit-edited-results-not-rerun_1440x900.png",
+      "screenshot_after": "screenshots/qa-qudit-032r/qa-qudit-032r_fixed-stale-banner_1440x900.png",
+      "observed": "purity before edit 1, purity still displayed after edit 1, staleness marker present = false",
+      "contrast": "The qubit Composer in the same product already solves this: ComposerPage.tsx passes stale={runSnapshot !== irKey} to ResultsPanel. The Qudit Lab had no equivalent."
+    },
+    "root_cause": "CONFIRMED. QuditLabPage held simResult but no record of which circuit/noise/shots/seed produced it, so nothing could detect divergence.",
+    "source": "frontend/web/src/pages/QuditLabPage.tsx (state), components/qudit/DensityMatrixInspector.tsx (presentation)",
+    "fix": "Added a resultSnapshot of {circuit, noise, shots, seed} captured on success and cleared on failure; DensityMatrixInspector gained stale/onRerun props and renders a warning banner with a re-run action.",
+    "status": "Fixed, re-tested",
+    "retest_run": "QA-QUDIT-032R"
+  },
+  {
+    "id": "QL-007",
+    "severity": "P2",
+    "category": "Accessibility",
+    "title": "Density-matrix cells and circuit gate tiles were click-only <div>s: unreachable by keyboard",
+    "feature": "Qudit Lab — matrix inspector and circuit canvas",
+    "route": "/qudit-lab",
+    "found_in_runs": [
+      "QA-QUDIT-035"
+    ],
+    "browser": "Chromium 153.0.8010.0",
+    "viewport": "1440x900",
+    "repro": [
+      "Open /qudit-lab and run any circuit.",
+      "Try to select a density-matrix cell, or open a gate's configuration panel, using only the keyboard."
+    ],
+    "expected": "Controls that respond to a click expose a role and are focusable and operable from the keyboard.",
+    "actual": "9 clickable matrix cells: 0 with a role, 0 focusable. 1 clickable gate tile: 0 with a role, 0 focusable. A keyboard-only user could not inspect any matrix element, nor open the gate inspector (and therefore could not reorder, re-target or delete a gate).",
+    "evidence": {
+      "screenshot_before": "screenshots-prefix/qa-qudit-035/qa-qudit-035_a11y-state_1440x900.png",
+      "screenshot_after": "screenshots/qa-qudit-035r/qa-qudit-035r_fixed-keyboard-gate-config_1440x900.png",
+      "observed": "matrix cells {count: 9, withRole: 0, withTabindex: 0}; gate tiles {count: 1, withRole: 0, withTabindex: 0}",
+      "note": "npm run a11y reports 0 criticals because its scope excludes this known class of gap; it did not catch either case."
+    },
+    "root_cause": "CONFIRMED. Both elements are <div onClick=...> with no role, tabIndex or key handler.",
+    "source": "frontend/web/src/components/qudit/DensityMatrixInspector.tsx (cells), components/qudit/QuditCircuitEditor.tsx:216-250 (gate tiles)",
+    "fix": "Added role=\"button\", tabIndex={0}, aria-label and Enter/Space handlers to both, plus a visible focus ring.",
+    "status": "Fixed, re-tested",
+    "retest_run": "QA-QUDIT-035R"
+  },
+  {
+    "id": "QL-008",
+    "severity": "P2",
+    "category": "Responsive",
+    "title": "Top-bar content overflows the viewport at 390px, putting the account control out of reach",
+    "feature": "App shell — TopBar",
+    "route": "all authenticated routes",
+    "found_in_runs": [
+      "QA-QUDIT-033"
+    ],
+    "browser": "Chromium 153.0.8010.0",
+    "viewport": "390x844",
+    "repro": [
+      "Open any authenticated page at 390x844 and look at the right edge of the top bar."
+    ],
+    "expected": "Top-bar controls stay inside the viewport, or collapse.",
+    "actual": "3 elements extend past the right edge at 390px: the '4/6 engines GPU' badge, 'Platform Admin ADMIN', and the ADMIN chip. The account/sign-out control is pushed off-screen. The page itself does not scroll horizontally, so the clipped content cannot be reached by scrolling either. Hit test at 390x844: hamburger COVERED by the engine badge (svg.lucide-atom); sign-out button right edge at x=471 on a 390px viewport (OFFSCREEN); 8 header descendants past the right edge.",
+    "evidence": {
+      "screenshot": "screenshots/qa-qudit-033/qa-qudit-033_chrome-mobile_390x844.png",
+      "observed": "header elements past the right edge: '4/6 engines GPU', 'Platform Admin ADMIN', 'ADMIN'",
+      "mitigation_verified": "navigation itself is still reachable: the mobile nav drawer opens and exposes the page links (asserted in QA-QUDIT-033)",
+      "screenshot_after": "screenshots/qa-qudit-039/qa-qudit-039_fixed-topbar-mobile_390x844.png",
+      "drawer_after": "screenshots/qa-qudit-039/qa-qudit-039_fixed-topbar-mobile-drawer-open_390x844.png"
+    },
+    "root_cause": "frontend/web/src/components/shell/TopBar.tsx: the right-hand action cluster (<div class=\"flex items-center gap-3\">) had no min-w-0 and no shrink affordance, so it kept its ~380px intrinsic width inside a 390px justify-between header, overflowing right and overlapping the left cluster.",
+    "source": "frontend/web/src/components/shell/TopBar.tsx",
+    "fix": "TopBar.tsx: right cluster is now \"flex min-w-0 shrink items-center gap-2 sm:gap-3\"; left cluster is \"min-w-0 flex-1\" with a shrink-0 hamburger; the user name truncates at 7ch below sm; avatar, role chip and sign-out are shrink-0. The backend engine badge and the role chip (both diagnostic labels, not navigation) are hidden below the sm breakpoint, which is the only content concession. Nothing is hidden at >=640px.",
+    "status": "Fixed, re-tested",
+    "retest_run": "QA-QUDIT-039 (15/15 assertions) + QA-QUDIT-033 re-run, which is the original failing test passing unmodified (4/4)",
+    "severity_revised_from": "P3",
+    "severity_revision_reason": "Re-examination with a hit test showed this is not only a clipping defect. The unshrinkable right-hand cluster was painted over the hamburger, so document.elementFromPoint at the hamburger's centre returned the backend-status badge: the navigation drawer could not be opened at 390px at all. Loss of all navigation on a phone is P2, not P3."
+  },
+  {
+    "browser": "Chromium 153.0.8010.0",
+    "viewport": "1440x900",
+    "route": "/qudit-lab",
+    "id": "QL-009",
+    "severity": "P2",
+    "category": "Educational correctness / notation",
+    "title": "Density-matrix cell tooltip and detail card rendered malformed Dirac notation",
+    "feature": "Qudit Lab — Density Matrix Inspector",
+    "found_in_runs": [
+      "vision inspection of QA-QUDIT-016/017/018 screenshots"
+    ],
+    "repro": [
+      "Log in, open /qudit-lab.",
+      "Run any circuit at d=3.",
+      "Hover a density-matrix cell and read its tooltip.",
+      "Click the cell and read the detail card beneath the grid."
+    ],
+    "expected": "The matrix element reads ⟨0|ρ|0⟩, the notation used by the lesson text.",
+    "actual": "Tooltip read \"⟨|0⟩|ρ||0⟩⟩\" and the detail card read \"⟨|0⟩ | ρ | |0⟩⟩\": the ket decoration was duplicated, producing doubled bars and an unbalanced bracket.",
+    "evidence": {
+      "crop_before": "vision-review/crops/c1_cell_inspector.png",
+      "screenshot_after": "screenshots/qa-qudit-040/qa-qudit-040_fixed-braket-and-phase_1440x900.png",
+      "after_text": "tooltip \"⟨2|ρ|2⟩ = +0.333 +0.000i\"; detail card \"⟨2|ρ|2⟩: +0.33333 +0.00000i\""
+    },
+    "root_cause": "DensityMatrixInspector.tsx L348/L384 interpolated basis_labels[] into a ⟨row|ρ|col⟩ template, but the API already returns those labels as kets (\"|0⟩\").",
+    "source": "frontend/web/src/components/qudit/DensityMatrixInspector.tsx",
+    "fix": "Added ketIndex()/braket() helpers that strip the ket decoration and rebuild the matrix element. The literal substring \"|ρ|\" is preserved so the existing harness selector div[title*='|ρ|'] keeps matching.",
+    "status": "Fixed, re-tested",
+    "retest_run": "QA-QUDIT-040 (10/10 assertions)"
+  },
+  {
+    "id": "QL-002",
+    "severity": "P3",
+    "category": "Visual / clipping",
+    "title": "All seven gate-palette subtitles were clipped, leaving four gates showing the identical text",
+    "feature": "Qudit Lab — gate palette",
+    "route": "/qudit-lab",
+    "found_in_runs": [
+      "QA-QUDIT-034",
+      "QA-QUDIT-001"
+    ],
+    "browser": "Chromium 153.0.8010.0",
+    "viewport": "1440x900",
+    "repro": [
+      "Open /qudit-lab and read the second line of each palette tile."
+    ],
+    "expected": "The subtitle distinguishes the gates.",
+    "actual": "7 of 7 subtitles were clipped by an 85px single-line box (content widths 93-175px; SUM_3 needed 175px). X_3, Z_3, F_3 and SWAP_3 all rendered as the identical string \"Generalized …\", so the subtitle carried no information for 4 of 7 gates.",
+    "evidence": {
+      "screenshot_before": "screenshots-prefix/qa-qudit-034/qa-qudit-034_palette-desktop_region.png",
+      "screenshot_after": "screenshots/qa-qudit-034r/qa-qudit-034r_fixed-palette_region.png",
+      "observed": "X_3 94px/85px, Z_3 102px/85px, F_3 108px/85px, SUM_3 175px/85px, CP_3 93px/85px, SWAP_3 101px/85px, R_jk 103px/85px"
+    },
+    "root_cause": "CONFIRMED. `truncate max-w-[85px]` on the subtitle div forced a single clipped line.",
+    "source": "frontend/web/src/components/qudit/QuditGatePalette.tsx:66",
+    "fix": "Replaced the truncating single line with a centred wrapping label.",
+    "status": "Fixed, re-tested",
+    "retest_run": "QA-QUDIT-034R"
+  },
+  {
+    "id": "QL-003",
+    "severity": "P3",
+    "category": "Dead code / responsive",
+    "title": "The product's own narrow-viewport warning was never mounted, so the declared 900px minimum was never communicated",
+    "feature": "App shell",
+    "route": "all authenticated routes",
+    "found_in_runs": [
+      "QA-QUDIT-030",
+      "QA-QUDIT-033"
+    ],
+    "browser": "Chromium 153.0.8010.0",
+    "viewport": "768x1024, 390x844",
+    "repro": [
+      "Open any authenticated page at 768px or 390px wide and look for a notice."
+    ],
+    "expected": "Either the layout supports the width, or the user is told it does not. NarrowViewportNotice exists precisely to say so.",
+    "actual": "No notice at 768px or 390px. The component was defined and exported but imported by nothing.",
+    "evidence": {
+      "screenshot_before": "screenshots-prefix/qa-qudit-030/qa-qudit-030_responsive-mobile_390x844.png",
+      "screenshot_after": "screenshots/qa-qudit-030r/qa-qudit-030r_fixed-mobile_390x844.png",
+      "search_1": "repo-wide grep for NarrowViewportNotice / MIN_SUPPORTED_WIDTH matched only the defining file",
+      "search_2": "the string \"Narrow window\" appeared in 0 of the built JS chunks",
+      "search_3": "AppShell.tsx imported Sidebar, TopBar, CommandPalette, ErrorBoundary and ToastProvider — not the notice"
+    },
+    "root_cause": "CONFIRMED. The component was written but never rendered.",
+    "source": "frontend/web/src/components/shell/AppShell.tsx",
+    "fix": "Mounted <NarrowViewportNotice /> between TopBar and <main>.",
+    "status": "Fixed, re-tested",
+    "retest_run": "QA-QUDIT-030R"
+  },
+  {
+    "id": "QL-005",
+    "severity": "P3",
+    "category": "Numeric presentation",
+    "title": "Populations and probabilities are rounded to 6 dp server-side, so a d=3 distribution sums to 0.999999",
+    "feature": "Qudit Lab — API serialisation",
+    "route": "POST /qudit/simulate",
+    "found_in_runs": [
+      "QA-QUDIT-012"
+    ],
+    "browser": "n/a (API)",
+    "viewport": "n/a",
+    "repro": [
+      "POST a d=3 Bell circuit to /qudit/simulate and sum the three non-zero probabilities."
+    ],
+    "expected": "A probability distribution sums to 1 within floating-point tolerance.",
+    "actual": "Sum = 0.999999 exactly, because each value is round(x, 6) and 3 x 0.333333 = 0.999999. The underlying density matrix is exact; only the serialised view is rounded.",
+    "evidence": {
+      "observed": "diagonal_probability_mass_exact = 0.999999 at d=3; state_validation.trace = 1.0 to 1e-9 in the same response",
+      "note": "Not a simulation error. It is a presentation artifact that would defeat any client-side 'probabilities sum to 1' assertion."
+    },
+    "root_cause": "CONFIRMED. simulator.py rounds populations and probabilities to 6 decimal places before serialising.",
+    "source": "backend/app/quantum/qudit_lab/simulator.py (populations/probabilities rounding)",
+    "fix": "NOT APPLIED. Changing the serialisation precision touches the documented API response shape and the figures shown throughout the UI; it is a deliberate product decision, not a bug to silently flip. Recommended: raise to 9 dp, or renormalise after rounding.",
+    "status": "Open",
+    "retest_run": null
+  },
+  {
+    "id": "QL-006",
+    "severity": "P3",
+    "category": "Performance / correctness of effects",
+    "title": "Qudit Lab requested its preset list twice on every page load",
+    "feature": "Qudit Lab — initial load",
+    "route": "/qudit-lab",
+    "found_in_runs": [
+      "QA-QUDIT-038"
+    ],
+    "browser": "Chromium 153.0.8010.0",
+    "viewport": "1440x900",
+    "repro": [
+      "Load /qudit-lab fresh and count requests to /qudit/presets."
+    ],
+    "expected": "Each metadata route is requested once per load.",
+    "actual": "Production build (vite preview :4173, no StrictMode double-invoke): limits x1, catalogue x1, simulate x1, presets x2. The dev server showed presets x4 because React StrictMode doubles every effect — the 4x is 2 effects x 2 invocations.",
+    "evidence": {
+      "production_before": "{limits: 1, catalogue: 1, presets: 2, simulate: 1}",
+      "production_after": "{limits: 1, catalogue: 1, presets: 1, simulate: 1}",
+      "screenshot_after": "screenshots/qa-qudit-038/qa-qudit-038_deep-link_1440x900.png"
+    },
+    "root_cause": "CONFIRMED. The mount effect fetched presets for DEFAULT_DIMENSION and the [dimension] effect fetched them again on its first run.",
+    "source": "frontend/web/src/pages/QuditLabPage.tsx:64-80",
+    "fix": "Removed the preset fetch from the mount effect; the [dimension] effect already covers mount and every change.",
+    "status": "Fixed, re-tested",
+    "retest_run": "QA-QUDIT-038R"
+  },
+  {
+    "browser": "Chromium 153.0.8010.0",
+    "viewport": "1440x900",
+    "route": "/qudit-lab",
+    "id": "QL-010",
+    "severity": "P3",
+    "category": "Numerical display",
+    "title": "Phase view printed a negative zero (\"-0.00π\") for real-positive diagonal entries",
+    "feature": "Qudit Lab — Density Matrix Inspector, ∠ρ view",
+    "found_in_runs": [
+      "vision inspection of QA-QUDIT-018 screenshots"
+    ],
+    "repro": [
+      "Open /qudit-lab at d=3.",
+      "Apply the Phase Gate Experiment (Z_3) preset (F_3 then Z_3).",
+      "Switch the matrix display to ∠ρ.",
+      "Read the (|2⟩,|2⟩) diagonal cell."
+    ],
+    "expected": "A population entry that is real and positive shows a phase of 0.00π.",
+    "actual": "The cell showed \"-0.00π\", and the detail card showed \"-0.0000π rad\".",
+    "evidence": {
+      "crop_before": "vision-review/crops/c5_phase_matrix.png",
+      "second_before": "screenshots-prefix/qa-qudit-018/qa-qudit-018_density-matrix-phase_1440x900.png",
+      "backend_value": "API /qudit/simulate returns phase = -8.327e-17 for cell (2,2) of F_3·Z_3 at d=3",
+      "screenshot_after": "screenshots/qa-qudit-040/qa-qudit-040_fixed-braket-and-phase_1440x900.png"
+    },
+    "root_cause": "DensityMatrixInspector.tsx formatted (phase/π).toFixed(n) directly. toFixed keeps the sign bit of a tiny negative angle when it rounds it to zero.",
+    "source": "frontend/web/src/components/qudit/DensityMatrixInspector.tsx",
+    "fix": "fmtPhasePi() rounds first and then strips a sign that only survives on a zero result; used by both the cell and the detail card.",
+    "status": "Fixed, re-tested",
+    "retest_run": "QA-QUDIT-040. The retest asserts a precondition first — that the backend really does return a negative near-zero phase for this state — so the check cannot pass vacuously."
+  },
+  {
+    "browser": "Chromium 153.0.8010.0",
+    "viewport": "1440x900",
+    "route": "/qudit-lab",
+    "id": "QL-011",
+    "severity": "P3",
+    "category": "Visual / data presentation",
+    "title": "Reduced-subsystem matrix was never given the QL-001 colour fix: colourless grid, no legend",
+    "feature": "Qudit Lab — Reduced Subsystems tab",
+    "found_in_runs": [
+      "vision inspection of QA-QUDIT-011/012/013/014/015 screenshots"
+    ],
+    "repro": [
+      "Open /qudit-lab.",
+      "Apply the Two-Qudit Bell State preset.",
+      "Open the Reduced Subsystems tab.",
+      "Compare the ρ_q0 grid with the full ρ heatmap in the Density Matrix tab."
+    ],
+    "expected": "ρ and ρ_q0 use one visual language; magnitude is encoded as colour and the scale is labelled.",
+    "actual": "Every reduced cell used the same static bg-card class, so ρ_q0 was a colourless table next to a colour-coded ρ. Identical at d=2, 3, 4 and 5.",
+    "evidence": {
+      "screenshot_before": "screenshots-prefix/qa-qudit-011/qa-qudit-011_bell-d2-reduced_1440x900.png",
+      "note_before": "this file is pixel-identical to its post-wave-1 counterpart, i.e. wave 1 did not touch this grid",
+      "screenshot_after": "screenshots/qa-qudit-041/qa-qudit-041_fixed-reduced-heatmap_1440x900.png"
+    },
+    "root_cause": "The reduced grid (DensityMatrixInspector.tsx L520-530) never called cellStyle(); the QL-001 fix was applied only to the main grid.",
+    "source": "frontend/web/src/components/qudit/DensityMatrixInspector.tsx",
+    "fix": "Extracted the magnitude ramp into magStyle() and applied it to the reduced grid (it always displays |ρ_ij|, so it must not follow the main view mode), added a per-cell tooltip and a labelled colour scale.",
+    "status": "Fixed, re-tested",
+    "retest_run": "QA-QUDIT-041 (7/7 assertions; 0.333 and 0.000 cells proven to differ in computed background, ρ_q0 purity 0.3333 and entropy 1.5850 unchanged)"
+  },
+  {
+    "browser": "Chromium 153.0.8010.0",
+    "viewport": "1440x900",
+    "route": "/qudit-lab",
+    "id": "QL-012",
+    "severity": "P3",
+    "category": "UI / information design",
+    "title": "Operation inspector exposed an internal operation id and a third spelling of the gate name",
+    "feature": "Qudit Lab — Circuit editor",
+    "found_in_runs": [
+      "vision inspection of QA-QUDIT-008/009/010 screenshots"
+    ],
+    "repro": [
+      "Open /qudit-lab.",
+      "Click a gate on the canvas to open its configuration panel.",
+      "Read the panel heading and compare it with the canvas chip and the palette tile."
+    ],
+    "expected": "One name per gate across palette, canvas and inspector; no internal identifiers in user-facing text.",
+    "actual": "The heading read \"Configure Operation: F (ID: op-1792512871824-960)\" while the canvas chip read \"F_3\" and the palette tile read \"Generalized Fourier (F_3)\".",
+    "evidence": {
+      "screenshot_before": "screenshots-prefix/qa-qudit-009/qa-qudit-009_after-move-left_1440x900.png",
+      "screenshot_after": "screenshots/qa-qudit-042/qa-qudit-042_fixed-configure-panel_1440x900.png",
+      "after_text": "Configure Operation: X_3"
+    },
+    "root_cause": "QuditCircuitEditor.tsx rendered selectedOp.gate.toUpperCase() plus selectedOp.id, instead of the display name the canvas builds.",
+    "source": "frontend/web/src/components/qudit/QuditCircuitEditor.tsx",
+    "fix": "Added gateDisplayName() (used by the heading, the canvas chip title and the chip aria-label) and moved the internal id to a data-op-id attribute so tooling keeps it without showing it to a learner. The harness selector div[title*=\"Click to configure\"] still matches.",
+    "status": "Fixed, re-tested",
+    "retest_run": "QA-QUDIT-042 (4/4 assertions)"
+  },
+  {
+    "browser": "Chromium 153.0.8010.0",
+    "viewport": "1440x900",
+    "route": "/composer",
+    "id": "QL-013",
+    "severity": "P3",
+    "category": "Layout / legibility",
+    "title": "Smart Composer rule-library row collided with itself when the formula was long",
+    "feature": "Smart Composer — Active Verified Rule Library",
+    "found_in_runs": [
+      "vision inspection of QA-QUDIT-029 screenshots"
+    ],
+    "repro": [
+      "Open /composer and select the Smart Composer tab.",
+      "Read the R03_PAULI_PUSH entry in the Active Verified Rule Library card."
+    ],
+    "expected": "Rule id, formula and description are each legible.",
+    "actual": "The formula ran into the rule id and spilled a stray character onto the description line below.",
+    "evidence": {
+      "crop_before": "vision-review/crops/c2_rule_library.png",
+      "screenshot_after": "screenshots/qa-qudit-043/qa-qudit-043_fixed-rule-library_1440x900.png"
+    },
+    "root_cause": "SmartComposerPanel.tsx laid the id and the formula out as a two-child justify-between row with no wrap and no shrink, so a long formula had nowhere to go.",
+    "source": "frontend/web/src/components/smart_composer/SmartComposerPanel.tsx",
+    "fix": "The row may now wrap (flex-wrap, baseline alignment, shrink-0 id, break-all formula with a title attribute). Nothing is truncated or hidden: a long formula simply takes a second line.",
+    "status": "Fixed, re-tested",
+    "retest_run": "QA-QUDIT-043 (4/4 assertions; bounding-box intersection test on every listed rule)"
+  },
+  {
+    "browser": "Chromium 153.0.8010.0",
+    "viewport": "390x844 and 768x1024",
+    "route": "(any route below the lg breakpoint)",
+    "id": "QL-014",
+    "severity": "P3",
+    "category": "Interaction / stacking",
+    "title": "Mobile navigation drawer: the close (X) button was painted under the sidebar and could not be clicked",
+    "feature": "App shell — mobile slide-over drawer",
+    "found_in_runs": [
+      "QA-QUDIT-039 (found while re-testing QL-008)"
+    ],
+    "repro": [
+      "Open any page at 390x844 or 768x1024.",
+      "Tap the hamburger to open the navigation drawer.",
+      "Tap the X in the top-right corner of the drawer."
+    ],
+    "expected": "The X dismisses the drawer.",
+    "actual": "Nothing happened. The X rendered normally but every click landed on the sidebar underneath; Playwright reported the aside subtree intercepting pointer events for 30s, and document.elementFromPoint at the button centre returned a sidebar DIV at both viewports.",
+    "evidence": {
+      "hit_test_before": "close wrapper z-index 10, <aside aria-label=\"Sidebar navigation\"> z-index 30, same stacking context; elementFromPoint(220,12) -> DIV inside ASIDE; hit=COVERED at 390x844 and 768x1024",
+      "note": "No before screenshot can exist: the button looks correct in every capture. This defect was invisible to image review and was only found by hit-testing.",
+      "screenshot_after": "screenshots/qa-qudit-039/qa-qudit-039_fixed-topbar-mobile-drawer-open_390x844.png"
+    },
+    "root_cause": "AppShell.tsx gave the close-button wrapper z-10 while the Sidebar it contains is z-30.",
+    "source": "frontend/web/src/components/shell/AppShell.tsx",
+    "fix": "Close-button wrapper raised to z-40 — above the sidebar, below the drawer shell.",
+    "status": "Fixed, re-tested",
+    "retest_run": "QA-QUDIT-039: hit test CLICKABLE and the button actually dismisses the drawer, at 390 and 768"
+  },
+  {
+    "browser": "Chromium 153.0.8010.0",
+    "viewport": "1440x900",
+    "route": "/qudit-lab",
+    "id": "QL-015",
+    "severity": "P4",
+    "category": "Layout / occlusion",
+    "title": "Toasts anchor bottom-right over live result content",
+    "feature": "App shell — toast notifications",
+    "found_in_runs": [
+      "vision inspection of QA-QUDIT-013/014/044 screenshots"
+    ],
+    "repro": [
+      "Run any action that raises a toast while results are on screen."
+    ],
+    "expected": "Transient notifications do not sit on top of data.",
+    "actual": "The toast overlaps the results area; in qa-qudit-013 it sat over density-matrix cells and in qa-qudit-044 it covered the tail of the D>64 truncation notice. No unique value was permanently hidden — toasts auto-dismiss — but data is occluded while visible.",
+    "evidence": {
+      "screenshot": "screenshots/qa-qudit-044/qa-qudit-044_evidence-d125-truncation-notice-in-view_1440x900.png"
+    },
+    "root_cause": "Fixed bottom-right toast anchor shared by every page.",
+    "source": "frontend/web/src/components/ui (ToastProvider)",
+    "fix": "Not fixed. Deferred deliberately: the toast anchor is shared by every page in the product, so moving it is a design decision with a blast radius far beyond the Qudit Lab. Raised for the senior agent in §L.",
+    "status": "Open — accepted for Beta, documented"
+  },
+  {
+    "browser": "Chromium 153.0.8010.0",
+    "viewport": "1366x768",
+    "route": "/qudit-lab",
+    "id": "QL-016",
+    "severity": "P4",
+    "category": "Layout / legibility",
+    "title": "Educational preset card titles truncate at and below 1366px",
+    "feature": "Qudit Lab — Educational Presets",
+    "found_in_runs": [
+      "vision inspection of QA-QUDIT-030 laptop screenshots"
+    ],
+    "repro": [
+      "Open /qudit-lab at 1366x768.",
+      "Read the preset card titles."
+    ],
+    "expected": "A preset title is fully readable.",
+    "actual": "Titles clip, e.g. \"Noise & Mixed States (3-le…\".",
+    "evidence": {
+      "crop": "vision-review/crops/c4_preset_cards.png"
+    },
+    "root_cause": "Single-line truncate on the card title.",
+    "source": "frontend/web/src/pages/QuditLabPage.tsx",
+    "fix": "Not fixed. Allowing two lines changes card height across the whole preset grid; left for a design call.",
+    "status": "Open — accepted for Beta, documented"
+  },
+  {
+    "browser": "Chromium 153.0.8010.0",
+    "viewport": "1440x900",
+    "route": "/qudit-lab",
+    "id": "QL-017",
+    "severity": "P4",
+    "category": "Labelling",
+    "title": "Diagonal cells keep the \"pop\" sub-label in the phase view, where it has no meaning",
+    "feature": "Qudit Lab — Density Matrix Inspector, ∠ρ view",
+    "found_in_runs": [
+      "vision inspection of QA-QUDIT-018 screenshots"
+    ],
+    "repro": [
+      "Open the density matrix at any dimension.",
+      "Switch the display to ∠ρ.",
+      "Read a diagonal cell."
+    ],
+    "expected": "A phase cell is not labelled \"pop\" (population).",
+    "actual": "The low-contrast \"pop\" sub-label is rendered in every view mode, including the phase view.",
+    "evidence": {
+      "screenshot": "screenshots/qa-qudit-040/qa-qudit-040_fixed-braket-and-phase_1440x900.png"
+    },
+    "root_cause": "The sub-label is tied to isDiag, not to the view mode.",
+    "source": "frontend/web/src/components/qudit/DensityMatrixInspector.tsx",
+    "fix": "Not fixed. The label arguably still marks the diagonal, so removing it in one mode is a teaching-design choice rather than a clear bug. Flagged rather than changed unilaterally.",
+    "status": "Open — accepted for Beta, documented"
+  }
+]
