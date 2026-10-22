@@ -128,7 +128,11 @@ def simulate_qudit_circuit(request: SimulationRequest) -> SimulationResult:
     # 4. Density-matrix validation
     state_val = validate_density_matrix(rho, total_dim, calculate_entropy=request.calculate_entropy)
 
-    # 5. Extract basis labels, populations, coherences and probabilities
+    # 5. Extract basis labels, populations, coherences and probabilities.
+    #    QL-005: these are returned at full float precision. Rounding is a
+    #    presentation concern and now happens once, at the serialisation
+    #    boundary (`SimulationResult`), so no caller is handed a pre-rounded
+    #    number it might compute on.
     basis_labels = generate_basis_labels(dimensions)
 
     populations: dict[str, float] = {}
@@ -137,7 +141,7 @@ def simulate_qudit_circuit(request: SimulationRequest) -> SimulationResult:
     for idx, label in enumerate(basis_labels):
         pop = float(np.real(rho[idx, idx]))
         clamped_pop = max(0.0, pop)
-        populations[label] = round(clamped_pop, 6)
+        populations[label] = clamped_pop
         probabilities_list.append(clamped_pop)
 
     # Normalize probabilities for sampling
@@ -147,9 +151,7 @@ def simulate_qudit_circuit(request: SimulationRequest) -> SimulationResult:
     else:
         normalized_probs = [1.0 / total_dim] * total_dim
 
-    probabilities_dict = {
-        basis_labels[i]: round(normalized_probs[i], 6) for i in range(total_dim)
-    }
+    probabilities_dict = {basis_labels[i]: normalized_probs[i] for i in range(total_dim)}
 
     # Off-diagonal coherences (top 20 most prominent)
     coherences: dict[str, float] = {}
@@ -157,7 +159,7 @@ def simulate_qudit_circuit(request: SimulationRequest) -> SimulationResult:
         for c in range(r + 1, min(total_dim, 16)):
             mag = float(np.abs(rho[r, c]))
             if mag > 1e-4:
-                coherences[f"{basis_labels[r]}—{basis_labels[c]}"] = round(mag, 6)
+                coherences[f"{basis_labels[r]}—{basis_labels[c]}"] = mag
 
     # 6. Seeded shot sampling
     samples: dict[str, int] | None = None

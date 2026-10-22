@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from typing import Any
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_serializer
 
 
 class QuditWire(BaseModel):
@@ -145,6 +145,14 @@ class SimulationResult(BaseModel):
     noisy: bool
     warnings: list[str] = Field(default_factory=list)
 
+    # QL-005. The simulator computes and returns full precision; these three
+    # fields are display quantities, so they are rounded HERE -- once, at the
+    # boundary where the number stops being arithmetic and becomes a reading.
+    # Rounding at the source handed every caller a lossy value, including any
+    # that wanted to compute with it.
+    @field_serializer("populations", "coherences", "probabilities")
+    def _round_display_values(self, value: dict[str, float]) -> dict[str, float]:
+        return {k: round(v, 6) for k, v in value.items()}
 
 class MatrixSliceRequest(BaseModel):
     circuit: QuditCircuit
