@@ -1,12 +1,11 @@
 import { chromium } from "playwright";
 import * as path from "path";
 
-const EDGE_PATH = "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe";
-const ARTIFACT_DIR = "C:\\Users\\laksh\\.gemini\\antigravity-ide\\brain\\6b645aed-603b-40cc-b0c7-69c61a5e2376";
-
+import { launchOptions, artifactDir } from "./browser-env.mjs";
+const ARTIFACT_DIR = artifactDir("qudit-matrix");
 async function main() {
   const browser = await chromium.launch({
-    executablePath: EDGE_PATH,
+    ...launchOptions(),
     headless: true,
   });
 

@@ -16,7 +16,7 @@ import * as fs from "fs";
 import * as path from "path";
 import * as http from "http";
 
-const EDGE_PATH = "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe";
+import { launchOptions, artifactDir } from "./browser-env.mjs";
 const BASE_URL = "http://localhost:3001";
 const API_URL = "http://127.0.0.1:8000";
 
@@ -99,7 +99,7 @@ async function main() {
     timestamp: new Date().toISOString(),
     os: "Windows 11 (NT 10.0.26100)",
     browser: "Microsoft Edge (Chromium)",
-    browser_executable: EDGE_PATH,
+    browser_executable: "chromium (resolved at runtime)",
     frontend_url: BASE_URL,
     backend_url: API_URL,
     python_version: "3.12.10",
@@ -123,7 +123,7 @@ async function main() {
 
   // Launch Edge browser
   const browser = await chromium.launch({
-    executablePath: EDGE_PATH,
+    ...launchOptions(),
     headless: true,
   });
 

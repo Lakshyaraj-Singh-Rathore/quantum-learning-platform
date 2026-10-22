@@ -2,7 +2,7 @@ import { chromium } from "playwright";
 import * as fs from "fs";
 import * as path from "path";
 
-const EDGE_PATH = "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe";
+import { launchOptions, artifactDir } from "./browser-env.mjs";
 const BASE_URL = "http://localhost:3001";
 const SCREENSHOTS_DIR = path.join(process.cwd(), "frontend", "web", "qa-remediation-evidence");
 
@@ -13,7 +13,7 @@ if (!fs.existsSync(SCREENSHOTS_DIR)) {
 async function run() {
   console.log("Launching Edge browser for visual verification...");
   const browser = await chromium.launch({
-    executablePath: EDGE_PATH,
+    ...launchOptions(),
     headless: true,
   });
 

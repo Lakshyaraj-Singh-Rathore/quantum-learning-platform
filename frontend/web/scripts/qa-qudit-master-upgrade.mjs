@@ -2,16 +2,14 @@ import { chromium } from "playwright";
 import fs from "fs";
 import path from "path";
 
+import { launchOptions, artifactDir } from "./browser-env.mjs";
 const OUTPUT_DIR = path.resolve("frontend/web/qa-qudit-upgrade-evidence");
 fs.mkdirSync(OUTPUT_DIR, { recursive: true });
-
-const EDGE_PATH = "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe";
 
 async function runMasterUpgradeQA() {
   console.log("Starting Master Qudit Composer Visual QA Automation with Edge...");
   const browser = await chromium.launch({
-    executablePath: fs.existsSync(EDGE_PATH) ? EDGE_PATH : undefined,
-    channel: fs.existsSync(EDGE_PATH) ? undefined : "msedge",
+    ...launchOptions(),
     headless: true,
   });
   const context = await browser.newContext({

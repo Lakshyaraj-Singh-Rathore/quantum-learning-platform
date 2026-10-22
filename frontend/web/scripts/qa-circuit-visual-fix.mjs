@@ -2,15 +2,15 @@ import { chromium } from "playwright";
 import * as fs from "fs";
 import * as path from "path";
 
-const EDGE_PATH = "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe";
+import { launchOptions, artifactDir } from "./browser-env.mjs";
 const BASE_URL = "http://localhost:3001";
-const ARTIFACT_DIR = "C:\\Users\\laksh\\.gemini\\antigravity-ide\\brain\\26034555-2d87-4dfd-b3f2-9f9fdcef1962";
+const ARTIFACT_DIR = artifactDir("circuit-visual");
 const SCREENSHOT_PATH = path.join(ARTIFACT_DIR, "circuit_lines_and_gate_colors_fixed.png");
 
 async function run() {
   console.log("Launching Edge browser for visual verification...");
   const browser = await chromium.launch({
-    executablePath: EDGE_PATH,
+    ...launchOptions(),
     headless: true,
   });
 

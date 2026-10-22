@@ -28,7 +28,7 @@ import * as fs from "fs";
 import * as path from "path";
 import * as http from "http";
 
-const EDGE_PATH = "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe";
+import { launchOptions, artifactDir } from "./browser-env.mjs";
 const SCREENSHOT_DIR = path.resolve("../../reports/screenshots");
 
 function checkServer(url) {
@@ -70,7 +70,7 @@ async function main() {
   }
 
   const browser = await chromium.launch({
-    executablePath: EDGE_PATH,
+    ...launchOptions(),
     headless: true,
   });
 

@@ -4,16 +4,15 @@ import { chromium } from "playwright";
 import * as fs from "fs";
 import * as path from "path";
 
-const EDGE_PATH = "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe";
-const ARTIFACT_DIR = "C:\\Users\\laksh\\.gemini\\antigravity-ide\\brain\\6b645aed-603b-40cc-b0c7-69c61a5e2376";
-
+import { launchOptions, artifactDir } from "./browser-env.mjs";
+const ARTIFACT_DIR = artifactDir("qudit-lab");
 async function main() {
   console.log("=".repeat(80));
   console.log("STARTING REAL BROWSER QA FOR QUDIT LAB (BETA)");
   console.log("=".repeat(80));
 
   const browser = await chromium.launch({
-    executablePath: EDGE_PATH,
+    ...launchOptions(),
     headless: true,
   });
 
