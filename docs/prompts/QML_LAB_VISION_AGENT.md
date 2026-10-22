@@ -1048,10 +1048,55 @@ terminal status through the real worker path.
 
 ## 2E. Phase 5c — UI wiring, against a backend that honours the selection
 
-Build this only after §2D is complete. Everything below was written for 5b and still stands; only
-the phase label changed.
+§2D is complete and on `main`. Everything below still stands; §2E.0 adds what the finished backend
+now obliges the UI to handle.
 
 **Three engines with no UI are dead code from a user's perspective**, and MT-006 blocks release.
+
+### 2E.0 The as-built contract, and two hazards that did not exist when §2E was drafted
+
+`_describe_algorithms()` (`services:584`) serves one **identical key shape** per algorithm, and
+D-032 guarantees every `limits_for` table has the same keys. So:
+
+```
+{ name, label, task, summary, limits, datasets[], metrics[], epoch_fields[],
+  supports: { n_hidden, epochs, diff_method, data_reuploading }, baseline }
+```
+
+**Never branch on algorithm name in the client.** Branch on `task`, or read `supports`. The payload
+is shaped so that a new algorithm needs no client change — `supports.epochs === false` already means
+"do not render an epoch slider", and `epoch_fields` is the chart's series list. Branching on
+`"quantum_kernel"` would throw that away and is the client-side twin of the hardcoded `VQC(...)`
+that §2D removed.
+
+**Hazard 1 — `train_accuracy` is now nullable, and the frontend type says it is not.**
+`frontend/web/src/api/qml.ts:98` declares `train_accuracy: number;`. The DB column is
+`nullable=True` and a regression epoch stores `NULL`. TypeScript does not enforce this at runtime,
+so the value arrives as `null` and any `value * 100` or `.toFixed(1)` renders `0` — **the D-033
+hazard relocated a third time, now to the type layer**, and invisible to every backend test. The
+epoch type must become `number | null`, the chart must skip null points rather than plot them at
+zero, and a type-level assertion should record that a regression epoch's accuracy is `null`, not
+`0`. `Evaluation` (`:104`), `Baseline` (`:113`) and `InferenceResult` (`:157`) are
+classification-shaped too and need the same treatment.
+
+**Hazard 2 — the kernel writes zero epoch rows.** `has_epoch_loop()` is false for it, so the
+Training view receives an **empty history**. The existing dashboard assumes a curve exists. It must
+show something honest for a closed-form fit — the single solve's outcome and its cost — and must not
+spin, render an empty axis, or imply the run is still in progress. `after_epoch` incremental merge
+(`api/qml.ts:187`) must also tolerate a run that never produces a row.
+
+**Inference is task-tagged with three shapes** (`run_inference`, `services:408`), and no payload
+carries a zeroed field for a task that lacks it:
+
+| task | keys beyond the common `{task, algorithm, feature_names, n_features}` |
+|---|---|
+| classification | `predictions`, `probabilities` |
+| regression | `values` (**user units**), `target_range` |
+| kernel | `predictions`, `decision_values` (**signed margin — not a probability; label it as a margin**) |
+
+Regression predictions come from the **stored** `target_scaler`; the endpoint raises
+`QmlPersistenceError` rather than silently answering in scaled units. Surface that error as an
+error, not as a zero.
 
 ### 2E.1 Extend the existing four views — do not fork a page per algorithm
 
@@ -1101,7 +1146,7 @@ automated by SSR harness first.
 
 ### 2E.5 Gates specific to this phase
 
-Phase 5b **does** touch the frontend, so the by-construction argument no longer applies and the
+Phase 5c **does** touch the frontend, so the by-construction argument no longer applies and the
 bundle hash will change. Replace it as Phase 3 did: build `origin/main` in a scratch worktree and
 diff the compiled CSS at **rule level** — the Phase 3 baseline was 12 added / 0 changed / 0 removed.
 Existing rules must not change; if one does, say which and why.
@@ -1111,6 +1156,15 @@ could not reproduce `57 = 9+20+20+8` and correctly refused to invent a matching 
 it fresh this phase, per script, and record the new authoritative breakdown in §0's place.
 `a11y-check.mts` must stay at **0 criticals**, and the four flag states (§2A.6) must still hold
 against a live server.
+
+**The nullable-accuracy defect gets a catching script.** It was found by hand, at the type layer,
+where no backend test can see it, so per the standing rule it needs a harness under
+`frontend/web/scripts/`, wired into `package.json` alongside `render:check` and friends, and
+**proven able to fail** by reinstating the bug. It must assert that an epoch payload with
+`train_accuracy: null` renders as absent — not as `0`, not as `0%`, not as `—` in a column labelled
+accuracy — and that a kernel run with **zero** epoch rows renders its closed-form outcome rather
+than an empty chart or a perpetual spinner. A script that only passes is worth nothing; paste the
+failing run.
 
 ---
 
