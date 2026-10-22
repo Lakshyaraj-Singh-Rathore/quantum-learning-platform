@@ -628,6 +628,120 @@ unconditional `include_router` line in `api/router.py` (already in the set).
 
 ---
 
+## 2B. Phase 4 decisions, settled in advance
+
+### 2B.1 Your sandbox is not the target machine — this is the whole problem
+
+The master prompt asks you to benchmark "on this machine" and tune limits from the measurements.
+The target machine is an **Intel i5-13450HX, RTX 4050 Laptop, 16 GB RAM, Windows**. Your sandbox is
+a Linux container with a different CPU, no GPU and no Docker. **Absolute numbers you measure here
+do not transfer**, and limits tuned from them could be wrong in the dangerous direction — a max
+config that fits your container's memory can swap a 16 GB laptop to death.
+
+So split the work by what is actually portable:
+
+| Portable — measure here | Not portable — the user must measure |
+|---|---|
+| **Scaling shape**: how cost grows with qubits, layers, samples | Absolute wall-clock on the target CPU |
+| **Gradient-method ratio**: parameter-shift ÷ backprop | Absolute peak RAM |
+| **Memory growth law**: 2^n vs 4^n, and the coefficient | The timeout default |
+| Determinism and reproducibility across runs | Whether the max config completes without swapping |
+| Which configs are *structurally* infeasible | GPU feasibility of any kind |
+
+Your Phase 4 output is therefore **two things**: the scaling laws and provisional limits you can
+defend from sandbox data, clearly labelled provisional; and **a script the user runs on their own
+laptop** to produce the numbers that actually set the shipped defaults. Do not present sandbox
+timings as though they were the target's.
+
+### 2B.2 The deliverable is a script, not a transcript
+
+`backend/scripts/bench_qml.py`, emitting **both** machine-readable JSON and a markdown table, with
+a `--quick` mode and a `--full` mode. Wire it into the Makefile or document the exact invocation.
+The user must be able to run one command, paste the JSON back, and have the limits fall out of it.
+Ad-hoc shell one-liners in a report are not reproducible and do not count.
+
+Record in every run: OS, CPU model, core count, total RAM, Python/numpy/scipy/PennyLane versions,
+`shots=None` vs finite shots, and whether measurement was engine-direct or through the API.
+
+### 2B.3 Do the arithmetic before you measure — the bottleneck is not memory
+
+Compute the state memory first: complex128 statevector at n=8 is `2^8 × 16 B = 4 KB`; a density
+matrix at n=6 is `4^6 × 16 B = 64 KB`. **Both are negligible.** Raw state size is not the risk at
+these qubit counts, and a benchmark report that leads with memory numbers has measured the wrong
+thing.
+
+The real cost driver is **gradient method**. Parameter-shift evaluates the circuit **twice per
+trainable parameter**. A `StronglyEntanglingLayers`-style ansatz carries roughly 3 parameters per
+qubit per layer, so at the current maxima (8 qubits × 4 layers) that is ~96 parameters → **~192
+circuit executions per gradient step**. With 1,000 samples at batch 32 that is ~32 batches, × 100
+epochs = ~3,200 steps → **~600,000 circuit executions**. Backprop differentiates through the state
+once and is orders of magnitude cheaper.
+
+Predict that, then measure it, then report whether the measurement matched. The likely conclusion —
+and the one the limits should encode — is:
+
+- **backprop is the default** and must complete the max config inside the timeout;
+- **parameter-shift is offered but budgeted**: either a smaller max-qubit/max-layer ceiling when it
+  is selected, or an explicit up-front estimate shown to the user before dispatch, or a clean
+  rejection above a measured threshold. Pick one and justify it from your numbers.
+- Validate this **per gradient method**, not once for the config as a whole. `limits.py` currently
+  has one flat ceiling; if the ceiling must depend on `gradient_method`, that is a real design
+  change and belongs in `DECISIONS.md`.
+
+### 2B.4 How to derive the timeout, and what must not change
+
+Derive `qml_task_soft_time_limit` from: **measured time for the maximum allowed config under the
+default gradient method, on the target machine, × a safety factor you state.** Until the user
+supplies target numbers, keep **900 / 1200** and mark them provisional. Per §2A.2 the in-trainer
+deadline stays strictly below the soft limit.
+
+- **Tightening a limit with evidence is fine. Loosening one requires my sign-off** — the master
+  prompt's "never loosened without evidence" is a floor, not a ceiling.
+- **Do not touch the Composer's qubit caps.** static 20 / dynamic 15 / GPU 28 and
+  `PREVIEW_MAX_QUBITS = 12` in `src/lib/circuitSimulator.ts` are settled and unrelated to QML.
+- `DENSITY_MATRIX_MAX_QUBITS = 6` may be tightened on evidence (4^n grows fast); justify any change.
+
+### 2B.5 GPU is out of scope — and `lightning.qubit` is a proposal, not a change
+
+**Skip the GPU path entirely.** PennyLane's `lightning.gpu` needs CUDA on Linux; the target is
+Windows, so it means WSL2, and the repo's existing GPU support is **CUDA-Q via
+`docker-compose.gpu.yml`** — a different stack that does not compose with a PennyLane device. Do
+not mix them, do not rebuild anything without `-f docker-compose.gpu.yml` (§6), and do not add a
+GPU device in Phase 4. Document the reasoning and move on.
+
+Separately: check whether **`lightning.qubit`** (the C++ CPU statevector device, typically several
+times faster than `default.qubit`) is *already importable* as a transitive dependency. If it is,
+measure it as an alternative device and report the speedup. **If it is not installed, do not add
+it** — that is a dependency change under §1.3 and §5.3, and belongs in a proposal with a
+`pip install --dry-run` result showing it does not move the `numpy<2` pin. Recording a measured
+opportunity you did not take is worth more than an unrequested dependency.
+
+### 2B.6 Measurement discipline — the ways this goes wrong
+
+- **Benchmark the engine directly**, not through the API with `celery_task_always_eager`. Eager mode
+  folds in FastAPI, validation and DB writes; that overhead is real but it is a separate
+  measurement, and mixing the two makes the scaling curve meaningless.
+- **N repetitions, report median and spread.** Never a single run. Five is a reasonable N for the
+  quick mode. Exclude a warm-up run — the first PennyLane call pays import and JIT-ish costs.
+- **State `shots=None` vs finite shots** on every number. Analytic and sampling execution have
+  different costs and different noise.
+- **Measure peak RSS, not just elapsed time** (`resource.getrusage(RUSAGE_SELF).ru_maxrss`), and say
+  which process it is.
+- **Do not tune limits from a run that crashed or was killed.** A config that OOMs is a data point
+  about the ceiling, not a timing.
+- Every claim in `docs/qml/04-benchmarks.md` needs the command that produced it, per §8.
+
+### 2B.7 What Phase 4 must hand Phase 5
+
+Phase 5 adds five more algorithms, several of which are far more expensive than a VQC — a quantum
+kernel builds an **N×N kernel matrix**, so at 1,000 samples that is ~10^6 circuit evaluations before
+any SVM runs. Phase 4's job is to establish the *method* (how to measure, how to extrapolate, how to
+set a ceiling from a measurement) so Phase 5 can price each new algorithm the same way instead of
+inventing a new approach per feature. Say explicitly in the report which of the Phase 5 algorithms
+your measured scaling law already lets you bound, and which need their own benchmark.
+
+---
+
 ## 3. The UI/UX contract — match this exactly
 
 This is the part most likely to look wrong, so it is specified concretely rather than as
