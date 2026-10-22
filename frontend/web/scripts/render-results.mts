@@ -64,7 +64,7 @@ const noisy = cases.bell_noisy;
   check("a noiseless run says so on the fidelity gauge", html.includes("no noise applied"));
 
   const noisyHtml = render(createElement(MetricGauges, { result: noisy }));
-  check("a noisy run labels fidelity against the ideal state", noisyHtml.includes("F(ideal, noisy rho)"));
+  check("a noisy run labels fidelity against the ideal state", noisyHtml.includes("F(ideal, noisy ρ)"));
   check("TV distance is shown for noisy runs", noisyHtml.includes("TV distance") && noisyHtml.includes("0.060"));
   check("shot leakage is shown as a percentage", noisyHtml.includes("Shot leakage") && noisyHtml.includes("5.6%"));
 

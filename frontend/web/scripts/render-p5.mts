@@ -188,7 +188,7 @@ check(
   "every recommendation is listed with its reason",
   fixture.progress.recommendations.every((item) => progressText.includes(item.reason)),
 );
-check("recent simulations has an honest empty state", progressText.includes("No simulations yet."));
+check("recent simulations has an honest empty state", progressText.includes("No simulations yet"));
 
 /* ---------- Instructor dashboard ---------- */
 
