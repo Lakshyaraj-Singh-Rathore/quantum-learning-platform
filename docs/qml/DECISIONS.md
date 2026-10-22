@@ -938,3 +938,55 @@ the call site states the signature, because the mistake is invisible at the poin
 `cn`-is-plain-`clsx`, and `page.evaluate`'s single argument — **read the signature of a helper
 before calling it, even when the call "obviously" works.** An `any` in a callback signature is a
 type hole exactly where review is weakest.
+
+## D-049 — §2C.5 (noise experiments) is deferred, not forgotten
+
+**Decision.** Noise experiments are not started in Phase 7 and are not scheduled for Phase 8.
+
+**Context.** §2C.5 proposes training under a noise model so the Lab can show how a VQC degrades
+on hardware-like conditions. Phase 7 searched for an existing implementation and found none: all
+six `noise` hits in the QML engine are `dataset.noise`, the Gaussian jitter parameter of
+`make_moons`/`make_circles`, which is sample generation and not a quantum noise channel. No
+`default.mixed` device, no `qml.DepolarizingChannel`, no Kraus path exists anywhere in
+`app/quantum/qml_lab/`.
+
+**What it would take.** A second device path (`default.mixed` rather than `default.qubit`), which
+is a density-matrix simulation and therefore quadratic in state size — the existing
+`density_matrix_qubits` ceiling exists precisely because of this. Then a noise-model config
+surface, per-channel parameters, their limits entries, trainer support for a non-analytic device,
+and a baseline for "how much worse than noiseless" that does not mislead. Realistically a phase.
+
+**Why deferred.** §2G.0: verifying a moving target verifies nothing. Phase 7's deliverable is a
+set of numbers that are true of `main`; adding a feature mid-audit invalidates them.
+
+## D-050 — §2C.6 (the qudit spike) is deferred for a second, harder reason
+
+**Decision.** The qudit/QML crossover spike is not started, and is blocked on work outside this
+repository's current history.
+
+**Context.** The project owner has unpushed local work adding new qudit gates and polishing the
+Qudit Lab. Every file a spike would touch — `app/quantum/qudit_lab/simulator.py`, the qudit
+components under `src/components/qudit/` — is in that changeset.
+
+**Evidence that the collision is real, not hypothetical.** Two open items Phase 7 re-measured
+live in exactly those files: **QL-005** (`round(…, 6)` at `simulator.py:140/151/160`, today's
+line numbers) and the **`bg-card` anomaly**, whose ten occurrences are *all* in
+`src/components/qudit/` and `QuditLabPage.tsx`. A spike written against today's `main` would be
+rebased onto a changed file and its line-numbered evidence would be stale on arrival.
+
+**Unblocks when.** That work lands on `main` and can be read.
+
+## D-051 — §2F WP6 (suggest-a-configuration) remains deferred after Phase 6
+
+**Decision.** WP6 was permitted — §2F gates it on WP1–WP5 being complete and green, which they
+were — and was still not started.
+
+**Rationale.** §2F.3's own standard is that *"an impossible suggestion that is rejected or
+regenerated beats one that is surfaced and 422s on click."* Meeting it requires server-side
+validation of every suggestion through `limits.check()` **and** the per-algorithm `supports{}`
+map, a regeneration loop when validation fails, and a mutation campaign covering each distinct
+way a suggestion can be invalid: over a per-algorithm ceiling, a task-mismatched dataset,
+`n_hidden` on a non-hybrid model, `diff_method` on a closed-form fit. That is a phase of work.
+
+**Why not a partial version.** A half-built WP6 surfaces suggestions without the validation loop,
+which is precisely the defect §2F.3 names. The honest options were "all of it" or "none of it".
