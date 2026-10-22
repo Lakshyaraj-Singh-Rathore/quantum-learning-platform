@@ -241,7 +241,13 @@ export function QmlConfigForm({
             label="Samples"
             value={config.dataset.n_samples}
             range={range("n_samples")}
-            step={50}
+            // No step. An HTML number input treats `step` as a validity
+            // constraint, not merely a spinner increment: with min=20 step=50
+            // the valid values are 20, 70, 120, 170, 220 ... so the server's
+            // own default of 200 failed checkValidity() and the browser
+            // refused to submit the form at all. /qml/describe publishes
+            // {default: 200, min: 20, max: 1000} and no step, so the UI must
+            // not reject a value the API accepts.
             disabled={disabled}
             hint={dataset ? `max ${dataset.max_samples} for this set` : undefined}
             onChange={(v) => set("dataset", { ...config.dataset, n_samples: v })}

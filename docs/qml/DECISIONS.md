@@ -990,3 +990,24 @@ way a suggestion can be invalid: over a per-algorithm ceiling, a task-mismatched
 
 **Why not a partial version.** A half-built WP6 surfaces suggestions without the validation loop,
 which is precisely the defect §2F.3 names. The honest options were "all of it" or "none of it".
+
+## D-052 — `step` on a number input is a validity constraint, not a spinner hint
+
+**Phase 8, Stage 4.1.** The Samples field carried `step={50}` with `min=20`.
+HTML constraint validation therefore admits only 20, 70, 120, 170, 220, ... and
+the form's own default of **200** was invalid: Chromium refused to submit and
+showed "the two nearest valid values are 170 and 220". **The QML Lab could not
+run a single experiment in any browser.**
+
+`/qml/describe` publishes `{default: 200, min: 20, max: 1000}` and **no step**,
+so the UI was rejecting a value its own API accepts. Resolution: remove the
+`step`, matching the published contract; the range is still enforced by `min`
+and `max`.
+
+Why nothing caught it: `step` is evaluated only by a live browser. SSR renders
+the attribute and never calls `checkValidity()`, so all 24 pre-existing
+harnesses were structurally incapable of seeing it. It is the first defect
+found by the browser capability unlocked in Stage 1, and it is the reason that
+stage was worth doing. Guarded now by `qml-browser-check.mts`, which asserts
+every numeric field's default passes `checkValidity()` — the class, not the
+instance. See QL-018 in `07-verification.md`'s ledger.
