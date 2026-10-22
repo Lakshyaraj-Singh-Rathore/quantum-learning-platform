@@ -260,7 +260,12 @@ export function MetricGauges({ result }: { result: RunResult }) {
           <Gauge
             value={Number(fidelity)}
             title="Fidelity"
-            subtitle={noisy ? "F(ideal, noisy ρ)" : "F(ideal, noisy ρ)"}
+              // Both branches of this ternary were "F(ideal, noisy ρ)" between
+              // effdc6b and this commit, so a NOISELESS run was labelled as a
+              // fidelity against a noisy ρ -- a statement that is simply false
+              // for a run with no noise model, and one a student has no way to
+              // check. The false branch is restored to what it said before.
+              subtitle={noisy ? "F(ideal, noisy ρ)" : "no noise applied"}
             color="#2dd4bf"
             filterId="fidelityGlow"
           />
