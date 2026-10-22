@@ -18,16 +18,37 @@ Any deviation is a failure you caused, not a pre-existing condition.
 | Gate | Command | Baseline |
 |---|---|---|
 | Backend tests | `cd backend; PYTHONPATH=. pytest -q` | **818 passed, 5 skipped** |
-| Typecheck | `cd frontend/web; npx tsc --noEmit` | **0 errors** |
-| Production build | `cd frontend/web; npx vite build` | **PASS**, ~2090 modules, ~638 kB main chunk |
+| Typecheck | `cd frontend/web; npm run typecheck` | **0 errors** |
+| Production build | `cd frontend/web; npm run build` | **PASS**, ~2090 modules, ~639 kB main chunk |
 | Render harnesses | `frontend/web/scripts/*.mts` loop | **284 PASS / 57 FAIL** |
 | Golden values | `golden-quantum`, `golden-demos`, `golden-grover` | **190 + 804 + 3306 @ 1e-9, all PASS** |
 | Accessibility | `npx tsx scripts/a11y-check.mts` | **0 criticals** |
-| API routes | `python -c "..."` on `app.main:app` | **58 paths** |
+| API routes | `python -c "..."` on `app.main:app` | **58 APIRoute objects** |
+
+⚠ **Use the npm scripts, not bare `npx`.** `package.json` defines
+`typecheck: node scripts/link-shared.mjs && tsc --noEmit` and
+`build: node scripts/link-shared.mjs && tsc --noEmit && vite build`. Running `npx tsc --noEmit`
+directly **skips the `link-shared.mjs` prestep** and fabricates `TS2307` module-not-found errors
+that are not real. This is an invocation trap, not a defect — never report it as one.
+
+⚠ **Smoke harnesses need the API on the port they expect.** `API_TARGET` defaults to **8123**,
+not 8000. If you start uvicorn on 8000, pass `API_TARGET=http://127.0.0.1:8000` or the harnesses
+fail with `ECONNREFUSED` and inflate the FAIL count.
+
+⚠ **Count APIRoutes, not `app.routes`.** The latter includes FastAPI's four built-in doc routes
+(`openapi.json`, `docs`, `docs/oauth2-redirect`, `redoc`), giving 62. The baseline is **58**.
 
 **The 57 harness FAILs are pre-existing and expected.** Do not "fix" them, do not delete them,
-do not treat them as your regressions. They are counted so that a *change* in the number is
-detectable. Your gate is **284/57 or better**, i.e. the same 57 and no new ones.
+do not treat them as your regressions. They resolve to exactly four SSR render scripts —
+`render-codelab` 9, `render-games` 20, `render-p5` 20, `render-results` 8 (9+20+20+8 = 57).
+Hold that per-script breakdown, not just the total: a harness that moves from FAIL to PASS, or a
+new script that fails, is a change you must explain. Your gate is **the same 57 and no new ones**.
+
+Two further environment notes: piping `tsx` output into `tail` truncates it, so redirect the
+golden suites to files and then read them. And `scripts/push-overlay-check.mts` is
+**environment-blocked, not passing** — it seeds a fabricated token that a live API rejects with
+`401`, so the `aside` it waits for never renders. It contributes 0 PASS and 0 FAIL to the tally;
+record it as BLOCKED rather than counting it either way.
 
 There is **no CI**. Nothing runs these for you. Every gate is your responsibility, and every
 claim needs pasted command output.
@@ -188,6 +209,57 @@ deliberate, documented departure, not an inconsistency.
 
 ---
 
+## 1A. The dependency gap you have not hit yet — decide it in Phase 1, not mid-Phase 1
+
+`backend/requirements.txt` has **28 dependencies and neither `scikit-learn` nor `torch` is among
+them.** What you have for numerics is `numpy==1.26.4`, `scipy==1.17.1` and `pennylane==0.44.1`.
+(`autograd` arrives as a PennyLane dependency, which is why the no-torch path you proved works.)
+
+Three things the master prompt asks for are conventionally sklearn imports, and **none of them
+exist here**:
+
+| Master prompt asks for | Usual source | Status |
+|---|---|---|
+| Seeded datasets — two moons, circles, reduced binary Iris | `sklearn.datasets` | **absent** |
+| Scaler fit on the train split only | `sklearn.preprocessing.StandardScaler` / `MinMaxScaler` | **absent** |
+| Classical baseline — logistic regression / MLP | `sklearn.linear_model` / `neural_network` | **absent** |
+
+**Binding decision: implement all three with `numpy` + `scipy`. Do not add scikit-learn.**
+
+Rationale: the master prompt permits only dependencies that are *required*, and none of these
+are. Logistic regression with L2 via `scipy.optimize.minimize` is a few dozen lines and fully
+deterministic under a seed; two-moons and circles are closed-form samplers; a standardiser is
+two array operations. Adding sklearn would pull `joblib` and `threadpoolctl` alongside it for a
+feature whose only job is to be a comparison point — and a heavyweight reference implementation
+would mask bugs in your own code rather than exposing them.
+
+What this obliges you to do, because hand-rolling removes the safety net:
+
+- **Datasets must be verified, not assumed.** Test the shape, the class balance, that the seed
+  reproduces bit-for-bit, and that the classes are actually separable to the degree you claim.
+  A malformed dataset silently caps achievable accuracy and makes the QNN look bad for a reason
+  that has nothing to do with the QNN.
+- **Scaler leakage is your responsibility.** Fit on the train split *only*; assert in a test that
+  the fitted mean/scale equal the train split's statistics and **not** the full dataset's. This
+  is the single easiest thing to get subtly wrong and the hardest to notice afterwards.
+- **The baseline must be a real trained model**, not a constant or majority-class predictor.
+  Test it against a floor: on a linearly separable seeded dataset it must reach a stated
+  accuracy, and its coefficients must move from their initialisation. Otherwise the
+  quantum-vs-classical comparison in Phase 3 view D is meaningless.
+- **Evaluator metrics must be checked against hand-computed values** on a small fixed prediction
+  vector, since there is no sklearn to cross-check against. Compute the expected accuracy,
+  precision, recall, F1 and confusion matrix in the test itself, from first principles.
+
+If you reach a point where you genuinely cannot make one of these trustworthy without sklearn,
+**STOP and ask** (§5). Do not `pip install` it silently, and do not add it to `requirements.txt`
+without saying so in the phase report and justifying it against the master prompt's §4.
+
+Same rule for the PennyLane deprecation warning you already noticed: record **which** API is
+deprecated and build Phase 1 on the non-deprecated path. Do not ship a module whose core call
+emits a warning — it will break on the next PennyLane bump and nobody will know why.
+
+---
+
 ## 2. Binding branch rules — the master prompt's §1 is overridden
 
 The master prompt says *"work only on `feature/quantum-ml`, never modify `main`"*. **That is
@@ -195,18 +267,47 @@ overridden.** This repo works on `main` only. A previous agent built on a stale 
 branch, and the result was a 47-file resurrection of a deleted app plus 43 MB of force-added
 artifacts, none of which reached `main`. Do not repeat that.
 
-### 2.1 Work on main
+### 2.1 `main` is the source of truth; your harness may pin you to a session branch
+
+`main` is authoritative and is the only branch that ships. If your harness pins this session to a
+branch of its own, that is **accepted, not a deviation to apologise for** — but it is conditional,
+because the last time an agent built on a side branch it resurrected 47 deleted files and none of
+its work reached `main`.
+
+Start every phase like this, and paste the output:
 
 ```bash
 cd /path/to/quantum-learning-platform
 git fetch --all --prune
-git checkout main
-git reset --mixed origin/main      # sync the local ref — it goes stale otherwise
-git status                          # must be clean; if not, STOP (§5)
-git rev-parse --short HEAD          # record this — it is your baseline SHA
+git fetch --deepen=300 origin main      # see the shallow-clone warning below
+git status                               # must be clean; if not, STOP (§5)
+git rev-parse --short origin/main        # record this — it is the baseline you build on
 ```
 
-**`git push origin HEAD:main`** is the only push target. Never `--force`. Never `--force-with-lease`.
+**The additive check — run it at the start AND end of every phase:**
+
+```bash
+git diff --diff-filter=MD --name-only origin/main HEAD   # must be EMPTY
+git diff --diff-filter=A  --name-only origin/main HEAD   # only files you added on purpose
+```
+
+Zero modified and zero deleted files relative to `origin/main`, until a phase deliberately edits
+something in §4's allowlist — and then only those. If that check ever shows a modification you
+did not intend, or a deletion, **stop and report it**. This single check is what would have
+caught the Streamlit resurrection before it was committed.
+
+Never `--force`. Never `--force-with-lease`. Never push to `main` if your harness forbids it;
+say so plainly in the phase report and name the branch you did push to, so the port to `main`
+is mechanical rather than archaeological.
+
+⚠ **The shallow-clone trap.** A freshly provisioned sandbox may be a **depth-1 shallow clone**.
+That makes `main`'s tip look like a *root commit* and makes `git merge-base` against your branch
+return nothing, which invites the wrong conclusion that history was rewritten or that the
+branches are unrelated. `main` actually has **224 commits**. Before drawing *any* conclusion
+about history, run `git rev-parse --is-shallow-repository`; if it says `true`, deepen first.
+Also note the agent-side ref may not exist locally as `origin/<branch>` until you fetch it
+explicitly into a remote-tracking ref — `FETCH_HEAD` alone will make later commands fail with
+`ambiguous argument`.
 
 ⚠ **The stale-local-`main` trap.** Pushing with `HEAD:main` while your local `main` ref lags
 behind produces nonsense comparisons — `git diff main <sha>` will claim files are missing that
@@ -215,14 +316,15 @@ are plainly present. Always compare against **`origin/main`**, never bare `main`
 ⚠ **Never run `git checkout origin/main -- .`** to "sync". It overwrites files but **never
 deletes** them, so anything removed from `main` reappears in your working tree as untracked
 cruft and can be committed by a later `git add -A`. Sync by fetching and resetting, not by
-checking paths out over your tree.
+checking paths out over your tree. If you must snapshot stale local state first so nothing is
+unrecoverable, commit the snapshot to your own branch and say so.
 
 ### 2.2 The flag replaces branch isolation
 
 The master prompt wanted a side branch so `main` stayed safe. Here, **`qml_enabled = False` is
-the safety mechanism**, and it has to be stronger than a branch would have been: `main` must be
-deployable after *every* commit, not just at the end. Commit in small verified steps (§10 of the
-master prompt) and keep the flag off until Phase 8.
+the safety mechanism**, and it has to be stronger than a branch would have been: whatever branch
+carries the work, its content must be deployable after *every* commit, not just at the end.
+Commit in small verified steps (§10 of the master prompt) and keep the flag off until Phase 8.
 
 ### 2.3 Commit hygiene — the two things that got the last agent in trouble
 
@@ -233,7 +335,7 @@ master prompt) and keep the flag off until Phase 8.
 - **Do not resurrect deleted code.** The Streamlit app was removed on purpose. These paths must
   stay absent: `frontend/pages/`, `frontend/lib/`, `frontend/live_bloch/`, `frontend/tests/`,
   `.streamlit/`, `frontend/Home.py`. If you find any of them in your working tree, they are
-  leftovers — delete them, do not commit them. Tracked file count at baseline is **530**; if it
+  leftovers — delete them, do not commit them. Tracked file count at baseline is **531**; if it
   jumps by dozens, something is wrong.
 - Also gitignored and never to be committed: `*.db`, `*.db-wal`, `dev.db`, `dist/`, `.venv/`,
   `node_modules/`.
