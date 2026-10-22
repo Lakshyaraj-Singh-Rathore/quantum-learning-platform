@@ -770,6 +770,141 @@ your measured scaling law already lets you bound, and which need their own bench
 
 ---
 
+## 2C. Phase 5 decisions, settled in advance
+
+Six deliverables, each with a decision that would otherwise cost you a stop-and-ask. Build to these.
+
+### 2C.0 Land D-028 first, before any UI consumes a cost estimate
+
+`limits.estimate_cost` undercounts by `(epochs − 1) · n_samples` (§2B.3, proven at 306 measured vs
+186 claimed, **2.39× low at max config**). Phase 4 correctly deferred it because it had no call
+sites. **Phase 5 creates call sites** — the kernel and noise views both need an up-front cost
+warning — so the patch lands *first*, as its own commit, with a test that reproduces the
+`(epochs − 1) · n_samples` shortfall and then closes it. Wiring a UI to a knowingly-wrong estimator
+is how a user gets a "should take 2 minutes" toast on a 25-hour job.
+
+### 2C.1 One flat ceiling cannot serve five algorithms
+
+`limits.py` currently has a single set of maxima sized for a VQC. Phase 5 needs **per-algorithm
+ceilings**, and this is a real design change: record it in `DECISIONS.md` and keep
+`estimate_cost`'s output shape stable so the UI does not branch on algorithm.
+
+The reason it cannot stay flat is that the algorithms have different cost *laws*, not just different
+constants — Phase 4 established backprop linear and parameter-shift quadratic. A quantum kernel is
+worse than both: it is **O(N²) in samples** before any model fits.
+
+### 2C.2 Hybrid QNN — use `autograd`, do NOT add PyTorch
+
+The master prompt says "PyTorch plus PennyLane", but it also says *"PyTorch interface **where
+appropriate**"*, and here it is not appropriate.
+
+**`autograd` is already present** as a PennyLane dependency, and Phase 1 proved
+`interface="autograd"` works — parameter-shift and backprop agreeing to 2.22e-16. Write the classical
+layers in autograd-compatible numpy and the whole hybrid differentiates end-to-end through
+`qml.grad`/`autograd.grad` with no new machinery. You already hand-rolled Adam and a
+scipy logistic-regression baseline; a one-hidden-layer MLP in the same idiom is a smaller job than
+either.
+
+**Do not install torch.** The Phase 1 dry-run showed it would not move the `numpy<2` pin, so it is
+*safe* — but it pulls ~24 packages including the entire CUDA toolkit onto a 16 GB Windows laptop, for
+one optional algorithm, on a learning platform. Safe and worth it are different questions.
+`qml.qnn.TorchLayer` is the only thing you'd gain and it is a thin wrapper around what you can write
+directly.
+
+If you hit a genuine wall — a requirement autograd cannot express — that is a **§5.3 stop** with the
+dry-run output attached, not a silent install.
+
+### 2C.3 Quantum kernel — least-squares SVM, and a separate hard sample cap
+
+Two decisions, both forced by the absence of sklearn (§1A):
+
+**Use least-squares SVM (LSSVM), not C-SVM.** A kernel C-SVM needs a QP solver and a dual
+formulation; LSSVM reduces to one `numpy.linalg.solve` on the kernel matrix you already computed. It
+is closed-form, deterministic, needs no iterative solver to tune, and is a well-established method
+in its own right. **Label it LSSVM everywhere it is surfaced** — calling it "SVM" without
+qualification would misrepresent what the learner is looking at, and this is a teaching platform.
+
+**Cap kernel samples separately and hard.** At the global `MAX_SAMPLES = 1000` the kernel matrix is
+~10^6 circuit evaluations *before* anything fits. Price it from Phase 4's measured laws, set a
+ceiling the target machine can actually reach (order 200–300 samples — decide from your numbers, and
+say which), and reject above it with a readable message rather than starting a job that cannot
+finish. The kernel matrix is symmetric, so **compute the upper triangle only** — that is a free 2×.
+
+Show the kernel matrix in the UI as required, but as a heatmap built from `DensityMatrixInspector`'s
+inline-style approach (§3.2), never an interpolated Tailwind class.
+
+### 2C.4 Quantum regression — do not reuse the classification metrics
+
+Continuous targets need a different loss (MSE), different metrics (**MAE, RMSE, R²** — accuracy,
+precision, recall, F1 and a confusion matrix are all meaningless), and a different result schema.
+
+- Keep them **separate types**, not one union with nullable fields. A result object whose `accuracy`
+  is `None` for regression invites a UI that renders "—" or, worse, `0` — and `0` reads as "the model
+  scored zero", which is a lie of a different kind.
+- The encoder must map continuous features into `[0, π]` (`ANGLE_MIN`/`ANGLE_MAX`) using the same
+  fit-on-train-only scaler discipline, and the §1A leakage assertion applies again.
+- The prediction output is continuous, so the Results view needs a numeric column and a
+  predicted-vs-actual plot — hand-rolled SVG per §1.4, reusing `charts.tsx`.
+
+### 2C.5 Noise experiments — reuse the noise vocabulary, but not its defaults
+
+`backend/app/quantum/noise_lab/` already exists with `models.py`, `noise.py`, `metrics.py` and a
+`validator.py`. **Read it and reuse its vocabulary** — a second, incompatible set of noise names
+would be exactly the competing-system problem the master prompt's §5 forbids.
+
+But two things must differ:
+
+- ⚠ **Do not inherit its default-off trap.** §7: `NoiseConfig` nests every group and each defaults
+  to `enabled: False`, so a flat payload is silently ignored and returns a plausible wrong answer.
+  Your QML noise config uses `extra="forbid"` (§1A) and makes enabling **explicit**, so a malformed
+  request is rejected loudly.
+- **Noise requires finite shots.** Depolarising and dephasing channels are not analytic in general,
+  so `shots=None` is not available — state the shot count on every noisy number and treat shot noise
+  as a *source of variance* in the benchmark, not an error. Density matrix is `4^n`, so
+  `DENSITY_MATRIX_MAX_QUBITS = 6` is the binding cap; tighten it on evidence if ideal-vs-noisy
+  comparison needs two runs.
+
+The deliverable is the **side-by-side comparison** — same config, ideal vs noisy, same seed — which
+means the run must be reproducible enough that the difference is attributable to the noise and not
+to shot variance. Report the variance.
+
+### 2C.6 Trainable qudit models — a time-boxed spike, and the document is the deliverable
+
+Verify whether `backend/app/quantum/qudit_lab/` supports differentiable gates, measurements and
+gradients. Read `simulator.py`, `gates.py` and `metrics.py`; it is a purpose-built density-matrix
+simulator with no autodiff wiring, so the likely answer is **no**, and that is a *fine* answer.
+
+**Time-box it.** The output is `docs/qml/qudit-feasibility.md` stating what exists, what is missing
+(autodiff-compatible gate parameterisation, a differentiable expectation, a gradient rule for
+qudit channels), and what it would take. **Do not implement a fake version** — the master prompt is
+explicit, and a stub that returns zero gradients would poison every later phase that trusts it.
+A spike that concludes "not feasible without X" is a complete, successful deliverable.
+
+### 2C.7 UI wiring for five more algorithms
+
+Same four views, same flag, same primitives (§3.3). The Configuration view must show **only valid
+options per algorithm** — gradient methods that the device supports, sample caps that the algorithm
+allows — driven by `/qml/describe`, not hardcoded in the client. Remember `cn()` has no
+tailwind-merge, read a primitive's signature before calling it, and derive fixtures from captured
+responses (§3.3).
+
+Each algorithm gets its own `.mts` harness (§1.5), wired into `package.json`, and **mutation-tested**
+— Phases 1–4 each found vacuous tests this way, and five new algorithms is five new chances to write
+a check that passes for the wrong reason.
+
+### 2C.8 Order, and what may be deferred
+
+Build in the master prompt's order: Hybrid QNN → baseline polish → regression → kernel → noise →
+qudit spike. **One algorithm per commit set**, each with its tests green and the baseline unchanged
+before you start the next, so a failure is always attributable to the thing you just built.
+
+If you run out of room, the defensible stopping points are **after regression** (three algorithms, a
+complete classification-and-regression story) or **after the kernel**. The noise comparison and the
+qudit spike are the two that can slip without leaving anything broken — but a slipped item goes in
+`docs/qml/MANUAL_TEST_REGISTER.md` or `DECISIONS.md` as a named deferral, never silently (§8A).
+
+---
+
 ## 3. The UI/UX contract — match this exactly
 
 This is the part most likely to look wrong, so it is specified concretely rather than as
