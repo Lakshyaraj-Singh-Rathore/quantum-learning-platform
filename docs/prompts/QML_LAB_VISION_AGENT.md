@@ -1272,6 +1272,105 @@ bundle has been byte-identical so far — keep it that way.
 
 ---
 
+## 2G. Phase 7 — verification, and nothing else
+
+Phase 7 produces **`docs/qml/07-verification.md`**. It is an audit, not a build.
+
+### 2G.0 No new features in this phase
+
+**§2C.5 (noise experiments), §2C.6 (the qudit spike) and §2F's WP6 (suggest-a-config) are all
+formally deferred and must not be started here.** Verifying a moving target verifies nothing: every
+line of new feature code invalidates the gate numbers you are supposed to be confirming.
+
+**§2C.6 is deferred for a second, harder reason.** The project owner has unpushed local work adding
+new qudit gates and polishing the Qudit Lab. A qudit spike started now would collide with changes
+nobody can see. It stays deferred until that work lands on `main` and can be read.
+
+Record all three in `DECISIONS.md` with what each would take, so the deferral is a decision rather
+than a silence.
+
+### 2G.1 Re-measure; do not transcribe
+
+Every number in `07-verification.md` must come from a command run **in this phase, from a clean
+state**. Copying a figure out of `phase-3-report.md` is not verification — it is the thing
+verification exists to catch. Where a gate cannot run in your environment, write that it could not
+run and why. §8's precedent stands: *"0.8480 was not reproducible; I did not find its origin"*
+earned more credit than an invented explanation.
+
+Re-run and record, at minimum: `pytest` · `ruff` (against `origin/main`'s count) · `typecheck` ·
+`build` with **both** bundle figures · every harness in `package.json` · the goldens · `a11y` · the
+CSS rule-level diff against a scratch-worktree build of `origin/main` · and all four §2A.6 flag
+states against a live server.
+
+### 2G.2 Audit the claims, not just the gates
+
+Walk every phase report from 0 to 6 and, for each **numeric** claim, either re-derive it or mark it
+unreproducible. This is where the known soft spots get settled rather than carried:
+
+- The harness FAIL decomposition. Phase 5 could not reproduce `57 = 9+20+20+8` and said so; Phase 5c
+  and 6 reported render/ui/circuit as **34/58/49** with 0 fail. Establish one authoritative
+  breakdown, per script, and retire the old figure explicitly rather than leaving two in circulation.
+- `qml:tasks` was specified as a fixed **48** and now reports **55**. A gate stated as a number that
+  grows is not a failure, but the *specified* number must be updated or the gate becomes meaningless.
+  Restate it as "no pre-existing assertion may regress; growth is reported".
+- The Makefile compose-invocation count has now been wrong three times (2, then 9, then a measured
+  11). Re-measure it once, with the command shown, and let that be the last word.
+- Every bundle figure: shared chunk and `QmlLabPage`, against `main`.
+
+### 2G.3 Prove the flag-off identity claim
+
+§10 requires that with `qml_enabled=False` the app is **behaviourally identical to today** —
+"proven, not asserted". Produce the evidence in one place: the route inventory with every `/qml/*`
+path absent, the live OpenAPI with zero qml entries, `/features` answering unauthenticated, the nav
+unchanged, and the shared bundle byte-identical to a pre-QML baseline. If any of those cannot be
+produced, that is a finding.
+
+### 2G.4 The nine acceptance criteria
+
+Restate the master prompt's nine QNN acceptance criteria and map each to the code and the test that
+prove it — or mark it unproven. **If you no longer have the master prompt's text, say so plainly
+rather than reconstructing nine criteria from memory.** An invented criterion that is then marked
+"satisfied" is worse than a gap.
+
+### 2G.5 The unverified surface, stated plainly
+
+This is the most important section, because it is what the project owner will act on. Enumerate
+everything that has never been exercised, with the reason and what would exercise it:
+
+- **No browser has ever rendered the QML Lab.** Every frontend claim across Phases 3, 5c and 6 is
+  server-side rendering. No layout, no CSS cascade, no Radix portal has been seen open, and
+  `refetchInterval` is asserted by reading code rather than by observing a second request.
+- **The live Gemini call has never executed.** No key in this environment; `is_configured()` also
+  needs an importable SDK. The platform already carried one untested live Gemini path and Phase 6
+  added a fourth caller.
+- **`bench_qml.py --full` has never run on the target machine**, so `qml_task_soft_time_limit = 900`
+  and `hard = 1200` remain provisional and untuned.
+- **No real broker, prefork pool or signal-based time limit** has been exercised; `.apply()` runs the
+  task body in-process only.
+
+Then reproduce the MT register's blocking rows — **MT-001, MT-004, MT-006, MT-010** and any others
+marked blocking — as a single ordered list of what the owner must run, with cold-executable steps.
+§9 already requires this for `08-release.md`; producing it here means Phase 8 assembles rather than
+discovers.
+
+### 2G.6 Defect ledger
+
+One table: every open defect with its ID, where it lives, whether it blocks release, and whether a
+catching script exists. Carry forward **QL-005** (`qudit_lab/simulator.py` `round(…, 6)`, whose line
+numbers may have moved — the owner is editing that file), **QL-015/016/017**, and the `bg-card`
+anomaly (10 uses, 0 CSS rules). Do not fix them in this phase; recording them accurately is the
+deliverable.
+
+### 2G.7 Gates
+
+**Zero product-code changes.** The only files this phase may touch are under `docs/qml/`, plus a
+harness or test *if* re-measurement exposes a gate that was wrong — and that must be its own commit
+with the reason in the message. `pytest` stays at **1230 passed / 5 skipped**; if it moves, explain
+why. `ruff` reports no new findings. Tracked files grow only by `07-verification.md` and any
+decision-record edits.
+
+---
+
 ## 3. The UI/UX contract — match this exactly
 
 This is the part most likely to look wrong, so it is specified concretely rather than as
