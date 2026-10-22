@@ -136,6 +136,30 @@ export function QmlConfigForm({
   const tooFewQubits =
     dataset !== undefined && dataset.n_features > config.circuit.n_qubits;
 
+  // QL-019. `/qml/describe` publishes a global n_samples bound AND a
+  // per-dataset `max_samples`, and the global one is the looser of the two.
+  // Handing the input the global max let `checkValidity()` return true on a
+  // value the server would reject -- the form disagreeing with its own API,
+  // which is the same defect class as QL-018's `step`. The effective bound is
+  // the tighter of the two, so the attribute, the hint and the error all
+  // describe one number.
+  const globalSamples = range("n_samples");
+  const sampleCap =
+    dataset !== undefined
+      ? Math.min(dataset.max_samples, globalSamples?.max ?? dataset.max_samples)
+      : globalSamples?.max;
+  const samplesRange =
+    globalSamples !== undefined && sampleCap !== undefined
+      ? { min: globalSamples.min, max: sampleCap }
+      : globalSamples;
+
+  // Deliberately NOT clamped. Switching dataset changes the cap underneath a
+  // number the learner chose; silently rewriting it hides that a choice was
+  // overridden. The value stays, the field reads invalid, and the error says
+  // what happened -- the same contract `tooFewQubits` already uses.
+  const overSampleCap =
+    sampleCap !== undefined && config.dataset.n_samples > sampleCap;
+
   const nParams = parameterCount(config.circuit.n_qubits, config.circuit.n_layers);
 
   const set = <K extends keyof QmlConfig>(key: K, value: QmlConfig[K]) =>
@@ -240,7 +264,7 @@ export function QmlConfigForm({
             id="qml-n-samples"
             label="Samples"
             value={config.dataset.n_samples}
-            range={range("n_samples")}
+            range={samplesRange}
             // No step. An HTML number input treats `step` as a validity
             // constraint, not merely a spinner increment: with min=20 step=50
             // the valid values are 20, 70, 120, 170, 220 ... so the server's
@@ -358,6 +382,14 @@ export function QmlConfigForm({
           />
         )}
 
+        {overSampleCap && (
+          <ErrorNote>
+            {dataset?.name} caps training at {sampleCap} samples, but this run asks for{" "}
+            {config.dataset.n_samples}. Lower Samples to {sampleCap} or fewer, or pick a dataset
+            with a higher cap.
+          </ErrorNote>
+        )}
+
         {tooFewQubits && (
           <ErrorNote>
             Angle encoding needs one wire per feature: {dataset?.name} has{" "}
@@ -465,7 +497,7 @@ export function QmlConfigForm({
       )}
 
       <div className="flex items-center gap-3">
-        <Button type="submit" disabled={disabled || submitting || tooFewQubits}>
+        <Button type="submit" disabled={disabled || submitting || tooFewQubits || overSampleCap}>
           {submitting ? "Submitting…" : "Train model"}
         </Button>
         <p className="text-[11px] text-ink-3">
