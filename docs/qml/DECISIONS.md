@@ -1079,3 +1079,31 @@ worker gives a UI that works and runs that never complete. That state was
 observed live, not inferred. Rollback documents `j5e8f1a4b7c2` as deliberately
 lossy — `downgrade()` deletes every regression epoch row rather than fabricate
 a `train_accuracy`.
+
+
+## D-056 — MT-009 was driven in a browser and did not close; it found QL-019
+
+Phase 8 left MT-009 ("the sample-cap error is legible in the UI") manual.
+Phase 8C drove it in a real browser. The row did not close, and the reason is
+worth recording, because the harness reports **three failures that are product
+findings rather than harness defects**.
+
+Selecting `iris_binary`, whose cap is 100, from a form sitting at 200 samples:
+
+| measured | expected by MT-009 |
+|---|---|
+| `max` attribute stays **1000** | tracks the selected dataset's cap |
+| value stays **200**, above the new cap | clamped into the new range |
+| Train is **disabled, with no stated reason** | a legible error naming the cap |
+
+The cap is not unenforced — the product does prevent the submission, and the
+hint line does read `20-1000 · max 100 for this set`. But `checkValidity()`
+returns **true** on an over-cap value, because `max` is stale, so the only
+thing standing between the user and a rejected run is a disabled button that
+does not say why it is disabled.
+
+Phase 8C **reports this rather than fixing it**. Whether a disabled control is
+an acceptable substitute for an error message is a teaching-design call of the
+same kind as QL-017, and the stale `max` is a contract question about whether
+the field's constraints should follow the dataset. Both belong to the owner.
+Filed as **QL-019**; MT-009 stays blocking in the register.

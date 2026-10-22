@@ -282,9 +282,9 @@ real-infrastructure path each MT exists to check.
 
 | Row | Status after Phase 8 |
 | --- | --- |
-| **MT-006** (regression metrics) | *Classifier half only:* **AUTOMATED by Phase 8 / `96b4320`** — `qml-browser-check.mts` trains a classifier in a browser and asserts a numeric accuracy is rendered (85.0 %, matching the API). The regression half — MAE/RMSE in target units, signed R², **and no classifier metric** — is **still manual** and still blocking. |
-| **MT-008** (kernel heatmap) | Still manual. |
-| **MT-009** (sample-cap error) | Still manual. |
+| **MT-006** (regression metrics) | *Classifier half only:* **AUTOMATED by Phase 8 / `96b4320`** — `qml-browser-check.mts` trains a classifier in a browser and asserts a numeric accuracy is rendered (85.0 %, matching the API). The regression half is now **AUTOMATED by Phase 8C / `qml-browser-metrics.mts`**: against a fixture whose true R² is **-3.671582235502192**, the page renders MAE, RMSE, the sentence placing them *in the target's own units*, and an R² of **-3.672** — **sign intact, not clamped, hidden or `abs()`ed** — with **no classifier metric** (`accuracy`, `f1`, `confusion`, `precision`, `recall` all absent). A negative fixture was used deliberately: a test that only ever sees a positive R² cannot detect a clamp. **Closed.** |
+| **MT-008** (kernel heatmap) | **AUTOMATED by Phase 8C / `qml-browser-metrics.mts`** — opens a completed `quantum_kernel` experiment in a browser and finds **400 cells, 400/400 carrying a real computed colour**, delivered by an inline `background-color: var(--color-accent)`. This is the `bg-card` defect class (a class that emits no CSS), so the assertion reads `getComputedStyle`, never markup. **Closed.** |
+| **MT-009** (sample-cap error) | **STILL MANUAL AND STILL BLOCKING.** Now driven in a browser, which *found three defects rather than closing the row* (**QL-019**). Selecting `iris_binary` (cap 100) leaves the samples field's `max` at **1000** and its value at **200** — over the new cap — so native validation cannot help; the over-cap state is then enforced by **silently disabling Train with no stated reason**. The row asks for a *legible error naming the cap*; the product prevents the mistake without explaining it. Not closed. |
 | **MT-001 / MT-004 / MT-010** | Still manual and still blocking. Nothing in Phase 8 touched a real broker, a prefork pool or a signal-based time limit; `.apply()` and eager execution prove the task body, not the infrastructure. |
 | **MT-005** | Unchanged non-goal (GPU; D-030). |
 
