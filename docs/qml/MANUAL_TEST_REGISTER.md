@@ -270,3 +270,25 @@ Three things only, all of which need eyes on a running browser:
   useful body and never a 500, and that no key is echoed. `tests/test_qml_api.py` adds the
   route's 401/403/404/409/503 behaviour and the flag-off 404. What remains is purely **whether
   the model obeys the instruction**, which no amount of local testing can establish.
+
+---
+
+## Phase 8 automation (append-only)
+
+Phase 8 unlocked a browser (Chromium 153.0.8010.0 via `tools/browser-setup.sh`)
+and automated the parts of the register that only a browser can observe. The
+manual rows remain — automation here covers the simulator path, never the
+real-infrastructure path each MT exists to check.
+
+| Row | Status after Phase 8 |
+| --- | --- |
+| **MT-006** (regression metrics) | *Classifier half only:* **AUTOMATED by Phase 8 / `96b4320`** — `qml-browser-check.mts` trains a classifier in a browser and asserts a numeric accuracy is rendered (85.0 %, matching the API). The regression half — MAE/RMSE in target units, signed R², **and no classifier metric** — is **still manual** and still blocking. |
+| **MT-008** (kernel heatmap) | Still manual. |
+| **MT-009** (sample-cap error) | Still manual. |
+| **MT-001 / MT-004 / MT-010** | Still manual and still blocking. Nothing in Phase 8 touched a real broker, a prefork pool or a signal-based time limit; `.apply()` and eager execution prove the task body, not the infrastructure. |
+| **MT-005** | Unchanged non-goal (GPU; D-030). |
+
+**New automated coverage with no MT row**, recorded so it is not mistaken for
+one: the Radix `Select` opens and portals all four algorithms; `Escape` closes
+it; polling is observed to happen and then to stop; every numeric field's
+default passes browser constraint validation (the guard for QL-018).

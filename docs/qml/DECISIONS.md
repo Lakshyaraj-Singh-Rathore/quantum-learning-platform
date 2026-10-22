@@ -1059,3 +1059,23 @@ One field §2I.3 requires cannot be supplied: "cite the commit that changed the
 UI". `git rev-list --count origin/main` is **1** — the repository is a single
 squashed commit, so no commit changed it and there is no before/after to cite.
 Current source text is substituted, and the requirement should be withdrawn.
+
+## D-055 — `08-release.md` ships with the suite red, and says so
+
+**Phase 8, Stage 5.** The release document states in its opening paragraph that
+the pre-existing harness suite fails by 57 assertions and that parts of the
+production surface are unverified. It makes no "all gates green" claim and no
+equivalent.
+
+The 34 tabled assertions (D-054) do not block the document; the senior decided
+to decouple them, because holding a release note hostage to a pre-existing
+backlog outside QML stalls completion for no gain. What they constrain is what
+the document is permitted to *say* — hence §8, which gives the red count, its
+per-script decomposition, the zero fixed, and a link to the proposals table.
+
+Enablement is documented as two required actions (`QML_ENABLED=true` **and**
+`--profile qml`), with the half-configurations tabulated: a true flag without a
+worker gives a UI that works and runs that never complete. That state was
+observed live, not inferred. Rollback documents `j5e8f1a4b7c2` as deliberately
+lossy — `downgrade()` deletes every regression epoch row rather than fabricate
+a `train_accuracy`.
