@@ -443,6 +443,23 @@ is the guarantee — **and** check for non-terminal experiments before dispatch,
 **409** with a readable message. The queue guarantees it; the DB check explains it to the user.
 Note `worker_prefetch_multiplier=1` is already set, which helps but is not the guarantee.
 
+⚠ **Scope the guard globally, not per user.** `limits.py:43` names the constant
+`MAX_CONCURRENT_JOBS_PER_USER = 1`, but the master prompt's table says *"Concurrent training jobs |
+1 | 1"* with no qualification, and the resource being protected is **the machine** — one worker on
+a 16 GB laptop — not a per-user quota. So the pre-dispatch check must count non-terminal
+experiments **across all users**:
+
+```python
+db.query(QmlExperiment).filter(QmlExperiment.status.in_(("queued", "running"))).count()
+```
+
+not `... .filter(QmlExperiment.user_id == user.id, ...)`. With the per-user form, two users each
+pass the check and both dispatch; the queue still serialises them, but the second user gets a
+silent multi-hour wait instead of the immediate 409 that tells them the truth. Rename the constant
+to `MAX_CONCURRENT_JOBS` so the name matches the semantics. If per-user fairness is wanted later,
+add it as a *second*, tighter cap on top of the global one — the global cap is the binding
+constraint and must exist regardless.
+
 **The cancel endpoint has no precedent here** — you found that in Phase 0. So:
 `POST /qml/experiments/{id}/cancel` sets `cancel_requested = True`; the worker observes it through
 the `should_cancel()` hook you already built. It must be **idempotent** (cancelling twice is 200,
