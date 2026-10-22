@@ -342,6 +342,8 @@ export function CodeLabPage() {
             </div>
             <p className="text-xs text-ink-3 mb-3 leading-relaxed">
               Describe a circuit algorithm and Gemini will draft code into the editor.
+              Nothing runs until you press Build, and you can edit the draft first —
+              treat it as a starting point, not an answer.
             </p>
 
             <Textarea
