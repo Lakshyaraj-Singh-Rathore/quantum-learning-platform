@@ -1168,6 +1168,110 @@ failing run.
 
 ---
 
+## 2F. Phase 6 — Gemini in the QML Lab
+
+The QML Lab has **zero** AI surface today: `git grep gemini` across `backend/app/quantum/qml_lab/`,
+`services/qml_lab.py` and `api/qml_lab.py` returns nothing. Everything below reuses the house
+pattern rather than inventing one.
+
+### 2F.0 The ruff gate, settled
+
+The gate is **"ruff reports no new findings versus `origin/main`"** — a ratchet, not an absolute.
+The repo carries **79** pre-existing findings; demanding zero would block every phase, and demanding
+"clean" invites someone to silence findings rather than fix them. Report the count every phase so it
+can only move down, and if a phase *adds* one, that is a stop condition (§5), not a note.
+
+Do not fix the pre-existing findings as a side quest. Phase 5c correctly fixed the one that was a
+real 500 (`jobs.py` `import json`) and left the four `F401`s alone after confirming they were
+identical on `origin/main`. That is the right discrimination: **fix what is a defect, record what is
+noise, and never expand scope to make a number prettier.**
+
+### 2F.1 What the sandbox cannot test — plan around it, do not fake it
+
+**`GEMINI_API_KEY` is absent here**, and `is_configured()` (`gemini_client.py:88`) requires both a
+key *and* an importable SDK. So the live call **cannot be exercised in this environment at all.**
+That is not a reason to stub it into looking like it works.
+
+Split the work accordingly, per §8A:
+
+- **Automate the unconfigured path to exhaustion.** It is the path that will actually run in CI and
+  in most checkouts, and it must be useful rather than broken. Assert the status code, the message,
+  that no exception escapes, that no key is echoed, and that nothing is logged that shouldn't be.
+- **Automate the configured path against a fake transport**, injected at the narrowest seam, and
+  label it plainly as a fake in the test name. It proves the prompt is built correctly, the reply is
+  handled, and failures are caught — it does **not** prove Gemini answers well.
+- **Register the live call as an MT row** with cold-executable steps, marked as blocking release, and
+  note that the platform already carries an untested Gemini live path. Do not claim it works.
+
+### 2F.2 Grounding is a structural requirement, not a prompt instruction
+
+The acceptance criteria forbid invented numbers, and an LLM asked to "explain this result" will
+happily invent them. So:
+
+- **The prompt must be built from the real stored payload** — config, per-task metrics, baseline, and
+  the epoch history — and a test must assert those exact numbers appear in the prompt string. That
+  makes grounding a property of the code rather than a hope about the model.
+- **The UI must show the real numbers next to the prose**, so a fabrication is visible rather than
+  authoritative. Commentary is rendered as commentary, never as a metric, and never in a `Stat`.
+- **The system instruction must forbid introducing values not supplied.** Follow `codelab_ai._SYSTEM`
+  (`:19`) for shape and tone.
+- Cap input with a `MAX_PROMPT_CHARS`-style guard (`codelab_ai.py:17`, currently 2,000) and reject
+  over-length rather than truncating silently — truncation would drop the numbers being grounded on.
+
+**Note `generate()` hardcodes `temperature: 1.0`** (`gemini_client.py:249`). That is high for a
+feature whose entire risk is confabulation, but changing it in place would silently alter the tutor,
+Code Lab and Smart Composer. If you need a lower temperature, **add an optional keyword argument
+defaulting to `1.0`** so every existing caller is bit-identical, and say so in the report.
+
+### 2F.3 A suggested config must pass `limits.check()` before the user sees it
+
+If the feature suggests a configuration, the model will eventually suggest one that is impossible —
+12 qubits against a cap of 8, or `sine` for a classifier. **Validate every suggestion server-side
+with the existing `limits.check(config)` and the per-algorithm `limits_for()` table before offering
+it.** Reuse, do not reinvent: this is the same contract `describe()` advertises and the same one
+`POST /qml/experiments` enforces.
+
+An invalid suggestion must be rejected or regenerated, **never surfaced**. A UI that lets a user
+click "apply" and receive a 422 is worse than no suggestion at all — and it is the exact defect class
+Phase 5b closed at three separate construction sites.
+
+Suggestions must also respect `supports{}`: no epoch count for the kernel, no `n_hidden` unless the
+algorithm is `hybrid_qnn`, no `diff_method` for a closed-form fit.
+
+### 2F.4 Scope and non-negotiables
+
+- **Flag-gated and authenticated.** Behind `qml_enabled`, using `get_current_user`, with the
+  ownership check pattern from `api/jobs.py:200-206` (`404` then `403 "Not your job"`) — an
+  explanation endpoint must not let one user read another's experiment.
+- **Never crash, never leak the key, never log a full payload** (§6). `GeminiUnavailable`
+  (`gemini_client.py:84`) is caught at the route the way `api/jobs.py:426` does it, and the
+  unconfigured message follows `ai/chat.py:_offline_reply` — honest, useful, offering the
+  alternative that still works.
+- **Do not touch `ai/rag.py`.** The fence-aware chunker has a regression test for a reason.
+- **No new dependency.** `google.generativeai` is already there; `requirements.txt` must not change.
+- **UI: extend the Results view**, per §2E.1 — one panel, existing `ui.tsx` primitives (`Card`,
+  `Button`, `Spinner`, `ErrorNote`, `EmptyState`). No new route, no new page, no new library.
+- **The unconfigured state is a first-class UI state**, not an error. It needs an `EmptyState` that
+  explains what is missing and what still works, because that is the state most reviewers will see.
+
+### 2F.5 Gates
+
+Backend changes are allowed this phase, so the "0 backend files" gate is replaced by: **every
+backend file touched is listed in §4's allow-list or justified in writing**, and `celery`'s
+**8/15**, `qml_enabled`'s `False` default, and `requirements.txt` are untouched.
+
+pytest grows from **1208 passed / 5 skipped**. `ruff` reports **no new findings** against
+`origin/main`'s **79**. The four §2A.6 flag states still hold, and with the flag **off** the new
+routes must **404**, not 401 and not 500. `qml:tasks` stays **48/48**; render/ui/circuit stay at
+**34/58/49** with 0 fail. Typecheck 0, build PASS, a11y 0 criticals, goldens **190+804+3306 @ 1e-9**,
+and the CSS rule-level diff against a scratch-worktree build of `origin/main`.
+
+The `QmlLabPage` lazy chunk is now **45.74 kB** after Phase 5c (+53% on the phase). Report the new
+figure and, if it grows again, say what caused it. It is confined to the lazy chunk and the shared
+bundle has been byte-identical so far — keep it that way.
+
+---
+
 ## 3. The UI/UX contract — match this exactly
 
 This is the part most likely to look wrong, so it is specified concretely rather than as
