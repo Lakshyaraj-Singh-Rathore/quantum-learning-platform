@@ -435,5 +435,69 @@ check(
   "supports.data_reuploading",
 );
 
+/* -------------------------------------------------------------------------- */
+/* 8. Phase 6 -- the AI explanation panel                                     */
+/* -------------------------------------------------------------------------- */
+
+const { QmlExplanationPanel, GroundingTable, Commentary } = await import(
+  "../src/components/qml/QmlExplanationPanel.tsx"
+);
+
+const vqcDetail = payloads.vqc.detail as { result: Record<string, unknown> };
+const facts = {
+  task: "classification",
+  algorithm: "vqc",
+  dataset: { name: "moons", n_train: 42, n_test: 18, n_features: 2 },
+  circuit: { n_qubits: 4, n_layers: 2, n_parameters: 16, encoding: "angle-Y" },
+  evaluation: vqcDetail.result.evaluation,
+  baseline: vqcDetail.result.baseline,
+  epochs_completed: 3,
+  n_epoch_rows: 3,
+};
+
+const grounding = render(h(GroundingTable, { facts } as never));
+check(
+  "explanation: the measured table prints the model's own metrics",
+  // Deliberately NOT accuracy: the baseline block also renders 0.7778
+  // (test_accuracy), so asserting on it passed even with the evaluation
+  // metrics deleted entirely -- a surviving mutant found exactly that.
+  // precision 0.6923 and f1 0.8182 appear only in the evaluation block.
+  grounding.includes("0.6923") && grounding.includes("0.8182"),
+  "the control the prose is checked against must carry the true values",
+);
+check(
+  "explanation: the measured table prints the classical baseline",
+  /logistic_regression/.test(grounding) && grounding.includes("0.9048"),
+);
+check(
+  "explanation: the measured table grows no metric this task lacks",
+  !/>\s*mae\s*</i.test(grounding) && !/>\s*r2\s*</i.test(grounding),
+  "a classification run must not sprout regression rows",
+);
+
+const prose = render(
+  h(Commentary, { text: "The model reached 0.95 accuracy.\n\nSecond paragraph." } as never),
+);
+check(
+  "explanation: prose renders as paragraphs, never as a metric tile",
+  prose.includes("<p") && !/tabular-nums/.test(prose) && !/<dt|<dd/.test(prose),
+  "commentary must carry no metric affordance (2F.2)",
+);
+check(
+  "explanation: a fabricated number in prose gets no metric label",
+  !/<dt[^>]*>/.test(prose),
+);
+
+const idlePanel = render(h(QmlExplanationPanel, { experimentId: 7 } as never));
+check(
+  "explanation: the idle panel offers the action and promises grounding",
+  /Explain/.test(idlePanel) && /grounded on/i.test(idlePanel),
+);
+check(
+  "explanation: the idle panel is neither an error nor a spinner",
+  !/role="alert"/.test(idlePanel) && !/role="status"/.test(idlePanel),
+  "an unused panel must not look like a failure or like work in progress",
+);
+
 console.log(`\n${failures === 0 ? "OK" : `${failures} FAILED`}`);
 process.exit(failures === 0 ? 0 : 1);

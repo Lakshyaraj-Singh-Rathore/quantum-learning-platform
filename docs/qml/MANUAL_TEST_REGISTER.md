@@ -236,3 +236,37 @@ Three things only, all of which need eyes on a running browser:
   the evaluation count, **not** as `q; u; a; n; t; u; m; ...`.
 - **Missing capability:** no kernel UI. The character-shredding failure mode was real and is
   now covered by a unit test (D-037), so this row is about the rendered control, not the text.
+
+## MT-010 — The Gemini explanation against a real key
+
+- **Status:** OPEN
+- **Deferred by:** Phase 6 (AI commit)
+- **Blocks release?** **Yes** — the configured path has never executed. Everything automated in
+  Phase 6 runs against a fake transport or the unconfigured branch.
+- **Why it cannot be automated here:** `GEMINI_API_KEY` is absent in the sandbox and
+  `is_configured()` (`gemini_client.py:88`) additionally requires an importable
+  `google.generativeai`. There is no way to exercise a live call, and stubbing one into looking
+  like it worked would be worse than leaving it open. Note the platform **already** carries an
+  untested live Gemini path (the tutor, Code Lab, Smart Composer); this row adds a fourth caller,
+  it does not add the first risk.
+- **Steps (cold-executable):**
+  1. Set `GEMINI_API_KEY` in `.env` and confirm `pip show google-generativeai` returns a version.
+  2. `make up`, open the QML Lab, run any experiment to completion.
+  3. On the Results tab press **Explain**.
+  4. Repeat for one run of each task: a `vqc` run on `moons` and a `quantum_regression` run on
+     `sine`.
+- **Expected result:**
+  - Prose appears within ~10 s, in two or three short paragraphs, with no markdown headings.
+  - **Every number in the prose also appears in the "Measured" table directly beneath it.**
+    Any figure in the prose that is not in that table is a confabulation and the test fails.
+  - The regression explanation mentions **no** accuracy, precision, recall, F1 or confusion
+    matrix; the classification explanation mentions **no** R², MAE or RMSE.
+  - A negative R² is described as worse than predicting the mean, not as a small positive score.
+  - No claim of quantum advantage.
+  - The server log contains no API key and no full prompt payload.
+- **What is already automated, so the gap is narrow:** `tests/test_qml_ai.py` (14) asserts the
+  prompt carries the exact stored figures, that the system instruction forbids inventing values,
+  that over-length input is rejected rather than truncated, that the unconfigured path returns a
+  useful body and never a 500, and that no key is echoed. `tests/test_qml_api.py` adds the
+  route's 401/403/404/409/503 behaviour and the flag-off 404. What remains is purely **whether
+  the model obeys the instruction**, which no amount of local testing can establish.

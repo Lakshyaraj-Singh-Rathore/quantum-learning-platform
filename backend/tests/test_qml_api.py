@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import importlib
 import os
+import time
 
 import pytest
 from fastapi import FastAPI
@@ -36,6 +37,7 @@ QML_PATHS = [
     ("get", "/qml/experiments/1/result"),
     ("post", "/qml/experiments/1/cancel"),
     ("post", "/qml/experiments/1/inference"),
+    ("post", "/qml/experiments/1/explain"),
 ]
 
 
@@ -555,3 +557,146 @@ def test_a_task_mismatch_is_rejected_by_the_create_endpoint(
         },
     )
     assert response.status_code == 422
+
+
+# ---------------------------------------------------------------------------
+# Phase 6 -- the explanation route
+# ---------------------------------------------------------------------------
+
+
+def _completed_experiment(qml_client, headers) -> int:
+    """Run the smallest real experiment to terminal, and return its id.
+
+    Through the actual create endpoint rather than a hand-built row, so the
+    stored result is whatever the service really writes.
+    """
+    created = qml_client.post("/qml/experiments", headers=headers, json=tiny_config())
+    assert created.status_code == 201, created.text
+    experiment_id = created.json()["id"]
+
+    for _ in range(120):
+        body = qml_client.get(f"/qml/experiments/{experiment_id}", headers=headers).json()
+        if body["status"] in {"completed", "failed", "cancelled"}:
+            break
+        time.sleep(0.5)
+    assert body["status"] == "completed", f"experiment ended {body['status']}"
+    return experiment_id
+
+
+def test_explain_requires_authentication(qml_client):
+    assert qml_client.post("/qml/experiments/1/explain").status_code == 401
+
+
+def test_explain_404s_for_an_experiment_that_does_not_exist(qml_client, student_headers):
+    response = qml_client.post("/qml/experiments/999999/explain", headers=student_headers)
+    assert response.status_code == 404
+
+
+def test_explain_cannot_read_another_users_experiment(
+    qml_client, student_headers, other_student_headers
+):
+    """The ownership check is the point: an explanation endpoint is still a read."""
+    experiment_id = _completed_experiment(qml_client, student_headers)
+
+    response = qml_client.post(
+        f"/qml/experiments/{experiment_id}/explain", headers=other_student_headers
+    )
+    assert response.status_code == 403
+    assert response.json()["detail"] == "Not your job"
+
+
+def test_explain_409s_while_the_experiment_is_unfinished(qml_client, student_headers):
+    """Deterministic, not opportunistic.
+
+    Celery runs eagerly in tests, so an experiment is terminal the instant
+    POST returns; an `if still running:` guard would make this test pass by
+    never executing its assertion. The status is therefore driven directly.
+    """
+    from app.database import SessionLocal
+    from app.models.qml import QmlExperiment
+
+    experiment_id = _completed_experiment(qml_client, student_headers)
+
+    db = SessionLocal()
+    try:
+        row = db.get(QmlExperiment, experiment_id)
+        original = row.status
+        row.status = "running"
+        db.commit()
+    finally:
+        db.close()
+
+    try:
+        response = qml_client.post(
+            f"/qml/experiments/{experiment_id}/explain", headers=student_headers
+        )
+        assert response.status_code == 409
+        assert "not finished" in str(response.json()["detail"])
+    finally:
+        db = SessionLocal()
+        try:
+            row = db.get(QmlExperiment, experiment_id)
+            row.status = original
+            db.commit()
+        finally:
+            db.close()
+
+
+def test_explain_returns_the_offline_body_when_no_key_is_configured(
+    qml_client, student_headers, monkeypatch
+):
+    """The path CI actually takes: 200 with configured=false, never a 500."""
+    from app.ai import gemini_client
+
+    monkeypatch.setattr(gemini_client, "is_configured", lambda: False)
+    experiment_id = _completed_experiment(qml_client, student_headers)
+
+    response = qml_client.post(
+        f"/qml/experiments/{experiment_id}/explain", headers=student_headers
+    )
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["configured"] is False
+    assert "GEMINI_API_KEY" in body["explanation"]
+    assert body["grounded_on"]["evaluation"], "the real numbers must come back regardless"
+
+
+def test_explain_translates_gemini_unavailable_into_503(
+    qml_client, student_headers, monkeypatch
+):
+    """FAKE transport raising the real exception, to prove the route maps it."""
+    from app.ai import gemini_client
+
+    def _boom(*args, **kwargs):
+        raise gemini_client.GeminiUnavailable("every model retired")
+
+    monkeypatch.setattr(gemini_client, "is_configured", lambda: True)
+    monkeypatch.setattr(gemini_client, "generate", _boom)
+    experiment_id = _completed_experiment(qml_client, student_headers)
+
+    response = qml_client.post(
+        f"/qml/experiments/{experiment_id}/explain", headers=student_headers
+    )
+    assert response.status_code == 503
+    assert "retired" in response.json()["detail"]
+
+
+def test_explain_never_echoes_the_api_key_in_any_response(
+    qml_client, student_headers, monkeypatch
+):
+    from app.ai import gemini_client
+
+    secret = "AIzaSy-ROUTE-LEVEL-FAKE-KEY-123456789"
+
+    class _Settings:
+        gemini_api_key = secret
+        gemini_chat_model = "gemini-2.0-flash"
+
+    monkeypatch.setattr(gemini_client, "get_settings", lambda: _Settings())
+    monkeypatch.setattr(gemini_client, "is_configured", lambda: False)
+    experiment_id = _completed_experiment(qml_client, student_headers)
+
+    response = qml_client.post(
+        f"/qml/experiments/{experiment_id}/explain", headers=student_headers
+    )
+    assert secret not in response.text

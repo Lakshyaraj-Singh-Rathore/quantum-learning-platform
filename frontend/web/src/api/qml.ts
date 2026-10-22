@@ -502,3 +502,43 @@ export const METRIC_META: Record<
   rmse: { label: "RMSE", kind: "target" },
   r2: { label: "R\u00b2", kind: "signed" },
 };
+
+/* -------------------------------------------------------------------------- */
+/* Phase 6 — AI explanation                                                   */
+/* -------------------------------------------------------------------------- */
+
+/** The facts the server handed to the model, returned so the UI can print
+ *  them beside the prose. A fabricated number then sits directly above the
+ *  real one instead of standing alone and authoritative (§2F.2). */
+export interface ExplanationFacts {
+  task: QmlTask | null;
+  algorithm: string | null;
+  dataset: {
+    name: string | null;
+    n_train: number | null;
+    n_test: number | null;
+    n_features: number | null;
+  };
+  circuit: {
+    n_qubits: number | null;
+    n_layers: number | null;
+    n_parameters: number | null;
+    encoding: string | null;
+  };
+  evaluation: Record<string, number | number[][] | null>;
+  baseline: Record<string, number | string | boolean | null>;
+  epochs_completed: number | null;
+  n_epoch_rows: number;
+}
+
+/** `configured: false` is a first-class state, not an error: it is what
+ *  CI and most checkouts return, and it still carries a useful body. */
+export interface QmlExplanation {
+  configured: boolean;
+  explanation: string;
+  grounded_on: ExplanationFacts;
+}
+
+export function explainExperiment(id: number): Promise<QmlExplanation> {
+  return api.post<QmlExplanation>(`/qml/experiments/${id}/explain`, {});
+}

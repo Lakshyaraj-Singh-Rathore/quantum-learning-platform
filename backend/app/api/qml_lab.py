@@ -29,6 +29,8 @@ from app.quantum.qml_lab import limits
 from app.quantum.qml_lab.errors import QmlLabError, QmlLimitExceededError
 from app.quantum.qml_lab import algorithms
 from app.quantum.qml_lab.models import QmlExperimentConfig
+from app.ai import gemini_client
+from app.services import qml_ai
 from app.services import qml_lab as service
 from app.workers.qml_tasks import run_qml_experiment
 
@@ -316,3 +318,46 @@ def inference(
             status_code=409,
             detail={"errors": [f"Saved model for experiment {row.id} is missing: {exc}"]},
         ) from exc
+
+
+@router.post("/experiments/{experiment_id}/explain")
+def explain_experiment(
+    experiment_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> dict[str, Any]:
+    """Explain a finished experiment in prose, grounded on its stored numbers.
+
+    Flag-gated by construction: this router is only mounted when
+    ``qml_enabled`` is true, so with the flag off the path is absent and
+    answers 404 rather than 401 or 500 (§2A.6). Ownership goes through
+    ``_get_experiment``, the same 404-then-403 helper every other route
+    here uses, so an explanation cannot be used to read someone else's
+    experiment.
+
+    Never 500s on a missing key: ``explain`` returns ``configured: false``
+    with a useful offline body, because that is the state most checkouts
+    and all of CI are in (§2F.1).
+    """
+    row = _get_experiment(experiment_id, db, user)
+    if row.status not in TERMINAL_STATUSES:
+        raise HTTPException(
+            status_code=409,
+            detail={"errors": [f"Experiment is {row.status}, not finished"]},
+        )
+    if not isinstance(row.result, dict) or not row.result:
+        raise HTTPException(
+            status_code=409,
+            detail={"errors": [f"Experiment {row.id} stored no result to explain"]},
+        )
+
+    try:
+        return qml_ai.explain(row.result, service.load_history(db, row.id))
+    except ValueError as exc:
+        # The over-length guard. 422 rather than a truncated answer: the
+        # tail of the prompt is the evidence, so dropping it would produce
+        # a confident explanation of numbers the model never saw.
+        raise HTTPException(status_code=422, detail={"errors": [str(exc)]}) from exc
+    except gemini_client.GeminiUnavailable as exc:
+        # Mirrors api/jobs.py's handling of the same exception.
+        raise HTTPException(status_code=503, detail=str(exc)) from exc

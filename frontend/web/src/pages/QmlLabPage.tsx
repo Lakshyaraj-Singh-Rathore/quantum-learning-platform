@@ -11,6 +11,7 @@ import { Badge, EmptyState, Spinner, Tabs, TabsContent, TabsList, TabsTrigger } 
 import { QmlConfigForm } from "../components/qml/QmlConfigForm";
 import { QmlCircuitPreview } from "../components/qml/QmlCircuitPreview";
 import { QmlTrainingDashboard } from "../components/qml/QmlTrainingDashboard";
+import { QmlExplanationPanel } from "../components/qml/QmlExplanationPanel";
 import { QmlResultsPanel } from "../components/qml/QmlResultsPanel";
 import { useQmlExperiment } from "../hooks/useQmlExperiment";
 import { runInference } from "../api/qml";
@@ -308,6 +309,13 @@ export default function QmlLabPage() {
                 inferenceError={inference.error as Error | null}
                 responseCurve={responseCurve}
               />
+            )}
+            {/* §2E.1: the explanation extends the Results view rather than
+                adding a route. Only offered once there is a stored result
+                to ground on -- an explanation of nothing is the failure
+                mode this feature exists to avoid. */}
+            {experimentId != null && experiment?.result && isTerminal(status) && (
+              <QmlExplanationPanel experimentId={experimentId} />
             )}
           </TabsContent>
         </Tabs>
