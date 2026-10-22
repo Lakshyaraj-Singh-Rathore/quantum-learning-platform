@@ -1270,6 +1270,11 @@ The `QmlLabPage` lazy chunk is now **45.74 kB** after Phase 5c (+53% on the phas
 figure and, if it grows again, say what caused it. It is confined to the lazy chunk and the shared
 bundle has been byte-identical so far — keep it that way.
 
+**Clarified by Phase 7:** "byte-identical" here means **phase-over-phase against `origin/main`**, and
+that is a real gate worth keeping — it catches a phase silently pushing code into the shared chunk,
+which is how Phase 6's 9-byte `Info` icon regression was found and traced. It does **not** mean
+identical to a pre-QML baseline, which is unsatisfiable (§2G.3, Finding 1).
+
 ---
 
 ## 2G. Phase 7 — verification, and nothing else
@@ -1325,6 +1330,29 @@ path absent, the live OpenAPI with zero qml entries, `/features` answering unaut
 unchanged, and the shared bundle byte-identical to a pre-QML baseline. If any of those cannot be
 produced, that is a finding.
 
+**RESOLVED by Phase 7, Finding 1 — the last item was my error and is withdrawn.** Byte-identity
+against a *pre-QML* baseline is not merely unmet, it is **unsatisfiable**: the shared chunk carries
++1613 bytes and CSS +923, and what it carries is the lazy import declaration, the fail-closed
+default, the `useFeatures` hook, the gated nav entry and the route — which **is** the gating
+mechanism §2A.6 mandates. You cannot ship a flag-gated lazy route without shipping its gate.
+
+Two distinct gates were being conflated, and only one is real:
+
+- **Behavioural identity vs pre-QML — the actual requirement, and it is met and proven.** 59 vs 66
+  OpenAPI paths, 7 added all under `/qml/`, 0 removed, **0 non-QML specs differing**, nav entry
+  absent, `/qml-lab` rendering the 404 body. The honest release-note wording: *with the flag off the
+  API surface is unchanged, the nav is unchanged, `/qml-lab` renders the 404 body, and the browser
+  downloads ~1.6 kB of dormant routing metadata it never executes.*
+- **Byte-identity phase-over-phase — a real and useful gate, but a different one.** Phase 6 met it
+  exactly (640793, after tracing a 9-byte regression to one extra export alias). It catches a phase
+  silently pushing code into the shared chunk. It says nothing about the pre-QML baseline and must
+  not be presented as if it did.
+
+Also from Phase 7: a CSS rule-diff of `main` against itself is **empty by construction and proves
+nothing**. The informative comparison is against the pre-QML baseline — 15 added, 1 changed,
+0 removed, where the single "changed" rule is Tailwind's own generated `@layer properties` block
+gaining `--tw-border-spacing` because QML used `border-separate`. **No hand-written rule altered.**
+
 ### 2G.4 The nine acceptance criteria
 
 Restate the master prompt's nine QNN acceptance criteria and map each to the code and the test that
@@ -1368,6 +1396,102 @@ harness or test *if* re-measurement exposes a gate that was wrong — and that m
 with the reason in the message. `pytest` stays at **1230 passed / 5 skipped**; if it moves, explain
 why. `ruff` reports no new findings. Tracked files grow only by `07-verification.md` and any
 decision-record edits.
+
+---
+
+## 2H. Phase 8 — release readiness, and the two things Phase 7 could not do
+
+Phase 8 produces **`docs/qml/08-release.md`**. Per §9's amendment there is no merge step to prepare —
+the work is ported to `main` at every phase boundary — so this phase is *"confirm `main` is
+deployable with the flag off, and document how to turn it on."*
+
+### 2H.0 Sequencing: the owner's qudit work lands first
+
+**Do not confirm deployability of a tree that is about to change.** The project owner has unpushed
+local work adding qudit gates and polishing the Qudit Lab, with **zero file overlap** with the QML
+work. Confirming `main` deployable now and then merging that work measures the wrong thing — the
+same error class as a Makefile target that times the container instead of the machine.
+
+So: the qudit branch merges, **then** Phase 8 runs. If it has not merged when this phase starts,
+stop and say so rather than verifying a tree with a known pending change.
+
+This is also why **§2C.6 remains deferred** — a qudit spike cannot be scoped against qudit code
+nobody can read.
+
+### 2H.1 Close Finding 2 — the fourth flag state must be rendered, not grepped
+
+Phase 7 established that the fail-closed path is **implemented correctly** (`useFeatures.ts:42`,
+`query.data ?? FEATURES_CLOSED`, an error counts as resolved) but is asserted only by a regex over
+source text at `qml-ui-check.mts:253`. That guard **fails on a behaviourally identical refactor** and
+**passes on a real regression**: keep the text, change `resolved` to `!query.isPending &&
+!query.isError`, and the route guard hangs forever on a backend outage while the test stays green.
+
+§2G.7 correctly forbade fixing it during a verification phase. **Fix it here.** Render the shell with
+a `QueryClient` whose `/features` query is seeded to an error state, and assert the nav lacks the
+entry and `/qml-lab` shows the 404 body. The harness already constructs a `QueryClient`, so this is
+small. Then **delete the regex guard** — keeping both means the brittle one still fails on a correct
+refactor. Prove the new assertion fails against the reinstated regression.
+
+This is the one place §2A.6's "proven, not asserted" is not yet met, and it is the state that matters
+most in production: a backend outage is exactly when a fail-closed gate must work.
+
+### 2H.2 The 57 pre-existing harness failures are a decision, not a footnote
+
+Phase 7 reproduced the decomposition Phase 5 could not: **`render:codelab` 9 + `render:p5` 20 +
+`render:games` 20 + `render:results` 8 = 57**, none of which reads `API_TARGET`, so all 57 are
+genuine failing assertions on `main` today and **none are in QML**.
+
+They predate this project and are not Phase 8's to fix silently. But a release document that says
+"all gates green" while 57 assertions fail is not accurate. So `08-release.md` must state the number,
+the per-script decomposition, that they are pre-existing and outside QML, and what the owner decides
+to do about them. **Do not repair them as a side quest** — that is a separate effort with its own
+risk, and it is the owner's call, not a phase's.
+
+### 2H.3 `bg-card` — record, and hand it to the owner
+
+**10 uses across 6 files emit zero CSS**: no `--color-card` token exists, while `border-line` on the
+same elements emits 19 rules. So `border border-line bg-card/60` renders the border and silently
+drops the background.
+
+All ten uses are in `src/components/qudit/` and `QuditLabPage.tsx` — **the owner's active files.** Do
+not fix this in Phase 8: it would collide with unpushed work, and the fix (define the token, or
+replace the class) is a design decision. Record it in `08-release.md` as a known cosmetic defect with
+its exact measurement, and note that it is a *plausible* token name that fails silently, which is why
+it survived — Tailwind emits nothing for an undefined colour and no tool complains.
+
+### 2H.4 What `08-release.md` must contain
+
+- **Two-part enablement**, both required: `QML_ENABLED=true` **and** `docker compose --profile qml`
+  for the `qml-worker` (§2A.5). Neither alone works, and saying only one is how a deployment silently
+  queues jobs nothing consumes.
+- **Rollback**, concretely: the alembic `downgrade()` proven in §1.6 — noting that Phase 5b's
+  `j5e8f1a4b7c2` downgrade is **deliberately lossy**, deleting epoch rows whose `train_accuracy` is
+  NULL before restoring NOT NULL — plus profile removal and D-028's status.
+- **Every MT row marked "blocks release" as a pre-enablement check**, in the order Phase 7 assembled:
+  **MT-004 → MT-001 → MT-006 → MT-010**, benchmark first because everything downstream assumes
+  `900/1200` is survivable. Include the three cheap additions Phase 7 made to MT-001 while a browser
+  is finally open: open a Radix `Select` (no portalled content has ever rendered), watch polling
+  actually stop on terminal, and look at the `bg-card` panels.
+- **The provisional timeouts stated as provisional.** `qml_task_soft_time_limit = 900` and
+  `hard = 1200` have never been tuned against the target machine. §2B.4 stands: tightening is fine,
+  **loosening needs the owner's sign-off**, and MT-004 is the only source of the numbers.
+- **The unverified surface, reproduced from `07-verification.md` §6** — no browser has rendered the
+  QML Lab, the live Gemini call has never executed, the benchmark has never run on target hardware,
+  no real broker or prefork pool or signal-based time limit has been exercised. A release doc that
+  omits this is the thing §8 exists to prevent.
+- **Behavioural identity, worded as Phase 7 resolved it** — not byte-identity, which is unsatisfiable
+  by the architecture §2A.6 mandates.
+
+### 2H.5 Gates
+
+`pytest` at **1230 passed / 5 skipped** plus whatever 2H.1 adds. `ruff` no new findings vs **79**.
+Typecheck 0, build PASS, a11y 0 criticals, goldens **190+804+3306 @ 1e-9**. The harness decomposition
+must be restated with 2H.1's change reflected — and if the render harness count moves, say which
+assertions moved and why. CSS rule-level diff against the **pre-QML baseline**, not against `main`,
+because a diff of `main` against itself is empty by construction and proves nothing.
+
+Product-code changes are permitted this phase **only** for 2H.1, and only in the harness. Everything
+else is `docs/qml/`.
 
 ---
 
