@@ -905,24 +905,107 @@ qudit spike are the two that can slip without leaving anything broken — but a 
 
 ---
 
-## 2D. Phase 5b — UI wiring for the three algorithms that already landed
+## 2D. Phase 5b — execution dispatch for the three algorithms that already landed
 
-Phase 5 stopped at §2C.8's second stopping point with **engines and a capability endpoint but no
-UI**: `hybrid_qnn`, `quantum_regression` and `quantum_kernel` are unreachable from the Lab, which
-still offers only the VQC. The master prompt's Phase 5 exit gate is *"its tests pass, **UI works**,
-baseline unchanged"* — so this is remaining Phase 5 scope, not a new phase and not a deferral.
+### 2D.0 The premise of this section was wrong, and the gap is deeper than "no UI"
 
-**This comes before Phase 6.** Three unreachable engines are dead code from a user's perspective,
-and MT-006 blocks release.
+Phase 5 landed engines, tests and a capability endpoint. It did **not** connect them. The service
+layer is still VQC-only end to end:
 
-### 2D.1 Extend the existing four views — do not fork a page per algorithm
+| Layer | Location | State |
+|---|---|---|
+| Dataset boundary | `models.py:24` `DatasetName = Literal["moons","circles","iris_binary"]` | **rejects `sine`/`damped_cosine`/`linear_mix` with a 422** |
+| Dataset builder | `datasets.py:256-262` | dispatches on those three only; never consults `regression_data.REGRESSION_DATASETS` (`:45`) |
+| Training | `services/qml_lab.py:284` | `model = VQC(...)` — **no dispatch on `config.algorithm`** |
+| Inference | `services/qml_lab.py:431` | `model = VQC(...)`; returns `{predictions, probabilities, …}` — classification-only |
+| Persistence | `persistence.py:99` `save_model(..., params: Parameters, ...)` | takes `vqc.Parameters`; writes `parameter_shape: {n_qubits, n_layers}` |
+
+So `algorithm: "hybrid_qnn"` is **accepted by the schema, capped by `limits`, advertised by
+`describe()` — and then silently trains a VQC.** That is worse than a missing feature: it is a
+wrong answer that looks like a right one.
+
+The three engines deliberately do not subclass `vqc.Parameters` (`hybrid.py:72` says so
+explicitly). They carry `HybridParameters`, `RegressionParameters` and `LSSVMFit`, so persistence
+cannot store any of them unchanged — and `LSSVMFit` is not parameters at all, it is dual
+coefficients plus the training data the Gram matrix was built from.
+
+**One thing is already correct — do not spend time re-verifying it.** `check()` (`limits.py:192`)
+does `algorithm = getattr(config, "algorithm", DEFAULT_ALGORITHM)` then `table =
+limits_for(algorithm)`, and `enforce()` calls `check()`. The §2C.1 per-algorithm ceilings *are*
+enforced at the boundary. The policy layer is complete; the execution layer is entirely VQC.
+
+**There is a live inconsistency on `main` right now.** `describe()` advertises the regression
+datasets (`services:540-542`) that `DatasetConfig` rejects. A client built to "drive everything
+from `/qml/describe`" would render three datasets that always fail with a 422. This is the decisive
+argument for dispatching before building UI: the UI spec is unbuildable against the current
+backend.
+
+Phase 5 stopped at §2C.8's second stopping point, and the master prompt's Phase 5 exit gate is *"its
+tests pass, **UI works**, baseline unchanged"* — so **both** the dispatch and the UI are remaining
+Phase 5 scope, not a new phase and not a deferral. They are split into 5b (this section, backend
+dispatch) and 5c (§2E, UI), in that order, and both come before Phase 6.
+
+**Why not build the UI first, or in parallel?** The backend work does not get cheaper by deferring
+it, but it does get *riskier*: once a Results view renders `METRICS_BY_TASK`, changing result and
+persistence shapes underneath it means changing both at once. And a partially-built selector where
+two of three options 422 violates §8 — never present unbuilt work as shipped.
+
+**Hybrid goes first inside 5b, as a seam-proving slice.** `HybridQNN` already exposes
+`initialise(rng)`, `predict(x, params)`, `predict_proba(x, params)` and `draw(features, params)` —
+the same surface as `VQC`, which is why it trained through the unmodified trainer in Phase 5. Its
+dispatch is close to a constructor swap, so it establishes the pattern cheaply before regression
+(needs `TargetScaler` threaded through persistence and inference) and kernel (a different artifact
+type and a no-epoch path). The slice is a *sequencing device*, not the phase deliverable: 5b is not
+done until all three run through the API.
+
+### 2D.1 Sequence
+
+1. **Make the gap loud with an invariant, not by suppressing it.** Add a test asserting that every
+   dataset `describe()` advertises is accepted by `DatasetConfig`, and every algorithm it advertises
+   is actually runnable. It fails today and passes at the end of the phase. Do **not** delete the
+   regression datasets from `describe()` to make it pass — that hides the gap and forces the
+   capability contract to be edited twice. Fix the class, not the instance.
+2. **One registry for datasets.** Widen `DatasetName` and make `build_dataset` consult the same
+   source as `REGRESSION_DATASETS`. Derive the Literal *from* the registry, or assert they agree in
+   a test — hand-editing both is how the frozen-dict drift happened in Phase 5.
+3. **Hybrid dispatch end to end**, including `save_model`/`load_model` accepting `HybridParameters`,
+   proven through the API with a smoke test.
+4. **Regression dispatch.** Thread `TargetScaler` through persistence — inference must reload the
+   *same* train-fitted scaler, not refit. The inference response is a value **in the user's units**
+   (`RegressionDataset` already carries both scaled and real `y`), never `probabilities`.
+5. **Kernel dispatch.** `LSSVMFit` needs its own artifact shape. There is no epoch loop —
+   `describe()` already pins `epochs` to 1 and hides `diff_method` (`:570-571`) — so do **not** emit
+   synthetic epochs to satisfy a persistence path that expects them. Give the no-epoch case its own
+   honest progress contract.
+6. **One inference contract for all tasks.** Decide once: task-tagged payload or per-task shapes.
+   Either way the response must **not** carry a zeroed field for a task that lacks it — §2C.4's
+   hazard, surfacing at the API instead of the UI.
+
+### 2D.2 Gates for 5b
+
+Backend-only, so Phase 5's by-construction argument still holds: **0 frontend files changed**,
+bundle hash identical, harness FAIL count unchanged, CSS rule-level diff empty. `pytest` must grow
+by the dispatch tests; the four flag states (§2A.6) must still hold against a live server, and with
+the flag **on**, a `hybrid_qnn`/`quantum_regression`/`quantum_kernel` experiment must each reach a
+terminal status through the real worker path.
+
+---
+
+## 2E. Phase 5c — UI wiring, against a backend that honours the selection
+
+Build this only after §2D is complete. Everything below was written for 5b and still stands; only
+the phase label changed.
+
+**Three engines with no UI are dead code from a user's perspective**, and MT-006 blocks release.
+
+### 2E.1 Extend the existing four views — do not fork a page per algorithm
 
 One Lab, one route, the same Configuration / Circuit / Training / Results views, with the algorithm
 selector driving what each shows. Five parallel pages would fragment the theme and multiply the
 maintenance surface. `Tabs`, `Select`, `DataTable`, `EmptyState`, `SplitPane` and `ConfirmModal` are
 all already in `components/ui.tsx` (§3.3).
 
-### 2D.2 Drive everything from `/qml/describe` — this is the whole point of Phase 5's last commit
+### 2E.2 Drive everything from `/qml/describe` — this is the whole point of Phase 5's last commit
 
 `services/qml_lab.py:444` now serves, per algorithm: a label, a `task` (`classification` |
 `regression`), a description, its limits table, its datasets and its gradient methods. It also
@@ -940,7 +1023,7 @@ algorithm's table, so the kernel's lower cap (§2C.3) appears the moment the use
 reason visible. Client-side validation must mirror the server's per-algorithm numbers, not the old
 flat ones.
 
-### 2D.3 Two new visualisations, both hand-rolled SVG (§1.4)
+### 2E.3 Two new visualisations, both hand-rolled SVG (§1.4)
 
 - **Predicted-vs-actual** for regression — a scatter with the identity line, reusing `charts.tsx`.
   MAE and RMSE must be labelled **in the target's own units**, not the scaled ones, and **R² must
@@ -952,7 +1035,7 @@ flat ones.
 No chart library. Colour from tokens only; §2B's CSS rule-level diff showed Phase 3 added **no new
 colour**, and that should stay true.
 
-### 2D.4 Re-scope MT-006 once the UI lands
+### 2E.4 Re-scope MT-006 once the UI lands
 
 MT-006 currently carries two different things in one row: *"no UI exists for regression"* (build
 scope, not a manual test) and *"a human must confirm MAE/RMSE/R² render with units and that no
@@ -961,7 +1044,7 @@ to the second and keep the ID — §8A says rows are never deleted or renumbered
 visual checks the hybrid and kernel views genuinely need, and automate everything that can be
 automated by SSR harness first.
 
-### 2D.5 Gates specific to this phase
+### 2E.5 Gates specific to this phase
 
 Phase 5b **does** touch the frontend, so the by-construction argument no longer applies and the
 bundle hash will change. Replace it as Phase 3 did: build `origin/main` in a scratch worktree and
