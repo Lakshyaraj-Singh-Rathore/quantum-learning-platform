@@ -17,7 +17,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.quantum.qml_lab import limits
 
@@ -25,6 +25,10 @@ DatasetName = Literal["moons", "circles", "iris_binary"]
 Rotation = Literal["X", "Y", "Z"]
 Entanglement = Literal["ring", "linear", "none"]
 DiffMethod = Literal["backprop", "parameter-shift"]
+#: Built from limits.ALGORITHMS so the schema and the ceiling table cannot
+#: drift apart -- a new algorithm is unacceptable to the API until it is
+#: listed there with its ceilings.
+Algorithm = Literal["vqc", "hybrid_qnn", "quantum_kernel", "quantum_regression"]
 ExperimentStatus = Literal["pending", "running", "completed", "failed", "cancelled"]
 
 
@@ -73,6 +77,16 @@ class CircuitConfig(BaseModel):
     )
     rotation: Rotation = Field(default="Y", description="Axis used by the angle encoder")
     entanglement: Entanglement = Field(default="ring", description="CNOT topology within a layer")
+    n_hidden: int | None = Field(
+        default=None,
+        ge=1,
+        le=limits.MAX_HIDDEN_UNITS,
+        description=(
+            "Width of the hybrid model's classical layer. Only meaningful for "
+            "algorithm='hybrid_qnn'; must not exceed n_qubits, since each emitted "
+            "value needs one wire to encode onto. None means 'use n_qubits'."
+        ),
+    )
 
 
 class TrainingConfig(BaseModel):
@@ -102,10 +116,42 @@ class QmlExperimentConfig(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
+    algorithm: Algorithm = Field(
+        default=limits.DEFAULT_ALGORITHM,
+        description=(
+            "Which model to fit. Ceilings are enforced per algorithm (2C.1): a "
+            "sample count that is fine for a VQC is far outside what a kernel can "
+            "finish, because a kernel matrix is O(N^2) circuit evaluations."
+        ),
+    )
     dataset: DatasetConfig = Field(default_factory=DatasetConfig)
     circuit: CircuitConfig = Field(default_factory=CircuitConfig)
     training: TrainingConfig = Field(default_factory=TrainingConfig)
     seed: int = Field(default=1234, ge=0, le=2**32 - 1, description="Master seed for the whole run")
+
+    @model_validator(mode="after")
+    def _check_algorithm_fit(self) -> "QmlExperimentConfig":
+        """Reject combinations the per-field bounds cannot see.
+
+        Pydantic validates each field in isolation, so n_hidden <= n_qubits and
+        "n_hidden only means something for a hybrid" both have to be checked
+        once the whole object exists. Rejecting loudly here is the 1A rule: a
+        field that is silently ignored returns a plausible wrong answer.
+        """
+        hidden = self.circuit.n_hidden
+        if hidden is not None:
+            if self.algorithm != "hybrid_qnn":
+                raise ValueError(
+                    f"circuit.n_hidden is only valid for algorithm='hybrid_qnn', "
+                    f"not {self.algorithm!r}"
+                )
+            if hidden > self.circuit.n_qubits:
+                raise ValueError(
+                    f"circuit.n_hidden={hidden} exceeds circuit.n_qubits="
+                    f"{self.circuit.n_qubits}; angle encoding needs one wire per "
+                    f"value emitted by the classical layer"
+                )
+        return self
 
 
 class EpochRecord(BaseModel):
@@ -150,6 +196,42 @@ class EvaluationResult(BaseModel):
     f1: float
     confusion_matrix: list[list[int]] = Field(description="[[TN, FP], [FN, TP]]")
     n_samples: int
+
+
+class RegressionResult(BaseModel):
+    """Regression metrics on one split.
+
+    A **separate type**, not EvaluationResult with nullable fields (2C.4).
+    A result object whose ``accuracy`` is None invites a UI that renders it
+    as 0, and "0" reads as "the model scored zero" -- a lie of a different
+    kind than a blank. Keeping the types disjoint means a regression result
+    cannot be handed to a view expecting a confusion matrix at all.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    mae: float = Field(description="Mean absolute error, in target units")
+    rmse: float = Field(description="Root mean squared error, in target units")
+    r2: float = Field(description="Coefficient of determination; 1.0 is perfect, 0.0 is the mean")
+    n_samples: int
+
+
+class RegressionEpochRecord(BaseModel):
+    """One row of a regression training history.
+
+    Mirrors EpochRecord's shape so the loss-curve chart is reusable, but the
+    second series is R^2 rather than accuracy, because accuracy does not
+    exist for continuous targets.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    epoch: int = Field(ge=1)
+    train_loss: float
+    train_r2: float
+    test_loss: float
+    test_r2: float
+    elapsed_seconds: float
 
 
 class BaselineResult(BaseModel):

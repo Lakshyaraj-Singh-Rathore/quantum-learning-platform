@@ -463,4 +463,117 @@ def describe() -> dict[str, Any]:
         "device": "default.qubit",
         "max_concurrent_experiments": limits.MAX_CONCURRENT_JOBS,
         "statuses": ["queued", "running", "completed", "failed", "cancelled", "timed_out"],
+        "default_algorithm": limits.DEFAULT_ALGORITHM,
+        "algorithms": _describe_algorithms(),
     }
+
+
+#: Which metrics a results panel should render, per task. The point of
+#: serving this rather than letting the client decide is MT-006: a UI that
+#: hardcodes "accuracy" renders 0 for a regression run, and 0 reads as
+#: "scored zero" rather than "not applicable" (§2C.4, D-033).
+_TASK_METRICS: dict[str, list[str]] = {
+    "classification": ["accuracy", "precision", "recall", "f1"],
+    "regression": ["mae", "rmse", "r2"],
+}
+
+#: Which per-epoch series the training chart should plot, per task.
+_TASK_EPOCH_FIELDS: dict[str, list[str]] = {
+    "classification": ["train_loss", "train_accuracy", "test_accuracy"],
+    "regression": ["train_loss", "test_loss", "train_r2", "test_r2"],
+}
+
+_ALGORITHM_META: dict[str, dict[str, Any]] = {
+    "vqc": {
+        "label": "Variational classifier",
+        "task": "classification",
+        "summary": "Angle-encoded features, a trainable ansatz, sign of <Z0> as the label.",
+    },
+    "hybrid_qnn": {
+        "label": "Hybrid QNN",
+        "task": "classification",
+        "summary": (
+            "A classical affine layer and tanh feed the encoding angles, so the model "
+            "differentiates end to end through autograd (D-031)."
+        ),
+    },
+    "quantum_kernel": {
+        "label": "Quantum kernel (LSSVM)",
+        "task": "classification",
+        "summary": (
+            "Fidelity kernel between every pair of samples, fitted by least-squares SVM. "
+            "Sample count is capped separately and hard because cost is quadratic (D-032)."
+        ),
+    },
+    "quantum_regression": {
+        "label": "Quantum regression",
+        "task": "regression",
+        "summary": (
+            "Raw <Z0> as a continuous prediction, MSE loss, data re-uploading on by "
+            "default so the model can represent more than frequency 1 (D-034)."
+        ),
+    },
+}
+
+
+def _describe_algorithms() -> list[dict[str, Any]]:
+    """Per-algorithm capability entries, all with an identical key shape.
+
+    §2C.7 requires the config view to show only the options valid for the
+    selected algorithm, **driven by this endpoint rather than hardcoded
+    client-side**. D-032 guarantees every ``limits_for`` table has the same
+    keys, so the UI reads one shape and never branches on algorithm name.
+    """
+    from app.quantum.qml_lab import regression_data
+
+    entries: list[dict[str, Any]] = []
+    for name in limits.ALGORITHMS:
+        meta = _ALGORITHM_META[name]
+        task = meta["task"]
+
+        if task == "regression":
+            available = [
+                {
+                    "name": dataset,
+                    "max_samples": limits.MAX_SAMPLES,
+                    "n_features": 2 if dataset == "linear_mix" else 1,
+                    "required_angle_frequency": regression_data.REQUIRED_ANGLE_FREQUENCY[dataset],
+                }
+                for dataset in regression_data.REGRESSION_DATASETS
+            ]
+        else:
+            available = [
+                {
+                    "name": dataset,
+                    "max_samples": maximum if maximum is not None else limits.MAX_SAMPLES,
+                    "n_features": 4 if dataset == "iris_binary" else 2,
+                    "required_angle_frequency": None,
+                }
+                for dataset, maximum in datasets.DATASET_MAX_SAMPLES.items()
+            ]
+
+        entries.append(
+            {
+                "name": name,
+                "label": meta["label"],
+                "task": task,
+                "summary": meta["summary"],
+                "limits": limits.limits_for(name),
+                "datasets": available,
+                "metrics": list(_TASK_METRICS[task]),
+                "epoch_fields": list(_TASK_EPOCH_FIELDS[task]),
+                "supports": {
+                    # the classical hidden layer is hybrid-only
+                    "n_hidden": name == "hybrid_qnn",
+                    # the kernel is closed-form: epochs is pinned to 1, so a
+                    # UI must not offer an epoch slider for it
+                    "epochs": name != "quantum_kernel",
+                    "diff_method": name != "quantum_kernel",
+                    "data_reuploading": name == "quantum_regression",
+                },
+                "baseline": (
+                    "ridge" if task == "regression" else "logistic_regression"
+                ),
+            }
+        )
+    return entries

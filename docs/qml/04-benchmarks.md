@@ -33,9 +33,11 @@ Flags: `--quick` (2–6 qubits, ~3 min) and `--full` (up to the allowed maxima, 
 sandbox) are mutually exclusive; `--reps N` overrides the repetition count; `--reproject FILE`
 recomputes the projections from a saved results JSON without re-measuring anything.
 
-**It is not wired into the `Makefile`, deliberately.** Every existing Makefile target shells
-into Docker Compose (`$(COMPOSE) exec api …`), so a `make bench` would measure the *container*,
-which is precisely the machine §2B.1 says not to measure. `Makefile` is also absent from §4's
+**It is not wired into the `Makefile`, deliberately.** Every Makefile target that runs a command
+against the application does so inside the api container via `$(COMPOSE) exec api …` — 4 of its
+9 Compose-invoking recipe lines, `make test` among them; the other 5 are lifecycle (`up`, `down`,
+`ps`, `logs`). A `make bench` following that house pattern would measure the *container*, which
+is precisely the machine §2B.1 says not to measure. `Makefile` is also absent from §4's
 allowed-touch-points table, and the target OS is Windows, where `make` is usually not installed.
 §2B.2 permits either wiring or an exact documented invocation; this is the documented invocation.
 

@@ -441,9 +441,16 @@ rejects an out-of-range value, but it does not advertise the range.
 **Decision.** `backend/scripts/bench_qml.py`, run by hand from a documented invocation
 (`docs/qml/04-benchmarks.md` §1), not `make bench`.
 
-**Why not the Makefile.** Every existing target in it shells into Docker Compose
-(`$(COMPOSE) exec api …`). A `make bench` would therefore time the *container*, which is
-exactly the machine §2B.1 says must not be used to set limits. `Makefile` is also absent from
+**Why not the Makefile.** *(Wording corrected after Phase 4 review — the original claim,
+"every existing target shells into Docker Compose", overstated it. Measured: the Makefile has
+**13 targets** and **9 recipe lines** that invoke `$(COMPOSE)`, of which **4 use
+`$(COMPOSE) exec api …`** to run a command inside the container; the other 5 are lifecycle
+(`up`, `down`, `ps`, `logs`). The conclusion is unchanged and is upheld.)*
+
+Every Makefile target that **runs a command against the application** does so inside the api
+container via `$(COMPOSE) exec` — that is the house pattern, and `make test` is exactly it. A
+`make bench` following that pattern would therefore time the *container*, which is precisely
+the machine §2B.1 says must not be used to set limits. `Makefile` is also absent from
 §4's allowed-touch-points table, and the target OS is Windows, where `make` is usually not
 installed. §2B.2 accepts "wired into the Makefile **or** with the exact invocation documented";
 the second branch is the one that measures the right machine, and it keeps Phase 4 additive.
@@ -532,3 +539,207 @@ No GPU work was attempted. `lightning.gpu` requires CUDA on Linux and the target
 does not compose with a PennyLane device. The sandbox has no GPU and no `docker` binary, so
 even an exploratory check was impossible. Recorded so no later phase reads the silence as an
 oversight.
+
+## D-031 — The hybrid QNN uses `autograd`, not PyTorch
+
+**Settled by §2C.2; recorded here because `hybrid.py` cites it.**
+
+PyTorch was never installed. A `pip install --dry-run torch` in Phase 0 resolved **24 packages**
+including the CUDA toolkit — for *one optional algorithm*, on a 16 GB laptop. The dry-run showed
+torch would be *safe* to install; safe is not the same as worth it, and the burden of proof sits
+with the addition, not the omission.
+
+**The premise was proven before the code was written, and again after.** A no-torch gradient
+probe in Phase 0 agreed with the analytic value to **2.220e-16**. With the classical layer
+actually in the path, the max absolute difference between the autograd gradient and a central
+finite difference over all 9 classical parameters is **2.316e-10** (ε=1e-6), and backprop agrees
+with parameter-shift to **1e-9**. The classical layers are written in autograd-compatible numpy,
+so the hybrid differentiates end to end with nothing added to `requirements.txt`.
+
+**What would reopen this.** A genuine wall — a layer type autograd cannot express, or a
+measured performance cliff — is a §5.3 stop with the dry-run attached, not a unilateral install.
+
+## D-032 — Ceilings are per-algorithm, but the limits payload keeps one shape
+
+**Settled by §2C.1.** Algorithms have genuinely different costs: a 250-sample quantum kernel is
+31,375 upper-triangle circuit evaluations *before any fitting*, priced from the measured
+10.377 ms/sample at 8q×4L at ≈**326 s**. The same 1000 samples the classifier handles without
+comment would be 500,500 evaluations ≈ **87 minutes**, 102× over the soft limit. One global
+ceiling therefore either strangles the classifier or lets the kernel hang.
+
+`ALGORITHM_LIMITS` lists only the keys an algorithm *tightens*. Three properties are tested
+rather than documented and hoped for: a new algorithm **cannot loosen** a global maximum; **no
+algorithm drops** a global key; and **every entry has exactly `{default, min, max}`**, so a
+config view can render one control per entry.
+
+*(Corrected during the regression commit.* The original wording here claimed every table has an
+**identical shape**, and a test named `..._shape_is_identical_across_algorithms` appeared to
+back it. Neither was true: `hybrid_qnn` really does carry an extra `n_hidden` key, and the test
+asserted only a *subset* relation — its name promised a guarantee the code did not make. The
+test has been renamed to what it checks and split, and the accurate statement is above.*)
+
+An algorithm **may** add a key, but never silently: additions sit in a declared allowlist and
+`test_any_extra_limit_key_is_declared_and_announced` asserts the matching `supports` flag in
+`/qml/describe` agrees with the table. That is what lets the config view iterate the limits
+table and render a control per entry **without branching on the algorithm name** (§2C.7) — the
+extra key is self-describing rather than something the client has to know about.
+
+`limits_for("unknown")` raises rather than falling back to the global table — a silent fallback
+would hand a kernel run the classifier's ceiling.
+
+**This is also where the authorised parameter-shift tightening is encoded.** The 25.7 h max-config
+projection rests on the scaling law (`∝ B·(q·L)²`), not on sandbox absolute times, so it
+transfers; the ceiling is expressed as a per-algorithm limit plus an up-front `estimate_cost`,
+which is why D-028 had to land first.
+
+## D-033 — Regression gets its own types, its own datasets, and its own trainer
+
+**Settled by §2C.4 for the types; the datasets and trainer follow from the same argument.**
+
+`RegressionResult` and `RegressionEpochRecord` are separate types, not the classification types
+with nullable fields. A `None` accuracy invites a UI that renders `0`, which reads as "scored
+zero" rather than "not applicable". A test asserts `RegressionResult` has **no** `accuracy`,
+`precision`, `recall`, `f1` or `confusion_matrix` attribute at all.
+
+The split is separate for the same class of reason. The classifier's split is *stratified* —
+it balances classes across train and test — and that operation is meaningless for a continuous
+target. Reusing it via a discretised label would produce a split that looks fine and is subtly
+wrong. `REGRESSION_DATASETS` is a separate registry, so asking for `moons` here raises instead
+of silently falling back.
+
+**The target needs its own scaler, and it is the leakage-sensitive half.** `<Z₀>` lives in
+`[-1, 1]`, so a target in, say, `[0, 40]` is unreachable and the model would converge to a
+constant and look broken. `TargetScaler` is fitted on `y_train` **alone** and predictions are
+mapped back, so every reported MAE and RMSE is in the user's own units. The §1A leakage
+assertion is made exact rather than inferential: the test asserts the fitted bounds *are* the
+training split's raw bounds (`np.array_equal`), which required carrying the raw splits on the
+dataset — themselves needed for a prediction-vs-input plot.
+
+**R² never returns `nan`.** Zero variance makes it undefined; it returns 1.0 if the prediction is
+exactly that constant and 0.0 otherwise, mirroring `precision_recall_f1`'s documented convention
+of returning a real number for a degenerate input.
+
+## D-034 — Data re-uploading is on by default, because single encoding cannot represent the targets
+
+**Not pre-settled by the vision — found by measurement during Phase 5, and it changed the design.**
+
+The first regression run fit `sin(2x)` at **R² = +0.104**, losing to a linear ridge baseline at
++0.208. That is the wrong shape of result for a non-linear target, so it was diagnosed rather
+than tuned away: sweeping the encoded angle and taking an FFT of `<Z₀>` showed the model's
+accessible spectrum is **{0, ±1}** — frequency-2 power was **1e-5**, i.e. numerical noise. The
+target was not under-trained, it was **structurally unrepresentable**.
+
+Re-uploading the features before each of `n_layers` ansatz blocks widens the spectrum to
+frequencies up to `n_layers` (Pérez-Salinas et al.). Measured at identical parameters,
+frequency-2 power rises **0.00098 → 0.02144, a 22× increase**, and `sine` goes **+0.104 → +0.328**,
+now beating the ridge baseline. `test_reuploading_widens_the_frequency_spectrum` pins the
+measurement, not the conclusion.
+
+**A second, non-obvious consequence, and the reason the datasets changed.** The feature scaler
+maps `[-π, π]` onto the encoder's `[0, π]`, i.e. `x = 2a - π`, which **doubles every frequency**:
+`sin(x) → -sin(2a)`, `cos(3x) → cos(6a)`. With `MAX_LAYERS = 4` the reachable angle-frequency is
+4, so the originally-drafted `cos(3x)` target needed frequency 6 and was **unreachable at every
+configuration the schema permits** — it would have trained to a flat line and read as a broken
+model rather than an impossible request. The datasets were retargeted to `sin(x)` (frequency 2)
+and `exp(-|x|/2)·cos(2x)` (frequency 4, at the ceiling), and
+`test_every_regression_dataset_is_inside_the_frequency_budget` now **fails the build** if a
+dataset is ever added that breaks the budget.
+
+## D-035 — The regression baseline is ridge, solved in closed form
+
+The classification baseline is a genuinely trained logistic regression (scipy L-BFGS-B on the
+analytic gradient), so the regression side needed the same honesty rather than a strawman.
+Ridge has an exact solution, `(XᵀX + λI)⁻¹Xᵀy`, so there is no optimiser to tune — one
+`numpy.linalg.solve`, no scikit-learn (D-014).
+
+**The intercept is deliberately not penalised**; shrinking it biases predictions toward zero
+rather than toward the target's mean, and a test pins that. The `linear_mix` dataset exists
+precisely so the baseline is *strong*: a test asserts ridge recovers the known coefficients
+(1.5, −0.8) to 1e-4 and clears R² > 0.95. On that control the quantum regressor reaches
+**R² = 0.972 against ridge's 0.997** — the classical model wins, and that is reported rather
+than hidden, because a linear model solving a linear problem is the expected outcome and the
+comparison is only worth anything if it can come out that way.
+
+## D-036 — The kernel is an LSSVM, and the strict upper triangle is the only thing computed
+
+**Settled by §2C.3.** A C-SVM needs a quadratic-programming solver and a dual formulation with
+box constraints — a dependency and a pile of machinery for one of four algorithms. The LSSVM
+replaces the inequality constraints with equalities, so the entire fit is `numpy.linalg.solve`
+on the matrix already computed.
+
+**It is labelled LSSVM everywhere it is surfaced**, because the two are not the same estimator:
+the LSSVM loses sparsity (every sample becomes a support vector, and `n_support` reports it) and
+is less robust to outliers. A test asserts the `describe()` label and a mutant that renames it
+"SVM" is killed.
+
+**Only the strict upper triangle is evaluated — `n(n-1)/2`, not `n(n+1)/2`.** This is a
+correction to D-032's arithmetic: that entry priced the cap at 31,375 evaluations, which is
+`n(n+1)/2` and includes the diagonal. The diagonal is `|<φ(x)|φ(x)>|² = 1` **exactly**, by
+construction rather than approximately, so it is written as 1.0 and never evaluated. The real
+figure at the 250-sample cap is **31,125**, against 62,500 for the naive full matrix. The
+saving is therefore slightly better than 2×, and a test counts the actual QNode calls rather
+than trusting the claim.
+
+`I/γ` regularisation is not optional. Duplicate and near-duplicate encoded points are ordinary
+once features are clipped into `[0, π]`, so the Gram matrix is often singular; without the term,
+`numpy.linalg.solve` raises `LinAlgError` on input a user can produce by accident.
+
+`predict` uses `> 0` rather than `np.sign`, which returns 0 at exactly zero and would emit a
+third class. A test constructs a decision value of exactly 0.0 to cover it.
+
+## D-037 — Two latent defects found by the kernel work, both fixed at the root
+
+Recorded because both were *silent* and both had already shipped in earlier commits.
+
+**`ALGORITHM_LIMITS` was a snapshot, so the cap could not be tested.** A module-level dict
+literal captures `MAX_KERNEL_SAMPLES` at import, so `monkeypatch.setattr(limits,
+"MAX_KERNEL_SAMPLES", 10)` never reached `limits_for` — a ceiling test would pass while
+silently exercising the real 250. This is the **same defect** already found and fixed in
+`LIMITS`/`limits_for` one commit earlier; it recurred because that fix was applied to the
+symptom rather than to both snapshots. `_algorithm_overrides()` now re-reads the live
+constants, matching `_base_table()`, and a test pins it.
+
+**`QmlLimitExceededError` shredded a single string into characters.** Its signature is
+`list[str]` and it joins with `"; "`; a bare string is a valid iterable of characters, so
+`QmlLimitExceededError("too big")` produced `t; o; o;  ; b; i; g` in the API response. The type
+hint was never enforced and nothing failed. It now accepts a single message explicitly, with a
+regression test.
+
+## D-038 — Phase 5 stopped after the kernel: noise and the qudit spike are named deferrals
+
+**§2C.8 names two defensible stopping points — after regression, or after the kernel.** This is
+the second. Recorded explicitly because §2C.8 also says a slipped item must be a named deferral
+rather than a silence.
+
+**Delivered:** D-028 cost-estimator fix (prerequisite, landed first because Phase 5 creates call
+sites), the manual-test register, the Hybrid QNN on autograd, per-algorithm ceilings, quantum
+regression with its own types and datasets, the ridge baseline, the quantum kernel as an LSSVM,
+and per-algorithm capabilities served from `/qml/describe`.
+
+**Deferred, with reasons:**
+
+- **§2C.5 noise — not started.** Nothing is broken by its absence: no noise vocabulary was
+  invented, no second set of names competes with `noise_lab`'s, and no `NoiseConfig` was
+  half-wired. The constraints that will govern it are already settled and unchanged — reuse
+  `noise_lab`'s vocabulary but not its defaults, `extra="forbid"` with explicit enabling
+  because `NoiseConfig` defaults every group to `enabled: False` and would silently ignore a
+  flat payload, finite shots are mandatory with reported shot variance, and
+  `DENSITY_MATRIX_MAX_QUBITS = 6` binds.
+- **§2C.6 qudit spike — not started.** It is time-boxed and the document is the deliverable, so
+  starting it late and rushing would produce exactly the thing §2C.6 warns against: a stub
+  returning zero gradients that poisons every later phase trusting it. "Not feasible without X"
+  remains a complete, successful outcome, and it is better written from a real time-box than
+  from a remainder.
+- **UI for all three new algorithms — not built.** The engines, limits, metrics and capability
+  endpoint landed; the config and results views did not. This is the largest deferral and the
+  one most visible to a user: the QML Lab still offers only the VQC. The backend groundwork for
+  the UI *is* done and tested — `/qml/describe` now serves per-algorithm limits, datasets,
+  metric lists, epoch-chart series and a `supports` map, with tests asserting a regression run
+  can never surface an accuracy field (MT-006). Registered as MT-006 through MT-009.
+- **`.mts` harnesses for the new algorithms — not added**, because a harness asserts over UI
+  sources and there are none yet. No harness was stubbed, so the FAIL-count gate is unchanged
+  by construction rather than by adjustment.
+
+**Nothing in the repository is in a half-finished state.** Every module landed this phase is
+complete, tested and mutation-tested; the deferred work is work not begun, which is the
+condition §2C.8 asks for.

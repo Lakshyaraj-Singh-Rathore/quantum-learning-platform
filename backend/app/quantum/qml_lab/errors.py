@@ -25,7 +25,14 @@ class QmlLimitExceededError(QmlConfigError):
     apart in its logs.
     """
 
-    def __init__(self, violations: list[str]) -> None:
+    def __init__(self, violations: list[str] | str) -> None:
+        # A bare string is a perfectly good iterable of characters, so
+        # ``QmlLimitExceededError("too big")`` used to "work" and produce
+        # ``t; o; o;  ; b; i; g`` in the API response. The type hint said
+        # list[str] and nothing enforced it. Accept a single message
+        # explicitly rather than letting it shred into characters.
+        if isinstance(violations, str):
+            violations = [violations]
         self.violations = list(violations)
         super().__init__("; ".join(self.violations) if self.violations else "resource limit exceeded")
 

@@ -8,6 +8,7 @@ that behaviour.
 
 from __future__ import annotations
 
+import numpy as np
 import pytest
 from pydantic import ValidationError
 
@@ -163,3 +164,64 @@ def test_limit_table_is_exposed_for_the_ui():
     assert limits.LIMITS["n_qubits"]["max"] == limits.MAX_QUBITS
     assert limits.LIMITS["epochs"]["max"] == limits.MAX_EPOCHS
     assert limits.LIMITS["batch_size"]["default"] == limits.DEFAULT_BATCH_SIZE
+
+
+# ---------------------------------------------------------------------------
+# D-028: the evaluation term is per epoch, not once.
+# ---------------------------------------------------------------------------
+
+
+def _cost_config(*, epochs: int, n_samples: int, diff_method: str = "backprop"):
+    return QmlExperimentConfig.model_validate(
+        {
+            "dataset": {"name": "moons", "n_samples": n_samples, "test_fraction": 0.3},
+            "circuit": {"n_qubits": 2, "n_layers": 1},
+            "training": {"epochs": epochs, "batch_size": 16, "diff_method": diff_method},
+        }
+    )
+
+
+def test_estimate_cost_charges_evaluation_once_per_epoch():
+    """The exact shortfall D-028 describes: ``(epochs - 1) * n_samples``.
+
+    The superseded implementation used ``eval_execs = n_samples`` — one pass
+    "at the end". ``trainer.train`` scores both splits every epoch, so the old
+    number was short by this much. Asserting the gap explicitly means the bug
+    cannot reappear as a silent off-by-one-epoch.
+    """
+    epochs, n_samples = 7, 80
+    cfg = _cost_config(epochs=epochs, n_samples=n_samples)
+    cost = limits.estimate_cost(cfg)
+
+    assert cost["evaluation_executions"] == epochs * n_samples
+
+    superseded = cost["training_executions"] + n_samples
+    assert cost["circuit_executions"] - superseded == (epochs - 1) * n_samples
+
+
+def test_estimate_cost_matches_a_real_training_run():
+    """Count a real run with ``qml.Tracker`` and demand exact agreement.
+
+    No mocked qnode and no stubbed gradient: this drives the shipped trainer
+    over a real dataset and compares the estimator against the simulator's own
+    execution counter. Before D-028 this measured 306 against a claimed 186.
+    """
+    import pennylane as qml
+
+    from app.quantum.qml_lab.datasets import build_dataset
+    from app.quantum.qml_lab.trainer import train
+    from app.quantum.qml_lab.vqc import VQC
+
+    for diff_method in ("backprop", "parameter-shift"):
+        cfg = _cost_config(epochs=3, n_samples=60, diff_method=diff_method)
+        rng = np.random.default_rng(cfg.seed)
+        data = build_dataset(cfg.dataset, rng)
+        model = VQC(cfg.circuit, n_features=data.x_train.shape[1], diff_method=diff_method)
+
+        with qml.Tracker(model.device) as tracker:
+            train(model, data, cfg.training, rng, model.initialise(rng))
+
+        measured = int(tracker.totals["executions"])
+        assert measured == limits.estimate_cost(cfg)["circuit_executions"], (
+            f"{diff_method}: estimator and qml.Tracker disagree"
+        )

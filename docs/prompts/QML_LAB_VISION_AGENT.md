@@ -905,6 +905,77 @@ qudit spike are the two that can slip without leaving anything broken — but a 
 
 ---
 
+## 2D. Phase 5b — UI wiring for the three algorithms that already landed
+
+Phase 5 stopped at §2C.8's second stopping point with **engines and a capability endpoint but no
+UI**: `hybrid_qnn`, `quantum_regression` and `quantum_kernel` are unreachable from the Lab, which
+still offers only the VQC. The master prompt's Phase 5 exit gate is *"its tests pass, **UI works**,
+baseline unchanged"* — so this is remaining Phase 5 scope, not a new phase and not a deferral.
+
+**This comes before Phase 6.** Three unreachable engines are dead code from a user's perspective,
+and MT-006 blocks release.
+
+### 2D.1 Extend the existing four views — do not fork a page per algorithm
+
+One Lab, one route, the same Configuration / Circuit / Training / Results views, with the algorithm
+selector driving what each shows. Five parallel pages would fragment the theme and multiply the
+maintenance surface. `Tabs`, `Select`, `DataTable`, `EmptyState`, `SplitPane` and `ConfirmModal` are
+all already in `components/ui.tsx` (§3.3).
+
+### 2D.2 Drive everything from `/qml/describe` — this is the whole point of Phase 5's last commit
+
+`services/qml_lab.py:444` now serves, per algorithm: a label, a `task` (`classification` |
+`regression`), a description, its limits table, its datasets and its gradient methods. It also
+serves **`METRICS_BY_TASK`** (`regression → mae, rmse, r2`) and **`HISTORY_KEYS_BY_TASK`**
+(`regression → train_loss, test_loss, train_r2, test_r2`).
+
+So the client must **not** contain a hardcoded algorithm list, metric list, dataset list or limit.
+Read them from the payload. This is what makes §2C.4 structurally enforced rather than a matter of
+care: a Results view that renders `METRICS_BY_TASK[result.task]` *cannot* show an accuracy for a
+regression run, because the server never offers one. A view that hardcodes `accuracy` can, and will
+render `0` — which reads as "the model scored zero".
+
+Same for limits: the Configuration view's max for `n_samples` must come from the selected
+algorithm's table, so the kernel's lower cap (§2C.3) appears the moment the user picks it, with the
+reason visible. Client-side validation must mirror the server's per-algorithm numbers, not the old
+flat ones.
+
+### 2D.3 Two new visualisations, both hand-rolled SVG (§1.4)
+
+- **Predicted-vs-actual** for regression — a scatter with the identity line, reusing `charts.tsx`.
+  MAE and RMSE must be labelled **in the target's own units**, not the scaled ones, and **R² must
+  render its sign** because it can be negative (§2C.4, and MT-006's expected result).
+- **Kernel-matrix heatmap** — build it the way `DensityMatrixInspector` does, with a computed
+  inline `style` (§3.2). Never an interpolated Tailwind class; that is QL-001 again. Note the matrix
+  is symmetric with unit diagonal, so render the truth, not a triangle, and say so.
+
+No chart library. Colour from tokens only; §2B's CSS rule-level diff showed Phase 3 added **no new
+colour**, and that should stay true.
+
+### 2D.4 Re-scope MT-006 once the UI lands
+
+MT-006 currently carries two different things in one row: *"no UI exists for regression"* (build
+scope, not a manual test) and *"a human must confirm MAE/RMSE/R² render with units and that no
+classifier metric appears anywhere"* (a legitimate visual check). When the UI lands, narrow the row
+to the second and keep the ID — §8A says rows are never deleted or renumbered. Add whatever new
+visual checks the hybrid and kernel views genuinely need, and automate everything that can be
+automated by SSR harness first.
+
+### 2D.5 Gates specific to this phase
+
+Phase 5b **does** touch the frontend, so the by-construction argument no longer applies and the
+bundle hash will change. Replace it as Phase 3 did: build `origin/main` in a scratch worktree and
+diff the compiled CSS at **rule level** — the Phase 3 baseline was 12 added / 0 changed / 0 removed.
+Existing rules must not change; if one does, say which and why.
+
+Also re-establish the harness FAIL decomposition by measurement rather than inheriting it. Phase 5
+could not reproduce `57 = 9+20+20+8` and correctly refused to invent a matching figure — so measure
+it fresh this phase, per script, and record the new authoritative breakdown in §0's place.
+`a11y-check.mts` must stay at **0 criticals**, and the four flag states (§2A.6) must still hold
+against a live server.
+
+---
+
 ## 3. The UI/UX contract — match this exactly
 
 This is the part most likely to look wrong, so it is specified concretely rather than as
