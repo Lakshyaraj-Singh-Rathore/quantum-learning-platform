@@ -80,6 +80,51 @@ services:
     # the api service owns migrations; the worker just waits for the schema
     command: celery -A app.workers.celery_app.celery_app worker --loglevel=info --concurrency=2
 
+  # Quantum ML Lab worker. Separate from `worker` on purpose.
+  #
+  # celery_app.py routes app.workers.qml_tasks.* to the `qml` queue, and the
+  # worker above consumes only the default `celery` queue, so without this
+  # service a QML experiment would sit `queued` forever with no error anywhere.
+  #
+  # It is a second service rather than `-Q celery,qml` on the existing worker
+  # because training runs for minutes while simulations run for seconds:
+  # sharing a pool would let one training job occupy a slot the short jobs
+  # need, and pinning that shared pool to --concurrency=1 would halve the
+  # throughput of a shipped feature to buy a guarantee for an unshipped one.
+  #
+  # --concurrency=1 here IS the "one training job at a time" guarantee; the
+  # API's pre-dispatch 409 only explains the wait to the user.
+  #
+  # profiles: ["qml"] keeps today's behaviour byte-identical -- `make up` does
+  # not start this service. Enabling the feature is a documented two-part
+  # action: QML_ENABLED=true on the api service AND `--profile qml` here.
+  # CPU only by decision (statevector), so docker-compose.gpu.yml deliberately
+  # does not mention it.
+  qml-worker:
+    profiles: ["qml"]
+    build:
+      context: ./backend
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://quantum:quantum@postgres:5432/quantum_learn}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+    # Deliberately NOT overriding QML_ARTIFACT_DIR here. Both this service and
+    # `api` read the same .env, and the code resolves a relative value against
+    # the backend package root (services/qml_lab.py:artifact_root), not the
+    # working directory -- so both containers land on /app/artifacts/qml, and
+    # the shared ./backend bind mount makes it one directory on the host. An
+    # override on one service only would be the one way to break that.
+    volumes:
+      - ./backend:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: celery -A app.workers.celery_app.celery_app worker --loglevel=info -Q qml --concurrency=1
+
   # The React SPA is the only UI. Static bundle + /api proxy via its own
   # nginx, so the browser stays same-origin and CORS is a dev-only detail.
   # The dist is BAKED into the image (no bind mount): `make up` rebuilds this

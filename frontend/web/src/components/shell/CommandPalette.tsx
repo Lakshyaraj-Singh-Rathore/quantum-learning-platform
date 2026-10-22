@@ -16,7 +16,7 @@ import { LogOut, Moon, Search, Sun } from "lucide-react";
 
 import { useSession } from "../../state/session";
 import { useTheme } from "../../state/theme";
-import { NAV_ITEMS } from "./nav";
+import { useNavItems } from "./nav";
 
 interface Command {
   id: string;
@@ -64,10 +64,13 @@ export function CommandPalette({
   const navigate = useNavigate();
   const { theme, toggle } = useTheme();
   const clear = useSession((s) => s.clear);
+  // Same gating as the sidebar: a disabled feature must not be reachable
+  // through search either.
+  const navItems = useNavItems();
 
   const commands = useMemo<Command[]>(
     () => [
-      ...NAV_ITEMS.map((item) => ({
+      ...navItems.map((item) => ({
         id: `go-${item.to}`,
         label: `Go to ${item.label}`,
         hint: item.to,
@@ -89,7 +92,7 @@ export function CommandPalette({
         run: clear,
       },
     ],
-    [navigate, theme, toggle, clear],
+    [navItems, navigate, theme, toggle, clear],
   );
 
   const results = useMemo(() => {

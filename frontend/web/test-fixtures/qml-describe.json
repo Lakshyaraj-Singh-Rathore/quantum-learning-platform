@@ -1,0 +1,418 @@
+{
+  "limits": {
+    "n_qubits": {
+      "default": 4,
+      "min": 1,
+      "max": 8
+    },
+    "n_layers": {
+      "default": 2,
+      "min": 1,
+      "max": 4
+    },
+    "n_samples": {
+      "default": 200,
+      "min": 20,
+      "max": 1000
+    },
+    "epochs": {
+      "default": 20,
+      "min": 1,
+      "max": 100
+    },
+    "batch_size": {
+      "default": 16,
+      "min": 1,
+      "max": 32
+    },
+    "concurrent_jobs": {
+      "default": 1,
+      "min": 1,
+      "max": 1
+    },
+    "density_matrix_qubits": {
+      "default": 4,
+      "min": 1,
+      "max": 6
+    }
+  },
+  "datasets": [
+    {
+      "name": "moons",
+      "max_samples": 1000,
+      "n_features": 2,
+      "required_angle_frequency": null
+    },
+    {
+      "name": "circles",
+      "max_samples": 1000,
+      "n_features": 2,
+      "required_angle_frequency": null
+    },
+    {
+      "name": "iris_binary",
+      "max_samples": 100,
+      "n_features": 4,
+      "required_angle_frequency": null
+    }
+  ],
+  "diff_methods": [
+    "backprop",
+    "parameter-shift"
+  ],
+  "rotations": [
+    "X",
+    "Y",
+    "Z"
+  ],
+  "entanglements": [
+    "ring",
+    "linear",
+    "none"
+  ],
+  "device": "default.qubit",
+  "max_concurrent_experiments": 1,
+  "statuses": [
+    "queued",
+    "running",
+    "completed",
+    "failed",
+    "cancelled",
+    "timed_out"
+  ],
+  "default_algorithm": "vqc",
+  "algorithms": [
+    {
+      "name": "vqc",
+      "label": "Variational classifier",
+      "task": "classification",
+      "summary": "Angle-encoded features, a trainable ansatz, sign of <Z0> as the label.",
+      "limits": {
+        "n_qubits": {
+          "default": 4,
+          "min": 1,
+          "max": 8
+        },
+        "n_layers": {
+          "default": 2,
+          "min": 1,
+          "max": 4
+        },
+        "n_samples": {
+          "default": 200,
+          "min": 20,
+          "max": 1000
+        },
+        "epochs": {
+          "default": 20,
+          "min": 1,
+          "max": 100
+        },
+        "batch_size": {
+          "default": 16,
+          "min": 1,
+          "max": 32
+        },
+        "concurrent_jobs": {
+          "default": 1,
+          "min": 1,
+          "max": 1
+        },
+        "density_matrix_qubits": {
+          "default": 4,
+          "min": 1,
+          "max": 6
+        }
+      },
+      "datasets": [
+        {
+          "name": "moons",
+          "max_samples": 1000,
+          "n_features": 2,
+          "required_angle_frequency": null
+        },
+        {
+          "name": "circles",
+          "max_samples": 1000,
+          "n_features": 2,
+          "required_angle_frequency": null
+        },
+        {
+          "name": "iris_binary",
+          "max_samples": 100,
+          "n_features": 4,
+          "required_angle_frequency": null
+        }
+      ],
+      "metrics": [
+        "accuracy",
+        "precision",
+        "recall",
+        "f1"
+      ],
+      "epoch_fields": [
+        "train_loss",
+        "test_loss",
+        "train_accuracy",
+        "test_accuracy"
+      ],
+      "supports": {
+        "n_hidden": false,
+        "epochs": true,
+        "diff_method": true,
+        "data_reuploading": false
+      },
+      "baseline": "logistic_regression"
+    },
+    {
+      "name": "hybrid_qnn",
+      "label": "Hybrid QNN",
+      "task": "classification",
+      "summary": "A classical affine layer and tanh feed the encoding angles, so the model differentiates end to end through autograd (D-031).",
+      "limits": {
+        "n_qubits": {
+          "default": 4,
+          "min": 1,
+          "max": 8
+        },
+        "n_layers": {
+          "default": 2,
+          "min": 1,
+          "max": 4
+        },
+        "n_samples": {
+          "default": 200,
+          "min": 20,
+          "max": 1000
+        },
+        "epochs": {
+          "default": 20,
+          "min": 1,
+          "max": 100
+        },
+        "batch_size": {
+          "default": 16,
+          "min": 1,
+          "max": 32
+        },
+        "concurrent_jobs": {
+          "default": 1,
+          "min": 1,
+          "max": 1
+        },
+        "density_matrix_qubits": {
+          "default": 4,
+          "min": 1,
+          "max": 6
+        },
+        "n_hidden": {
+          "default": 4,
+          "min": 1,
+          "max": 8
+        }
+      },
+      "datasets": [
+        {
+          "name": "moons",
+          "max_samples": 1000,
+          "n_features": 2,
+          "required_angle_frequency": null
+        },
+        {
+          "name": "circles",
+          "max_samples": 1000,
+          "n_features": 2,
+          "required_angle_frequency": null
+        },
+        {
+          "name": "iris_binary",
+          "max_samples": 100,
+          "n_features": 4,
+          "required_angle_frequency": null
+        }
+      ],
+      "metrics": [
+        "accuracy",
+        "precision",
+        "recall",
+        "f1"
+      ],
+      "epoch_fields": [
+        "train_loss",
+        "test_loss",
+        "train_accuracy",
+        "test_accuracy"
+      ],
+      "supports": {
+        "n_hidden": true,
+        "epochs": true,
+        "diff_method": true,
+        "data_reuploading": false
+      },
+      "baseline": "logistic_regression"
+    },
+    {
+      "name": "quantum_kernel",
+      "label": "Quantum kernel (LSSVM)",
+      "task": "classification",
+      "summary": "Fidelity kernel between every pair of samples, fitted by least-squares SVM. Sample count is capped separately and hard because cost is quadratic (D-032).",
+      "limits": {
+        "n_qubits": {
+          "default": 4,
+          "min": 1,
+          "max": 8
+        },
+        "n_layers": {
+          "default": 2,
+          "min": 1,
+          "max": 4
+        },
+        "n_samples": {
+          "default": 150,
+          "min": 20,
+          "max": 250
+        },
+        "epochs": {
+          "default": 1,
+          "min": 1,
+          "max": 1
+        },
+        "batch_size": {
+          "default": 16,
+          "min": 1,
+          "max": 32
+        },
+        "concurrent_jobs": {
+          "default": 1,
+          "min": 1,
+          "max": 1
+        },
+        "density_matrix_qubits": {
+          "default": 4,
+          "min": 1,
+          "max": 6
+        }
+      },
+      "datasets": [
+        {
+          "name": "moons",
+          "max_samples": 1000,
+          "n_features": 2,
+          "required_angle_frequency": null
+        },
+        {
+          "name": "circles",
+          "max_samples": 1000,
+          "n_features": 2,
+          "required_angle_frequency": null
+        },
+        {
+          "name": "iris_binary",
+          "max_samples": 100,
+          "n_features": 4,
+          "required_angle_frequency": null
+        }
+      ],
+      "metrics": [
+        "accuracy",
+        "precision",
+        "recall",
+        "f1"
+      ],
+      "epoch_fields": [
+        "train_loss",
+        "test_loss",
+        "train_accuracy",
+        "test_accuracy"
+      ],
+      "supports": {
+        "n_hidden": false,
+        "epochs": false,
+        "diff_method": false,
+        "data_reuploading": false
+      },
+      "baseline": "logistic_regression"
+    },
+    {
+      "name": "quantum_regression",
+      "label": "Quantum regression",
+      "task": "regression",
+      "summary": "Raw <Z0> as a continuous prediction, MSE loss, data re-uploading on by default so the model can represent more than frequency 1 (D-034).",
+      "limits": {
+        "n_qubits": {
+          "default": 4,
+          "min": 1,
+          "max": 8
+        },
+        "n_layers": {
+          "default": 2,
+          "min": 1,
+          "max": 4
+        },
+        "n_samples": {
+          "default": 200,
+          "min": 20,
+          "max": 1000
+        },
+        "epochs": {
+          "default": 20,
+          "min": 1,
+          "max": 100
+        },
+        "batch_size": {
+          "default": 16,
+          "min": 1,
+          "max": 32
+        },
+        "concurrent_jobs": {
+          "default": 1,
+          "min": 1,
+          "max": 1
+        },
+        "density_matrix_qubits": {
+          "default": 4,
+          "min": 1,
+          "max": 6
+        }
+      },
+      "datasets": [
+        {
+          "name": "sine",
+          "max_samples": 1000,
+          "n_features": 1,
+          "required_angle_frequency": 2
+        },
+        {
+          "name": "damped_cosine",
+          "max_samples": 1000,
+          "n_features": 1,
+          "required_angle_frequency": 4
+        },
+        {
+          "name": "linear_mix",
+          "max_samples": 1000,
+          "n_features": 2,
+          "required_angle_frequency": 1
+        }
+      ],
+      "metrics": [
+        "mae",
+        "rmse",
+        "r2"
+      ],
+      "epoch_fields": [
+        "train_loss",
+        "test_loss",
+        "train_r2",
+        "test_r2"
+      ],
+      "supports": {
+        "n_hidden": false,
+        "epochs": true,
+        "diff_method": true,
+        "data_reuploading": true
+      },
+      "baseline": "ridge"
+    }
+  ]
+}

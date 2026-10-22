@@ -35,7 +35,13 @@
     "push:overlay": "tsx scripts/push-overlay-check.mts",
     "render:new-features": "tsx scripts/render-new-features.mts",
     "test:new-features:browser": "node scripts/browser-verify-new-features.mjs",
-    "test:vision-qa": "node scripts/vision-qa-master-suite.mjs"
+    "test:vision-qa": "node scripts/vision-qa-master-suite.mjs",
+    "qml:circuit": "tsx scripts/qml-circuit-check.mts",
+    "qml:ui": "tsx scripts/qml-ui-check.mts",
+    "fixtures:qml-circuit": "python3 scripts/qml-circuit-fixtures.py",
+    "qml:render": "tsx scripts/qml-render-check.mts",
+    "qml:tasks": "tsx scripts/qml-task-check.mts",
+    "fixtures:qml-tasks": "python3 scripts/qml-task-fixtures.py"
   },
   "dependencies": {
     "@codemirror/lang-python": "^6.2.1",

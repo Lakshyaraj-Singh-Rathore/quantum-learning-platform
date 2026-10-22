@@ -27,6 +27,20 @@ class Settings(BaseSettings):
     #: Useful for local development without Redis; never enable in production.
     celery_task_always_eager: bool = False
 
+    #: Quantum ML Lab. Off by default; the app must behave exactly as before
+    #: when disabled. Gates the router in app/api/router.py, so with the flag
+    #: off every /qml/* path is absent and answers 404.
+    qml_enabled: bool = False
+    #: Per-task Celery limits for QML training, applied on the
+    #: run_qml_experiment decorator ONLY. The globals above are applied to
+    #: every task by celery_app.py and app/workers/tasks.py:96 derives the
+    #: qBraid remote-wait budget from the soft one, so raising them to suit a
+    #: minutes-long training run would silently change unrelated behaviour.
+    qml_task_soft_time_limit: int = 900
+    qml_task_hard_time_limit: int = 1200
+    #: Where trained QML models are written (JSON config + .npz weights).
+    qml_artifact_dir: str = "artifacts/qml"
+
     content_dir: str = "/content"
     samples_dir: str = "/samples"
 

@@ -231,7 +231,15 @@ def generate(
     system_instruction: str | None = None,
     tools: list[Any] | None = None,
     history: list[dict[str, str]] | None = None,
+    temperature: float = 1.0,
 ) -> str:
+    """Generate one reply.
+
+    ``temperature`` defaults to 1.0, which is what this function hardcoded
+    before it was a parameter, so the tutor, Code Lab and Smart Composer are
+    bit-identical to before. The QML Lab explanation path passes a lower
+    value because its entire risk is confabulation (§2F.2).
+    """
     genai = _client()
     settings = get_settings()
     model = genai.GenerativeModel(
@@ -245,7 +253,7 @@ def generate(
         contents.append({"role": role, "parts": [turn.get("content", "")]})
     contents.append({"role": "user", "parts": [prompt]})
 
-    config = {"max_output_tokens": CHAT_MAX_OUTPUT_TOKENS, "temperature": 1.0}
+    config = {"max_output_tokens": CHAT_MAX_OUTPUT_TOKENS, "temperature": temperature}
 
     def _call() -> Any:
         opts = _request_options(CHAT_TIMEOUT_SECONDS)
