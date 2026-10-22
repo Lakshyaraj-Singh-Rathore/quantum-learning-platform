@@ -147,10 +147,69 @@ prove it without history. It is now proven.
 **Consequence for the owner:** these rows should move out of the proposal table
 and into the fix queue under §2I.3's allowed column, restoring the copy (or its
 current-design equivalent) rather than rewriting the assertion to expect less.
-The same test must be applied to the remaining rows — 16 strings in this document
-were present at `38ef458` and are absent from `main`, and each needs the same
+The same test must be applied to the remaining rows, and each needs the same
 question asked: *does the feature still exist?* Where it does, the assertion is
 right. Where the feature was genuinely removed, the row stays tabled.
+
+### 4.0a Adjudication of the sixteen — corrected, with two of the reviewer's own errors
+
+The reviewer's original scan reported "16 strings present at `38ef458` and absent
+from `main`." **That figure was wrong in two places, both from the scan rather
+than the repository.** `git grep -F` is byte-exact, so it silently mis-reported:
+
+| string as scanned | what the product actually contains | real verdict |
+|---|---|---|
+| `"F(ideal, noisy rho)"` | `"F(ideal, noisy ρ)"` — **Greek rho**, `ResultsViews.tsx:268`, `:542` | **not missing.** Encoding drift in the assertion. |
+| `"No simulations yet."` | `"No simulations yet"` — **no trailing period**, `DashboardPage.tsx:372` | **not missing.** Punctuation drift in the assertion. |
+
+So **fourteen** were genuinely absent, not sixteen. Both false negatives are the
+same trap in a new costume: a byte-exact search reports absence for a string that
+is present modulo one character, and an agent that trusts it files a defect
+against working code. **Normalise before concluding a string is gone.**
+
+Phase 8C then restored **seven** of the fourteen (`da5dd30`, `beaa468`,
+`999fbfc`, `81972ee`, `b17e993`), across `CodeLabPage.tsx`, `GeometryViews.tsx`
+and `ResultsViews.tsx`. While restoring the fidelity label it found a **live
+defect that neither Phase 8 nor this reviewer had seen**: `ResultsViews.tsx:263`
+read
+
+```tsx
+subtitle={noisy ? "F(ideal, noisy ρ)" : "F(ideal, noisy ρ)"}
+```
+
+— a ternary with **identical branches**, so a *noiseless* run was labelled as
+fidelity against a noisy density matrix. That is the product-side twin of a
+vacuous test: a conditional that cannot change its output. Present on `main` at
+`51b9c26`, introduced by `effdc6b`, now `noisy ? "F(ideal, noisy ρ)" : "no noise
+applied"`.
+
+**Nine strings remain unadjudicated, and seven of them are one component.** All
+live in files that still exist:
+
+| string | component | does the feature survive? |
+|---|---|---|
+| `Controls are the left characters` | `GamesPage.tsx` | **yes** — games, shots and grading all still render |
+| `Drag a gate from the palette` | `GamesPage.tsx` | **yes** |
+| `Graded on state fidelity` | `GamesPage.tsx` | **yes** — `Graded` appears 6× but `fidelity` 0× |
+| `Measurement outcomes` | `GamesPage.tsx` | **yes** — `Measurement` 1×, `outcomes` 0× |
+| `Shots — fewer scores higher, but you must stay within tolerance` | `GamesPage.tsx` | **yes** — `Shots` 6×, `tolerance` 0× |
+| `Two different states can produce this same histogram` | `GamesPage.tsx` | **yes** |
+| `costs a single simulation` | `GamesPage.tsx` | **yes** |
+
+`effdc6b` rewrote `GamesPage.tsx` at **480 insertions / 341 deletions** and kept
+every control while stripping the explanatory copy. The pattern is identical to
+Code Lab's, and these seven are most of `render:games`'s 20 failures — **the
+largest single block of the 57.** The most consequential is *"Two different
+states can produce this same histogram"*, the only sentence stopping a student
+concluding that a matching histogram proves a matching state; and *"Shots — fewer
+scores higher, but you must stay within tolerance"*, which is the scoring
+contract the game grades against.
+
+The two drift rows above are **not** regressions and do not belong in the fix
+queue. Correcting an assertion to expect `ρ` instead of `rho`, or to drop a
+trailing period, is an expected-string change — but it is not a weakening,
+because the product's text is correct and the assertion was always wrong about
+the bytes. Recorded as a narrow exception rather than silently applied.
 
 ### 4.1 `render-codelab.mts` — 8 rows
 
