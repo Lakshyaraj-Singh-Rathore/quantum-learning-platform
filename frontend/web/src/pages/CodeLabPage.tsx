@@ -323,10 +323,31 @@ export function CodeLabPage() {
                 Available imports include: <code className="font-mono text-accent-ink">qiskit</code>,{" "}
                 <code className="font-mono text-accent-ink">cirq</code>,{" "}
                 <code className="font-mono text-accent-ink">pennylane</code>,{" "}
-                <code className="font-mono text-accent-ink">numpy</code>, and pure computational modules.
+                <code className="font-mono text-accent-ink">numpy</code>,{" "}
+                <code className="font-mono text-accent-ink">networkx</code>,{" "}
+                <code className="font-mono text-accent-ink">sympy</code>, and pure computational modules.
+              </p>
+              {/*
+               * These three statements describe constraints the sandbox still
+               * enforces -- services/codelab.py:825 returns "Assign your circuit
+               * to a variable named `circuit`." verbatim, :918 binds parameters,
+               * and stdout is captured and returned. effdc6b dropped them from
+               * the UI while leaving all three live, so a student met them only
+               * as a build failure.
+               */}
+              <p>
+                <strong className="text-ink">The one rule:</strong> assign your circuit to a
+                variable named <code className="font-mono text-ink">circuit</code>.
               </p>
               <p>
-                Ensure your final circuit is stored in variable <code className="font-mono text-ink">circuit</code>.
+                Angles must be concrete numbers: bind a Qiskit{" "}
+                <code className="font-mono">Parameter</code> with{" "}
+                <code className="font-mono">qc.assign_parameters(&#123;theta: 3.14159 / 2&#125;)</code>{" "}
+                before returning the circuit.
+              </p>
+              <p>
+                Your program&apos;s <code className="font-mono">print()</code> output is shown
+                back to you with the result.
               </p>
             </div>
           </details>
