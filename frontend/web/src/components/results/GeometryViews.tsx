@@ -601,9 +601,24 @@ export function QSphere({ result }: { result: RunResult }) {
             </g>
           );
         })}
-      </svg>
+        </svg>
 
-      {/* Prominent, Highly Readable Quantum Phase Spectrum & Wheel Reference */}
+        {/*
+         * effdc6b replaced this caption with the interactive header above and
+         * kept only an aria-label, so sighted readers lost both the key to the
+         * diagram and the warning that bounds it. The Q-sphere still renders,
+         * so the explanation belongs with it: a reader who takes this for a
+         * Bloch sphere will read a mixed state off a picture that cannot show
+         * one.
+         */}
+        <p className="text-xs leading-relaxed text-ink-3">
+          Latitude is Hamming weight: north pole is all-zeros, south pole is all-ones. Blob
+          size is probability, colour is relative phase. This shows the{" "}
+          <strong className="text-ink-2">ideal statevector</strong> — it is not a Bloch
+          sphere and cannot show a mixed state.
+        </p>
+
+        {/* Prominent, Highly Readable Quantum Phase Spectrum & Wheel Reference */}
       <div className="flex flex-col gap-3 rounded-2xl border border-line-soft bg-raised/90 p-4 backdrop-blur-md shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-4">
           {/* Large Cyclic Phase Color Wheel Reference */}
