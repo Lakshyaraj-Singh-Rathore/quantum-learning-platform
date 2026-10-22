@@ -981,7 +981,62 @@ done until all three run through the API.
    Either way the response must **not** carry a zeroed field for a task that lacks it — §2C.4's
    hazard, surfacing at the API instead of the UI.
 
-### 2D.2 Gates for 5b
+### 2D.2 Persisting results that are not classification results
+
+**D-033 already settled this — do not re-open it.** `RegressionResult` exists as a separate
+`extra="forbid"` type (`models.py:201`) and a test asserts it has **no** `accuracy`, `precision`,
+`recall`, `f1` or `confusion_matrix` attribute. Nullable fields on one payload is the design D-033
+explicitly rejected. So: **separate payloads per task, discriminated by `task`.**
+
+But the cost is not where it looks. There are two persistence layers and they behave oppositely:
+
+**`qml_experiments.result` is a `JSONType` blob** (migration `i4d7e0f3a6b9:52`), written as a plain
+dict at `services:330` and `:365`. `EvaluationResult` never reaches the DB as a typed column — it is
+produced in-process by `evaluator.py:59` and serialised. **So the discriminated union needs no
+migration at all here.** `config` is also JSON and already carries `algorithm`, so `task` is
+derivable; store it explicitly in `result` anyway, so an old row can be read without knowing the
+algorithm→task mapping that was current when it was written.
+
+**`qml_epoch_metrics` is typed columns**, and this is where the migration genuinely is:
+
+```
+train_accuracy = Column(Float, nullable=False)   # models/qml.py:134 — no default
+test_accuracy  = Column(Float, nullable=True)    # :140
+```
+
+A regression epoch has no accuracy, so one additive migration is required: add nullable
+`train_r2`/`test_r2` **and** relax `train_accuracy` to nullable. Use those exact names — `describe()`
+already promises them in `HISTORY_KEYS_BY_TASK` (`services:483`), so any other name makes the
+capability document lie a second time.
+
+**Do not store R² in the `train_accuracy` column.** It is the D-033 hazard relocated to storage, and
+it is worse there for two reasons: R² **can be negative** (Phase 5 measured `sin(2x)` at R²=+0.104,
+losing to a linear baseline), so a column every consumer assumes is a `[0,1]` accuracy would hold
+`-0.4`; and the existing D-033 test guards the *Pydantic model*, not the column, so it would keep
+passing. A chart labelled "accuracy" reading `0.328` is a lie that survives review.
+
+**Note what you are giving up.** `train_accuracy` being `nullable=False` with **no default** is
+currently a safety property: a regression epoch that tries to write it fails loudly instead of
+silently storing `0.0`. Relaxing it makes "NULL vs 0.0" a live hazard, so pair the migration with a
+round-trip test — run a regression experiment through the real DB path and assert the persisted JSON
+contains no accuracy key anywhere **and** that `train_accuracy` is `NULL`, not `0.0`.
+
+**Kernel writes no epoch rows.** `epochs` is pinned to 1 and `diff_method` is hidden
+(`services:570-571`); there is no loop to report. Emit one honest terminal event, or none — do not
+manufacture an epoch to satisfy a persistence path that expects one. Kernel reaches the same
+conclusion independently: with `train_accuracy` NOT NULL, a single synthetic kernel row would have
+to either fail or lie.
+
+**If a fourth task looks likely** (noise, qudit), the alternative is keeping only the universal
+columns typed (`epoch`, `train_loss`, `elapsed_seconds`) and moving task-specific metrics into a
+per-row JSON `metrics` column validated by a per-task Pydantic model on read. That is defensible
+because the original argument against a JSON column — recorded in the migration docstring at
+`i4d7e0f3a6b9:21` — was about *read-modify-write of a growing blob* that SQLAlchemy cannot detect
+in-place mutation on. A per-epoch row is **insert-once**, so that objection does not apply. It does
+weaken the DB-level guarantee, so take it only with a concrete fourth task in hand; otherwise the
+two extra columns are the smaller change.
+
+### 2D.3 Gates for 5b
 
 Backend-only, so Phase 5's by-construction argument still holds: **0 frontend files changed**,
 bundle hash identical, harness FAIL count unchanged, CSS rule-level diff empty. `pytest` must grow
