@@ -26,7 +26,11 @@ docker compose --profile qml up -d
 
 `docker-compose.yml:104` puts the `qml-worker` service behind
 `profiles: ["qml"]`, so `make up` does not start it. That is deliberate — it is
-what keeps the default deployment byte-identical to the pre-QML one.
+what keeps the default deployment **behaviourally** identical to the pre-QML one.
+(Not *byte*-identical: §6 of this document measures +1613 B of JS and +923 B of
+CSS versus pre-QML `46576c8`, all of it dormant routing metadata. Phase 7
+withdrew byte-identity as unsatisfiable, because the gating mechanism §2A.6
+requires is itself the difference.)
 
 **What each half-configuration actually does:**
 

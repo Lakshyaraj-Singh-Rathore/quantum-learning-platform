@@ -1656,6 +1656,23 @@ Anything in the forbidden column becomes a row here and **stays red**. Each row 
 Field 6 is the one that matters. It forces the accounting that "this is just stale" skips, and it is
 how the owner decides rather than ratifies. A row without field 6 is not a proposal.
 
+**Field 5 has a mandatory pre-flight, and a second use worth more than the citation.** Before drawing
+*any* conclusion from history, run `git rev-parse --is-shallow-repository`. Sandboxes here are
+provisioned at depth 1, where `git rev-list --count origin/main` returns **1** and the repository
+looks like a single squashed commit. It is not — `git fetch --deepen=400` restores **253**. **A commit
+count of 1 from a shallow clone is a true measurement of the wrong thing**: Phase 8 withdrew this
+field on exactly that artefact, and the withdrawal was wrong.
+
+History then decides **which column a row belongs in**, which is the point of field 5.
+`git log -S"<expected string>"` answers it. If the string was removed from a feature that *still
+exists*, the assertion was right and the row is a product defect in the **allowed** column — fix the
+product, do not table it. If the feature was genuinely removed or deliberately redesigned, the row is
+stale and stays tabled. Phase 8 produced both verdicts and only history separates them: `effdc6b`
+rewrote `CodeLabPage.tsx` (329+/282−) and **kept** the AI drafting feature while dropping its two
+safety sentences — a regression — whereas `QuditLabPage.tsx:208` deliberately renders `[3, 4, 5]`
+because d=2 *is* a qubit, which makes the four-button expectation genuinely stale. **Ask "does the
+feature still exist?" of every row before tabling it.**
+
 #### Reporting
 
 Report the count as **fixed = N product defects + M semantic-preserving harness fixes; awaiting

@@ -86,13 +86,71 @@ Columns are: **(1)** harness and line · **(2)** the assertion verbatim ·
 evidence of the change · **(6) what regression would go undetected if this were
 approved** · **(7)** my recommendation.
 
-**On field (5).** §2I.3 asks each row to cite the commit that changed the UI,
-with before and after. **That is unsatisfiable in this repository and the
-request should be withdrawn, not worked around.** `git rev-list --count
-origin/main` is **1**: the entire project is a single squashed commit, so no
-commit changed this UI — there is no "before" in version control to cite. The
-substitute evidence in field (5) is the product's current text, located in
-source, next to what the assertion expects.
+**On field (5) — CORRECTED BY THE REVIEWER. The requirement stands; it was
+never unsatisfiable.**
+
+The Phase 8 agent reported that `git rev-list --count origin/main` is **1** and
+concluded the repository is a single squashed commit with no "before" to cite,
+recommending the requirement be withdrawn. **That measurement was an artefact of
+a shallow clone, not a property of the repository.** Both the agent's sandbox and
+the reviewer's were provisioned at depth 1:
+
+```
+$ git rev-parse --is-shallow-repository   # -> true      <-- the tell
+$ git rev-list --count origin/main        # -> 1         <-- meaningless while shallow
+$ git fetch --deepen=400 origin
+$ git rev-list --count origin/main        # -> 253       <-- the real history
+```
+
+**A commit count of 1 from a shallow clone is the most dangerous number in a
+report: it is a true measurement of the wrong thing.** `--is-shallow-repository`
+must be checked before any conclusion is drawn from history. This is a known
+failure mode in this project and it recurred here.
+
+Field (5) is therefore **satisfiable and is now supplied for the rows where it
+changes the verdict.** `git log -S` resolves the strings directly:
+
+```
+$ git log --oneline --all -S"Nothing runs until you press Build" -- frontend/web/src
+effdc6b feat: deliver QuantumLearn AI platform v1.0.0
+5a04a17 P3: Code Lab editor in the new UI
+```
+
+### 4.0 RECLASSIFICATION: some of these rows are product regressions, not stale tests
+
+This matters more than the field itself. §2I.3's **allowed** column is "real
+product defect — fix the product, the assertion was right." Rows that were tabled
+as needing an expected-string change belong there instead **if the string was
+removed from a feature that still exists.** The history answers that question,
+and for Code Lab it answers it decisively:
+
+| | `38ef458` (`effdc6b`'s parent) | `origin/main` today |
+|---|---|---|
+| `"Nothing runs until you press Build"` | **present**, `CodeLabPage.tsx:305` | **absent** |
+| `"treat it as a starting point, not an answer"` | **present**, `:306` | **absent** |
+| The AI drafting feature itself | present | **still present** — `AI Code Assistant`, `Draft Code into Editor`, Gemini writes into the editor |
+
+`effdc6b` (2026-10-20) **rewrote** `CodeLabPage.tsx` — 329 insertions, 282
+deletions — so this was a redesign, not a deletion of the page. But the redesign
+kept the AI feature and dropped its two safety sentences. What the card says now
+is only:
+
+> Describe a circuit algorithm and Gemini will draft code into the editor.
+
+The sentences that told a student *the draft does not execute until you build it*
+and *it is a starting point, not an answer* are gone, from a live feature that
+writes AI-generated code into a learner's editor. **The assertion was right and
+the product regressed.** The Phase 8 agent reached this suspicion on its own —
+"investigate those as product regressions, not retiring them" — but could not
+prove it without history. It is now proven.
+
+**Consequence for the owner:** these rows should move out of the proposal table
+and into the fix queue under §2I.3's allowed column, restoring the copy (or its
+current-design equivalent) rather than rewriting the assertion to expect less.
+The same test must be applied to the remaining rows — 16 strings in this document
+were present at `38ef458` and are absent from `main`, and each needs the same
+question asked: *does the feature still exist?* Where it does, the assertion is
+right. Where the feature was genuinely removed, the row stays tabled.
 
 ### 4.1 `render-codelab.mts` — 8 rows
 
