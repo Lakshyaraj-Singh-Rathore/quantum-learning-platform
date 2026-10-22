@@ -4,7 +4,7 @@ import * as path from "path";
 
 import { launchOptions, artifactDir } from "./browser-env.mjs";
 const BASE_URL = "http://localhost:3001";
-const SCREENSHOTS_DIR = path.join(process.cwd(), "frontend", "web", "qa-remediation-evidence");
+const SCREENSHOTS_DIR = artifactDir("qudit-remediation");
 
 if (!fs.existsSync(SCREENSHOTS_DIR)) {
   fs.mkdirSync(SCREENSHOTS_DIR, { recursive: true });

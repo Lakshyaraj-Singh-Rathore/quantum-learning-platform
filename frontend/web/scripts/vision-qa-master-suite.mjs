@@ -16,11 +16,14 @@ import * as fs from "fs";
 import * as path from "path";
 import * as http from "http";
 
-import { launchOptions, artifactDir } from "./browser-env.mjs";
+import { launchOptions, artifactDir, REPO_ROOT } from "./browser-env.mjs";
 const BASE_URL = "http://localhost:3001";
 const API_URL = "http://127.0.0.1:8000";
 
-const PROJECT_ROOT = process.cwd();
+// Repo-root-relative, not cwd-relative: running this from frontend/web used
+// to nest artifacts as frontend/web/frontend/web/... and write 2.5 MB of
+// PNGs into the tree. REPO_ROOT is derived from this file's own location.
+const PROJECT_ROOT = REPO_ROOT;
 const QA_DIR = path.join(PROJECT_ROOT, "artifacts", "vision-qa");
 const SCREENSHOTS_DIR = path.join(QA_DIR, "screenshots");
 const REVIEWS_DIR = path.join(QA_DIR, "vision-reviews");

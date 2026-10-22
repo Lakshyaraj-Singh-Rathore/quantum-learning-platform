@@ -3,8 +3,7 @@ import fs from "fs";
 import path from "path";
 
 import { launchOptions, artifactDir } from "./browser-env.mjs";
-const OUTPUT_DIR = path.resolve("frontend/web/qa-qudit-upgrade-evidence");
-fs.mkdirSync(OUTPUT_DIR, { recursive: true });
+const OUTPUT_DIR = artifactDir("qudit-master");
 
 async function runMasterUpgradeQA() {
   console.log("Starting Master Qudit Composer Visual QA Automation with Edge...");
