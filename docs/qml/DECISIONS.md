@@ -1011,3 +1011,22 @@ found by the browser capability unlocked in Stage 1, and it is the reason that
 stage was worth doing. Guarded now by `qml-browser-check.mts`, which asserts
 every numeric field's default passes `checkValidity()` — the class, not the
 instance. See QL-018 in `07-verification.md`'s ledger.
+
+## D-053 — §2A.6's ERROR state is rendered, not regex-matched
+
+**Phase 8, Stage 2.1.** Phase 7 could only evidence the fail-closed path with
+`/query\.data \?\? FEATURES_CLOSED/` over `useFeatures.ts` — the one §2A.6 state
+with no render behind it. That assertion constrains the *spelling* of the
+implementation: it passes for any file containing that text and fails any
+correct refactor that stops containing it.
+
+Replaced by three assertions in `qml-render-check.mts` that drive the
+`/features` query into a settled error state and assert what the user gets:
+nav entry absent, `404 - State Undefined` rendered, no config form. The errored
+query needs `retryOnMount: false`, or the observer re-fires it on mount and the
+state under test collapses back into pending.
+
+Both forms were shown to fail the same mutation (`?? FEATURES_CLOSED` changed to
+`?? { qml_enabled: true }`) *before* the regex was removed, so the replacement
+is proven at least as strong on the behaviour that matters. The regex is now
+deleted: keeping both would mean a correct refactor still fails the suite.

@@ -377,7 +377,7 @@ task, concurrency limits under real contention. **MT-002 and MT-003.**
 | **QL-015** | Toasts anchor bottom-right over live result content | No — P4, shared component | **No** |
 | **QL-016** | Preset card titles truncate at ≤1366 px | No — P4, design call | **No** — needs a browser at a set viewport |
 | **QL-017** | Diagonal cells keep the "pop" sub-label in the phase view | No — P4, teaching-design call | **No** |
-| QL-018 | `QmlConfigForm.tsx` Samples field | `step={50}` with `min={20}` made the default 200 fail HTML constraint validation; the form could not be submitted in any browser. Fixed in Phase 8 Stage 4.1; guarded by `qml-browser-check.mts`. | **FIXED** |
+| **QL-018** | `QmlConfigForm.tsx` Samples field: `step={50}` with `min={20}` made the default 200 fail HTML constraint validation — the form could not be submitted in any browser | **Did** — fixed in Phase 8 Stage 4.1 (`96b4320`) | **Yes, now** — `qml-browser-check.mts` asserts every numeric default passes `checkValidity()` |
 | **`bg-card`** | 10 uses / 6 files, **all Qudit Lab** | No — cosmetic, but see below | **No** — and `qml:ui` would not catch it |
 
 **QL-005 line numbers re-measured, as §2G.6 asked**, since the owner is editing that file: `round(clamped_pop, 6)` at **140**, `round(normalized_probs[i], 6)` at **151**, `round(mag, 6)` at

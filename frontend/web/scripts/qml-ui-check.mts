@@ -248,11 +248,16 @@ check(
   "FLAG QmlLabPage: unresolved is handled before disabled (no 404 flash on refresh)",
 );
 
-const features = sources.get("src/hooks/useFeatures.ts") ?? "";
-check(
-  /query\.data \?\? FEATURES_CLOSED/.test(features),
-  "FLAG useFeatures: fails closed when the flag query errors",
-);
+// The fail-closed behaviour used to be asserted here with
+//   /query\.data \?\? FEATURES_CLOSED/
+// over the source of useFeatures.ts. That regex passes for any file
+// containing that text and fails any correct refactor that stops containing
+// it, so it constrained the spelling rather than the behaviour. It is
+// replaced by three assertions in qml-render-check.mts ("flag ERROR: ...")
+// which drive the /features query into a real error state and assert the
+// rendered output: nav entry absent, 404 body shown, no config form. Both
+// forms were shown to fail the same mutation (fail-open) before this one was
+// removed. See D-053.
 
 console.log(
   failures === 0

@@ -79,14 +79,40 @@ function check(name: string, ok: boolean, extra = "") {
   if (!ok) failures += 1;
 }
 
-type FlagState = "on" | "off" | "pending";
+type FlagState = "on" | "off" | "pending" | "error";
 
 function render(node: unknown, flag: FlagState, path = "/qml-lab"): string {
   const client = new QueryClient({
-    defaultOptions: { queries: { retry: false, gcTime: Infinity } },
+    defaultOptions: {
+      queries: {
+        retry: false,
+        gcTime: Infinity,
+        // Without this an errored query re-fires on observer mount (it has no
+        // dataUpdatedAt), which puts it back into pending and hides the very
+        // state under test. The user-visible situation being modelled is a
+        // /features request that has already settled as an error.
+        ...(flag === "error" ? { retryOnMount: false } : {}),
+      },
+    },
   });
   // "pending" leaves the cache empty, which is exactly what a cold load is.
-  if (flag !== "pending") {
+  if (flag === "error") {
+    // Drive the /features query into a real error state, rather than reading
+    // the source for `query.data ?? FEATURES_CLOSED`. A regex over the
+    // implementation passes for any file that happens to contain that text and
+    // fails any correct refactor that stops containing it; this renders the
+    // state the user would actually get when the flag endpoint is down.
+    client
+      .getQueryCache()
+      .build(client, { queryKey: ["features"] })
+      .setState({
+        status: "error",
+        fetchStatus: "idle",
+        data: undefined,
+        error: new Error("features endpoint unreachable"),
+        errorUpdatedAt: Date.now(),
+      } as never);
+  } else if (flag !== "pending") {
     client.setQueryData(["features"], { qml_enabled: flag === "on" });
   }
   if (flag === "on") {
@@ -165,6 +191,20 @@ check(
 check("route: config form rendered when on", pageOn.includes("qml-n-qubits"));
 check("route: 404 body when the flag is off", pageOff.includes("404 - State Undefined"));
 check("route: no config form when off", !pageOff.includes("qml-n-qubits"));
+
+/* -------------------------------------------------------------------------- */
+/* 2b. Fail-closed: the flag query ERRORS                                     */
+/* -------------------------------------------------------------------------- */
+// §2A.6's fourth state. Phase 7 could only assert this with a regex over
+// useFeatures.ts; these three render the state instead. The behaviour that
+// matters is that an unreachable /features is treated as "off", never as "on".
+
+const navError = render(h(Sidebar, {}), "error");
+const pageError = render(h(QmlLabPage, {}), "error");
+
+check("flag ERROR: nav entry absent when the flag query errors", !navError.includes("/qml-lab"));
+check("flag ERROR: route shows the 404 body", pageError.includes("404 - State Undefined"));
+check("flag ERROR: no config form leaks through", !pageError.includes("qml-n-qubits"));
 check(
   "route: neither lab nor 404 while unresolved (no flash)",
   !pagePending.includes("qml-n-qubits") && !pagePending.includes("404 - State Undefined"),
