@@ -13,6 +13,7 @@ dist/
 frontend/circuit_composer/frontend/build/
 frontend/circuit_composer/frontend/dist/
 node_modules/
+node_modules
 venv/
 
 # Local runtime state — never commit: dev.db holds real user rows,

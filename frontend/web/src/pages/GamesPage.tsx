@@ -83,7 +83,7 @@ export function GamesPage() {
             <span className="font-semibold text-ink">Quantum Password Search (Grover)</span>
           </nav>
           <Button size="sm" variant="secondary" onClick={() => setSlug(null)} className="gap-1.5 text-xs">
-            <ArrowLeft className="h-3.5 w-3.5" /> All Games
+            <ArrowLeft className="h-3.5 w-3.5" /> All games
           </Button>
         </div>
         <GroverLab />
@@ -304,6 +304,12 @@ export function LevelPlay({ level, onBack }: { level: GameLevel; onBack: () => v
   if (level.max_edits !== null && level.max_edits !== undefined) {
     rules.push(`Edit budget: ${level.max_edits}`);
   }
+  if (level.epsilon !== null && level.epsilon !== undefined) {
+    rules.push(`Tolerance: ${level.epsilon}`);
+  }
+  if (level.n_controls) {
+    rules.push(`Checked over all ${2 ** (level.n_controls + 1)} basis inputs`);
+  }
 
   const handleOpenInStudio = () => {
     useCircuit.getState().setChallengeContext({
@@ -375,7 +381,7 @@ export function LevelPlay({ level, onBack }: { level: GameLevel; onBack: () => v
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line pb-3">
         <div className="flex items-center gap-3">
           <Button size="sm" variant="secondary" onClick={onBack} className="gap-1.5 text-xs">
-            <ArrowLeft className="h-3.5 w-3.5" /> All Games
+            <ArrowLeft className="h-3.5 w-3.5" /> All games
           </Button>
           <h2 className="text-xl font-bold tracking-tight text-ink">{level.title}</h2>
         </div>
@@ -418,7 +424,7 @@ export function LevelPlay({ level, onBack }: { level: GameLevel; onBack: () => v
       <Card className="p-5">
         <div className="flex items-center gap-2 mb-2 text-ink">
           <Target className="h-5 w-5 text-accent" />
-          <h3 className="text-sm font-bold uppercase tracking-wider">Level Objective</h3>
+          <h3 className="text-sm font-bold uppercase tracking-wider">🎯 Objective</h3>
         </div>
         <p className="whitespace-pre-line text-sm leading-relaxed text-ink-2">{level.prompt}</p>
 
@@ -492,6 +498,14 @@ export function LevelPlay({ level, onBack }: { level: GameLevel; onBack: () => v
           </div>
         </div>
 
+        {/* How the grid is operated. Without this the composer is a puzzle
+            before the level is. */}
+        <p className="border-b border-line bg-subtle/50 px-4 py-2.5 text-xs text-ink-3">
+          Drag a gate from the palette onto the grid, or click a gate then click a cell. For
+          controlled gates, drop on the target first, then click the control qubits in the same
+          column.
+        </p>
+
         {/* Composer Canvas */}
         <div className="composer-host dark bg-[#090d18] p-3 md:p-5 min-h-[440px] overflow-x-auto">
           <ComposerInner
@@ -538,7 +552,7 @@ export function LevelPlay({ level, onBack }: { level: GameLevel; onBack: () => v
               }}
               className="gap-1.5 text-xs"
             >
-              <RotateCcw className="h-3.5 w-3.5" /> Clear Circuit
+              <RotateCcw className="h-3.5 w-3.5" /> Clear circuit
             </Button>
 
             {level.starter_ir && (
@@ -551,14 +565,16 @@ export function LevelPlay({ level, onBack }: { level: GameLevel; onBack: () => v
                 }}
                 className="gap-1.5 text-xs"
               >
-                Reset to Starter
+                Reset to broken
               </Button>
             )}
           </div>
 
           {level.grader === "shot_detective" && (
             <div className="flex items-center gap-2">
-              <Label className="text-xs text-ink-3">Sampling Shots:</Label>
+              <Label className="text-xs text-ink-3">
+                Shots — fewer scores higher, but you must stay within tolerance
+              </Label>
               <Select
                 value={String(shots)}
                 onValueChange={(val) => setShots(Number(val))}
@@ -604,6 +620,7 @@ export function LevelPlay({ level, onBack }: { level: GameLevel; onBack: () => v
 export function LevelResult({ outcome }: { outcome: ChallengeAttempt }) {
   const details = (outcome.details ?? {}) as Record<string, unknown>;
   const extra = (details.game ?? {}) as any;
+  const note = String(details.behaviour_note ?? "");
   const counts = details.counts as Record<string, number> | undefined;
 
   return (
@@ -614,7 +631,9 @@ export function LevelResult({ outcome }: { outcome: ChallengeAttempt }) {
           tone={outcome.passed ? "ok" : "warn"}
           className="text-sm px-3 py-1 font-semibold"
         >
-          {outcome.passed ? "Level Complete" : "Not Yet Completed"} · Score {outcome.score.toFixed(2)}
+          {outcome.passed
+            ? `Level complete — score ${outcome.score.toFixed(2)}`
+            : `Not yet — score ${outcome.score.toFixed(2)}`}
         </Badge>
       </div>
 
@@ -622,62 +641,198 @@ export function LevelResult({ outcome }: { outcome: ChallengeAttempt }) {
         <p className="text-xs text-ink-2 leading-relaxed">{outcome.feedback}</p>
       )}
 
-      {/* Truth Table */}
+      {/* Truth table. Always shown, pass or fail: on a win it is the proof the
+          logic is right, which is exactly when a learner wants to read it. */}
       {extra.testcases_total !== undefined && (
         <div className="space-y-3 pt-2">
           <div className="flex gap-2">
             <Badge tone={extra.testcases_passed === extra.testcases_total ? "ok" : "warn"}>
-              Test Cases Passed: {extra.testcases_passed} / {extra.testcases_total}
+              Test cases passed {extra.testcases_passed}/{extra.testcases_total}
             </Badge>
+            {Boolean(extra.superposed) && (
+              <Badge tone="warn">Superposed outputs {extra.superposed}</Badge>
+            )}
           </div>
+
+          {Boolean(extra.superposed) && (
+            <p className="rounded-lg border border-warn/40 bg-warn/10 px-3 py-2 text-xs text-ink">
+              Some inputs left the register in a <strong>superposition</strong>, so there is no
+              single output bitstring to check. This level is about classical logic — build it from
+              X and controlled-X gates only.
+            </p>
+          )}
 
           {(() => {
             const rows = extra.table ?? extra.failures ?? [];
             if (rows.length === 0) return null;
             return (
-              <div className="overflow-x-auto rounded-lg border border-line">
-                <table className="w-full text-xs">
-                  <thead className="bg-subtle text-ink-3 uppercase text-[10px] tracking-wider border-b border-line">
-                    <tr>
-                      <th className="px-3 py-2 text-left">Status</th>
-                      <th className="px-3 py-2 text-left font-mono">Input</th>
-                      <th className="px-3 py-2 text-left font-mono">Output</th>
-                      <th className="px-3 py-2 text-left font-mono">Expected</th>
-                      <th className="px-3 py-2 text-left font-mono">Got</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-line-soft font-mono">
-                    {rows.map((row: any) => (
-                      <tr key={row.input} className="hover:bg-hover/50">
-                        <td className="px-3 py-1.5">
-                          {row.passed ? (
-                            <CheckCircle2 className="h-4 w-4 text-ok" />
-                          ) : (
-                            <XCircle className="h-4 w-4 text-danger" />
-                          )}
-                        </td>
-                        <td className="px-3 py-1.5">{row.input}</td>
-                        <td className="px-3 py-1.5">{row.output ?? "—"}</td>
-                        <td className="px-3 py-1.5">{row.expected_target}</td>
-                        <td className="px-3 py-1.5">{row.got_target}</td>
+              <div>
+                {!extra.table && (
+                  <p className="mb-1 text-xs text-ink-3">
+                    Showing the failing inputs from this older attempt.
+                  </p>
+                )}
+                <div className="overflow-x-auto rounded-lg border border-line">
+                  <table className="w-full text-xs">
+                    <thead className="bg-subtle text-ink-3 uppercase text-[10px] tracking-wider border-b border-line">
+                      <tr>
+                        <th className="px-3 py-2 text-left">Status</th>
+                        <th className="px-3 py-2 text-left font-mono">Input |c…t⟩</th>
+                        <th className="px-3 py-2 text-left font-mono">Output</th>
+                        <th className="px-3 py-2 text-left font-mono">Target should be</th>
+                        <th className="px-3 py-2 text-left font-mono">Target was</th>
+                        <th className="px-3 py-2 text-left">Controls preserved</th>
+                        <th className="px-3 py-2 text-left">Certainty</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y divide-line-soft font-mono">
+                      {rows.map((row: any) => (
+                        <tr key={row.input} className="hover:bg-hover/50">
+                          <td className="px-3 py-1.5">
+                            {row.passed ? (
+                              <CheckCircle2 className="h-4 w-4 text-ok" />
+                            ) : (
+                              <XCircle className="h-4 w-4 text-danger" />
+                            )}
+                          </td>
+                          <td className="px-3 py-1.5">{row.input}</td>
+                          <td className="px-3 py-1.5">{row.output ?? "—"}</td>
+                          <td className="px-3 py-1.5">{row.expected_target}</td>
+                          <td className="px-3 py-1.5">{row.got_target}</td>
+                          <td className="px-3 py-1.5">{row.controls_intact ? "yes" : "no"}</td>
+                          <td className="px-3 py-1.5">
+                            {row.certainty === undefined
+                              ? "—"
+                              : `${Math.round(row.certainty * 100)}%`}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                {/* How to read the table. Without this a learner cannot tell
+                    which character is the target. */}
+                <p className="mt-2 text-[11px] text-ink-3">
+                  Controls are the left characters, the target is the rightmost. A correct vault
+                  flips the target only when every control is 1, and leaves the controls untouched.
+                </p>
               </div>
             );
           })()}
         </div>
       )}
 
+      {/* Shot Detective: the convergence curve is the whole lesson. */}
+      {extra.curve && extra.curve.length > 0 && (
+        <div className="pt-2">
+          <p className="mb-1 text-sm font-semibold text-ink">How the error shrinks with more shots</p>
+          <p className="mb-2 text-xs text-ink-3">
+            Measured by subsampling one run, so this whole curve costs a single simulation.
+          </p>
+          <CurveChart points={extra.curve} />
+          <div className="overflow-x-auto rounded-lg border border-line">
+            <table className="w-full text-xs">
+              <thead className="bg-subtle text-ink-3 uppercase text-[10px] tracking-wider border-b border-line">
+                <tr>
+                  <th className="px-3 py-2 text-left font-mono">Shots</th>
+                  <th className="px-3 py-2 text-left font-mono">Error (TVD)</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-line-soft font-mono">
+                {extra.curve.map((point: { shots: number; tvd: number }) => (
+                  <tr key={point.shots} className="hover:bg-hover/50">
+                    <td className="px-3 py-1.5">{point.shots}</td>
+                    <td className="px-3 py-1.5">{point.tvd.toFixed(4)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Find the Bug: the edit budget. */}
+      {extra.edits && (
+        <div className="grid grid-cols-2 gap-2 pt-2 lg:grid-cols-4">
+          <MetricCard
+            label="Edits used"
+            value={String(extra.edits.total)}
+            delta={`budget ${extra.max_edits}`}
+          />
+          <MetricCard label="Modified" value={String(extra.edits.modified)} />
+          <MetricCard label="Added" value={String(extra.edits.added)} />
+          <MetricCard label="Removed" value={String(extra.edits.removed)} />
+        </div>
+      )}
+
+      {/* State-graded levels: the histogram alone cannot tell |Φ+⟩ from |Φ−⟩,
+          so surface the fidelity that actually decided the result. */}
+      {note.toLowerCase().includes("fidelity") && (
+        <p className="text-xs text-ink-3">Graded on state fidelity — {note}</p>
+      )}
+
       {counts && (
         <div className="pt-2">
           <p className="text-xs font-semibold text-ink-3 uppercase tracking-wider mb-2">
-            Measurement Histogram
+            Measurement outcomes
           </p>
           <CountsBar counts={counts} />
+          {note.toLowerCase().includes("fidelity") && (
+            <p className="mt-2 text-xs text-ink-3">
+              Two different states can produce this same histogram. That is why these levels are
+              graded on the state, not the counts.
+            </p>
+          )}
         </div>
       )}
     </div>
+  );
+}
+
+function MetricCard({ label, value, delta }: { label: string; value: string; delta?: string }) {
+  return (
+    <div className="rounded-lg border border-line bg-raised px-3 py-2">
+      <p className="text-[11px] uppercase tracking-wide text-ink-3">{label}</p>
+      <p className="font-mono text-sm text-ink">{value}</p>
+      {delta && <p className="text-[11px] text-ink-3">{delta}</p>}
+    </div>
+  );
+}
+
+/** The convergence curve, drawn rather than charted — it is one polyline. */
+function CurveChart({ points }: { points: { shots: number; tvd: number }[] }) {
+  const width = 480;
+  const height = 140;
+  const padding = 24;
+  const peak = Math.max(...points.map((p) => p.tvd), 1e-9);
+  const xs = points.map((p) => Math.log2(p.shots));
+  const minX = Math.min(...xs);
+  const maxX = Math.max(...xs);
+  const spanX = maxX - minX || 1;
+
+  const coordinates = points.map((point, index) => {
+    const x = padding + ((xs[index] - minX) / spanX) * (width - padding * 2);
+    const y = height - padding - (point.tvd / peak) * (height - padding * 2);
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  });
+
+  return (
+    <svg
+      viewBox={`0 0 ${width} ${height}`}
+      className="mb-2 h-36 w-full rounded-lg border border-line-soft bg-raised"
+      role="img"
+      aria-label="Sampling error against shots"
+    >
+      <polyline
+        points={coordinates.join(" ")}
+        fill="none"
+        stroke="var(--color-accent)"
+        strokeWidth={2}
+      />
+      {coordinates.map((coordinate) => {
+        const [cx, cy] = coordinate.split(",");
+        return <circle key={coordinate} cx={cx} cy={cy} r={3} fill="var(--color-accent)" />;
+      })}
+    </svg>
   );
 }
