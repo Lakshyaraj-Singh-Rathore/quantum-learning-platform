@@ -21,7 +21,14 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.quantum.qml_lab import limits
 
-DatasetName = Literal["moons", "circles", "iris_binary"]
+#: Every dataset the platform can build, classification and regression alike.
+#: Kept in step with ``limits.ALL_DATASETS`` by
+#: ``test_the_dataset_literal_and_the_registry_cannot_drift`` — a Literal
+#: cannot be built from a tuple without losing static typing, so the two are
+#: written out and asserted equal rather than derived.
+DatasetName = Literal[
+    "moons", "circles", "iris_binary", "sine", "damped_cosine", "linear_mix"
+]
 Rotation = Literal["X", "Y", "Z"]
 Entanglement = Literal["ring", "linear", "none"]
 DiffMethod = Literal["backprop", "parameter-shift"]
@@ -151,6 +158,21 @@ class QmlExperimentConfig(BaseModel):
                     f"{self.circuit.n_qubits}; angle encoding needs one wire per "
                     f"value emitted by the classical layer"
                 )
+
+        # The dataset and the algorithm must solve the same kind of problem.
+        # Without this, `algorithm="quantum_regression"` with `dataset="moons"`
+        # validates cleanly and then trains a regressor against ±1 class
+        # labels -- it runs, reports an R², and means nothing. The inverse is
+        # worse: a classifier on `sine` would threshold a continuous target.
+        dataset_task = limits.task_for_dataset(self.dataset.name)
+        algorithm_task = limits.task_for_algorithm(self.algorithm)
+        if dataset_task != algorithm_task:
+            raise ValueError(
+                f"dataset {self.dataset.name!r} is a {dataset_task} dataset but "
+                f"algorithm {self.algorithm!r} solves a {algorithm_task} task; "
+                f"choose a {algorithm_task} dataset "
+                f"({', '.join(limits.CLASSIFICATION_DATASETS if algorithm_task == 'classification' else limits.REGRESSION_DATASETS)})"
+            )
         return self
 
 

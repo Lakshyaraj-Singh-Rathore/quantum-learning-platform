@@ -7,10 +7,15 @@ imports them, which is what lets the whole engine be tested without a broker.
 Typical use::
 
     rng = np.random.default_rng(config.seed)          # one generator per run
-    dataset = datasets.build_dataset(config.dataset, rng)
-    model = VQC(config.circuit, dataset.n_features, config.training.diff_method)
-    outcome = trainer.train(model, dataset, config.training, rng, model.initialise(rng))
-    result = evaluator.evaluate(dataset.y_test, model.predict(dataset.x_test, outcome.params))
+    dataset = algorithms.build_dataset_for_config(config, rng)
+    outcome = algorithms.run_algorithm(config, dataset, rng)
+    result = outcome.result
+
+``algorithms`` is the only entry point that is correct for all four
+algorithms. The older ``datasets.build_dataset`` + ``VQC`` + ``trainer.train``
+sequence is still what happens *inside* ``run_algorithm`` for the classifiers,
+but writing it out by hand silently trains a VQC whatever the config says, and
+raises on a regression dataset.
 
 The single ``rng`` threaded through dataset generation, the split, batch
 shuffling and weight initialisation is what makes a run reproducible

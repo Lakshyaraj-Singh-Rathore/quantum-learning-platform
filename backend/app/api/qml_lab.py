@@ -27,6 +27,7 @@ from app.models.qml import TERMINAL_STATUSES, QmlExperiment
 from app.models.user import User
 from app.quantum.qml_lab import limits
 from app.quantum.qml_lab.errors import QmlLabError, QmlLimitExceededError
+from app.quantum.qml_lab import algorithms
 from app.quantum.qml_lab.models import QmlExperimentConfig
 from app.services import qml_lab as service
 from app.workers.qml_tasks import run_qml_experiment
@@ -132,7 +133,11 @@ def create_experiment(
     # worker two seconds later: iris_binary caps at 100 samples, and the
     # encoder needs one wire per feature.
     try:
-        probe = service.datasets.build_dataset(payload.dataset, np.random.default_rng(payload.seed))
+        # Dispatched, not hardcoded: a regression config must be probed with
+        # the regression builder. Calling build_dataset directly here is what
+        # made every advertised regression dataset 422 at the API even after
+        # the schema accepted it.
+        probe = algorithms.build_dataset_for_config(payload, np.random.default_rng(payload.seed))
         if probe.n_features > payload.circuit.n_qubits:
             raise HTTPException(
                 status_code=422,

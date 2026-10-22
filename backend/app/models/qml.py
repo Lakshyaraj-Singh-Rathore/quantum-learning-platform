@@ -131,13 +131,27 @@ class QmlEpochMetric(Base):
 
     epoch = Column(Integer, nullable=False)
     train_loss = Column(Float, nullable=False)
-    train_accuracy = Column(Float, nullable=False)
+
+    #: Nullable since migration ``j5e8f1a4b7c2``: a regression epoch has no
+    #: accuracy. It was NOT NULL with no default, which was a genuine safety
+    #: property -- a classification epoch that failed to compute accuracy
+    #: failed loudly rather than storing 0.0. That guard is now carried by a
+    #: round-trip test asserting NULL, not 0.0, for regression rows.
+    train_accuracy = Column(Float, nullable=True)
 
     #: Named for the held-out split the engine actually evaluates
     #: (``Dataset.x_test``), rather than "val", so the column and
     #: ``EpochRecord`` cannot drift apart. Phase 1 has no third split.
     test_loss = Column(Float, nullable=True)
     test_accuracy = Column(Float, nullable=True)
+
+    #: Regression history. Named to match ``HISTORY_KEYS_BY_TASK`` in
+    #: ``describe()`` -- any other name makes the capability document lie.
+    #: **R2 is never stored in train_accuracy**: it can be negative, and a
+    #: column read as a [0, 1] accuracy holding -0.4 is a lie that survives
+    #: review because the D-033 test guards the Pydantic model, not the column.
+    train_r2 = Column(Float, nullable=True)
+    test_r2 = Column(Float, nullable=True)
 
     elapsed_seconds = Column(Float, nullable=False, default=0.0)
 

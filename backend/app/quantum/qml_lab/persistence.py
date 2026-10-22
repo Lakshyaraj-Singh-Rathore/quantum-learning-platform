@@ -43,12 +43,29 @@ _METRICS_FILE = "metrics.json"
 
 @dataclass(frozen=True)
 class LoadedModel:
-    """What :func:`load_model` hands back."""
+    """What :func:`load_model` hands back.
+
+    ``params`` is whatever the algorithm trained: ``vqc.Parameters``,
+    ``HybridParameters``, ``RegressionParameters``, or an ``LSSVMFit``
+    rebuilt from its stored coefficients. The engines deliberately do **not**
+    share a base class (``hybrid.py`` says so explicitly -- reading a hybrid
+    vector as ``Parameters`` reshapes the classical block into silent
+    nonsense), so the artifact records which kind it is and the loader
+    reconstructs the right one.
+    """
 
     version: int
     config: QmlExperimentConfig
-    params: Parameters
+    params: Any
     metrics: dict[str, Any]
+    #: Only set for regression: the **train-fitted** target scaler. Inference
+    #: must reload this, never refit -- refitting on whatever rows inference
+    #: happens to see would silently change the units of every prediction.
+    target_scaler: Any = None
+    #: Only set for the kernel: the training features the Gram matrix was
+    #: built against. An LSSVM has no weight vector; its decision function is
+    #: defined relative to the training set, so the set is part of the model.
+    support_x: Any = None
 
 
 def canonical_experiment_id(experiment_id: Any) -> str:
@@ -107,6 +124,8 @@ def save_model(
     target = experiment_dir(root, experiment_id)
     target.mkdir(parents=True, exist_ok=True)
 
+    kind, descriptor, arrays = _describe_artifact(config, params)
+
     try:
         _atomic_json(
             target / _CONFIG_FILE,
@@ -114,10 +133,11 @@ def save_model(
                 "version": ARTIFACT_VERSION,
                 "experiment_id": canonical_experiment_id(experiment_id),
                 "config": config.model_dump(mode="json"),
-                "parameter_shape": {"n_qubits": params.n_qubits, "n_layers": params.n_layers},
+                "artifact_kind": kind,
+                **descriptor,
             },
         )
-        _atomic_npz(target / _WEIGHTS_FILE, theta=np.asarray(params.theta, dtype=float))
+        _atomic_npz(target / _WEIGHTS_FILE, **arrays)
         _atomic_json(target / _METRICS_FILE, {"version": ARTIFACT_VERSION, "metrics": metrics or {}})
     except OSError as exc:
         raise QmlPersistenceError(f"could not write artifacts to {target}: {exc}") from exc
@@ -144,18 +164,17 @@ def load_model(root: Path | str, experiment_id: Any) -> LoadedModel:
         raise QmlPersistenceError(f"artifact version {version} is not supported (expected {ARTIFACT_VERSION})")
 
     config = QmlExperimentConfig.model_validate(payload["config"])
-    shape = payload["parameter_shape"]
+    # Artifacts written before dispatch landed have no "artifact_kind" and are
+    # always VQC parameters. Defaulting keeps them loadable rather than
+    # failing on a key that did not exist when they were written.
+    kind = payload.get("artifact_kind", "vqc")
 
     # allow_pickle=False is the point of using npz at all.
     try:
         with np.load(weights_path, allow_pickle=False) as archive:
-            theta = np.asarray(archive["theta"], dtype=float)
+            arrays = {name: np.asarray(archive[name]) for name in archive.files}
     except (OSError, ValueError, KeyError) as exc:
         raise QmlPersistenceError(f"unreadable weights at {weights_path}: {exc}") from exc
-
-    expected = shape["n_layers"] * shape["n_qubits"] * 2 + 1
-    if theta.size != expected:
-        raise QmlPersistenceError(f"weight vector has {theta.size} entries, expected {expected}")
 
     metrics: dict[str, Any] = {}
     metrics_path = target / _METRICS_FILE
@@ -165,12 +184,165 @@ def load_model(root: Path | str, experiment_id: Any) -> LoadedModel:
         except (OSError, json.JSONDecodeError):
             metrics = {}
 
+    params, target_scaler, support_x = _rebuild_artifact(kind, payload, arrays)
     return LoadedModel(
         version=version,
         config=config,
-        params=Parameters(theta=theta, n_qubits=int(shape["n_qubits"]), n_layers=int(shape["n_layers"])),
+        params=params,
         metrics=metrics,
+        target_scaler=target_scaler,
+        support_x=support_x,
     )
+
+
+# ---------------------------------------------------------------------------
+# Artifact shapes, one per engine
+# ---------------------------------------------------------------------------
+
+
+def _describe_artifact(config: QmlExperimentConfig, params: Any):
+    """Split a trained artifact into (kind, json descriptor, npz arrays)."""
+    algorithm = getattr(config, "algorithm", "vqc")
+
+    if algorithm == "quantum_kernel":
+        fit, support_x = params
+        return (
+            "quantum_kernel",
+            {
+                "parameter_shape": {
+                    "n_qubits": config.circuit.n_qubits,
+                    "n_layers": config.circuit.n_layers,
+                },
+                "lssvm": {"bias": float(fit.bias), "gamma": float(fit.gamma)},
+            },
+            {
+                "alpha": np.asarray(fit.alpha, dtype=float),
+                "support_x": np.asarray(support_x, dtype=float),
+                "support_y": np.asarray(fit.y_train, dtype=float),
+            },
+        )
+
+    if algorithm == "quantum_regression":
+        regression_params, scaler = params
+        return (
+            "quantum_regression",
+            {
+                "parameter_shape": {
+                    "n_qubits": regression_params.n_qubits,
+                    "n_layers": regression_params.n_layers,
+                },
+                # The train-fitted scaler travels with the model. Inference
+                # reloads it instead of refitting, so predictions keep the
+                # units the metrics were reported in.
+                "target_scaler": {
+                    "y_min": float(scaler.y_min),
+                    "y_max": float(scaler.y_max),
+                    "fitted": bool(scaler.fitted),
+                },
+            },
+            {"theta": np.asarray(regression_params.theta, dtype=float)},
+        )
+
+    if algorithm == "hybrid_qnn":
+        return (
+            "hybrid_qnn",
+            {
+                "parameter_shape": {
+                    "n_qubits": params.n_qubits,
+                    "n_layers": params.n_layers,
+                    "n_features": params.n_features,
+                    "n_hidden": params.n_hidden,
+                },
+            },
+            {"theta": np.asarray(params.theta, dtype=float)},
+        )
+
+    return (
+        "vqc",
+        {"parameter_shape": {"n_qubits": params.n_qubits, "n_layers": params.n_layers}},
+        {"theta": np.asarray(params.theta, dtype=float)},
+    )
+
+
+def _rebuild_artifact(kind: str, payload: dict[str, Any], arrays: dict[str, np.ndarray]):
+    """Reconstruct the engine-specific artifact recorded by ``_describe_artifact``."""
+    shape = payload["parameter_shape"]
+
+    if kind == "quantum_kernel":
+        from app.quantum.qml_lab.kernel import LSSVMFit
+
+        lssvm = payload["lssvm"]
+        support_x = np.asarray(arrays["support_x"], dtype=float)
+        fit = LSSVMFit(
+            alpha=np.asarray(arrays["alpha"], dtype=float),
+            bias=float(lssvm["bias"]),
+            x_train=support_x,
+            y_train=np.asarray(arrays["support_y"], dtype=float),
+            gamma=float(lssvm["gamma"]),
+        )
+        return fit, None, support_x
+
+    theta = np.asarray(arrays["theta"], dtype=float)
+
+    if kind == "quantum_regression":
+        from app.quantum.qml_lab.regression import RegressionParameters, TargetScaler
+
+        stored = payload["target_scaler"]
+        scaler = TargetScaler(
+            y_min=float(stored["y_min"]),
+            y_max=float(stored["y_max"]),
+            fitted=bool(stored["fitted"]),
+        )
+        expected = shape["n_layers"] * shape["n_qubits"] * 2 + 1
+        _check_size(theta, expected)
+        return (
+            RegressionParameters(
+                theta=theta,
+                n_qubits=int(shape["n_qubits"]),
+                n_layers=int(shape["n_layers"]),
+            ),
+            scaler,
+            None,
+        )
+
+    if kind == "hybrid_qnn":
+        from app.quantum.qml_lab.hybrid import HybridParameters, n_hybrid_parameters
+
+        expected = n_hybrid_parameters(
+            int(shape["n_features"]),
+            int(shape["n_hidden"]),
+            int(shape["n_qubits"]),
+            int(shape["n_layers"]),
+        )
+        _check_size(theta, expected)
+        return (
+            HybridParameters(
+                theta=theta,
+                n_qubits=int(shape["n_qubits"]),
+                n_layers=int(shape["n_layers"]),
+                n_features=int(shape["n_features"]),
+                n_hidden=int(shape["n_hidden"]),
+            ),
+            None,
+            None,
+        )
+
+    expected = shape["n_layers"] * shape["n_qubits"] * 2 + 1
+    _check_size(theta, expected)
+    return (
+        Parameters(
+            theta=theta, n_qubits=int(shape["n_qubits"]), n_layers=int(shape["n_layers"])
+        ),
+        None,
+        None,
+    )
+
+
+def _check_size(theta: np.ndarray, expected: int) -> None:
+    if theta.size != expected:
+        raise QmlPersistenceError(
+            f"weight vector has {theta.size} entries, expected {expected}"
+        )
 
 
 def delete_experiment(root: Path | str, experiment_id: Any) -> bool:

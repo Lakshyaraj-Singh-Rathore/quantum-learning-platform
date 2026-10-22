@@ -21,6 +21,7 @@ numpy that the cancellation path can hand back unchanged.
 
 from __future__ import annotations
 
+import dataclasses
 import time
 from dataclasses import dataclass, field
 from typing import Callable
@@ -257,11 +258,19 @@ def train(
         # reason recorded by _cancelled decides the status.
         status = stop_reason["value"] or "cancelled"
 
-    final = Parameters(
-        theta=np.asarray(theta, dtype=float),
-        n_qubits=initial.n_qubits,
-        n_layers=initial.n_layers,
-    )
+    # Return the SAME type that was passed in, not a hardcoded Parameters.
+    #
+    # This trainer is duck-typed on ``model.decision_values``, which is what
+    # lets the hybrid and the regressor train through it unmodified. But it
+    # used to rebuild its result as ``vqc.Parameters`` regardless, which
+    # quietly undid the guarantee ``hybrid.py`` is built on: that class reads
+    # ``theta[:-1]`` as circuit weights, so a hybrid vector's classical block
+    # gets reshaped into silent nonsense. The engine made that impossible and
+    # the trainer handed it back anyway.
+    #
+    # ``dataclasses.replace`` keeps every other field (n_features, n_hidden)
+    # intact, so a new parameter type needs no change here.
+    final = dataclasses.replace(initial, theta=np.asarray(theta, dtype=float))
 
     return TrainingOutcome(
         status=status,

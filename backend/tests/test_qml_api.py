@@ -487,3 +487,71 @@ def test_another_users_experiment_is_403(qml_client, student_headers, finished_e
         db.commit()
     finally:
         db.close()
+
+
+# ---------------------------------------------------------------------------
+# The headline invariant, at the layer that actually serves users
+# ---------------------------------------------------------------------------
+
+
+def test_every_advertised_pair_is_accepted_by_the_create_endpoint(qml_client, student_headers):
+    """describe() and POST /qml/experiments must agree, through the API.
+
+    The engine-level and schema-level versions of this invariant both passed
+    while the endpoint still returned 422 for all three regression datasets:
+    the route pre-flight-probed the dataset with ``datasets.build_dataset``
+    rather than the dispatcher. A capability document that advertises an
+    option the create endpoint rejects is a lie the UI will faithfully
+    render, so the assertion has to be made here.
+    """
+    describe = qml_client.get("/qml/describe", headers=student_headers).json()
+    pairs = [(entry["name"], d["name"]) for entry in describe["algorithms"] for d in entry["datasets"]]
+    assert len(pairs) == 12, f"expected 4 algorithms x 3 datasets, got {len(pairs)}"
+
+    rejected = []
+    for algorithm, dataset in pairs:
+        circuit = {"n_qubits": 4, "n_layers": 2, "rotation": "Y", "entanglement": "ring"}
+        if algorithm == "hybrid_qnn":
+            circuit["n_hidden"] = 2
+        response = qml_client.post(
+            "/qml/experiments",
+            headers=student_headers,
+            json={
+                "seed": 7,
+                "algorithm": algorithm,
+                "dataset": {"name": dataset, "n_samples": 40, "noise": 0.05, "test_fraction": 0.3},
+                "circuit": circuit,
+                "training": {
+                    "epochs": 1,
+                    "batch_size": 16,
+                    "learning_rate": 0.1,
+                    "diff_method": "backprop",
+                },
+            },
+        )
+        if response.status_code == 422:
+            rejected.append((algorithm, dataset, response.json()))
+
+    assert not rejected, f"advertised but rejected: {rejected}"
+
+
+@pytest.mark.parametrize(
+    "algorithm,dataset",
+    [("vqc", "sine"), ("hybrid_qnn", "damped_cosine"), ("quantum_regression", "moons")],
+)
+def test_a_task_mismatch_is_rejected_by_the_create_endpoint(
+    qml_client, student_headers, algorithm, dataset
+):
+    """The other half: widening the Literal must not make anything go."""
+    response = qml_client.post(
+        "/qml/experiments",
+        headers=student_headers,
+        json={
+            "seed": 7,
+            "algorithm": algorithm,
+            "dataset": {"name": dataset, "n_samples": 40, "noise": 0.05, "test_fraction": 0.3},
+            "circuit": {"n_qubits": 4, "n_layers": 2, "rotation": "Y", "entanglement": "ring"},
+            "training": {"epochs": 1, "batch_size": 16, "learning_rate": 0.1, "diff_method": "backprop"},
+        },
+    )
+    assert response.status_code == 422

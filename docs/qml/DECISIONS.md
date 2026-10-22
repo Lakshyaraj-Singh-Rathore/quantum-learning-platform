@@ -743,3 +743,121 @@ and per-algorithm capabilities served from `/qml/describe`.
 **Nothing in the repository is in a half-finished state.** Every module landed this phase is
 complete, tested and mutation-tested; the deferred work is work not begun, which is the
 condition §2C.8 asks for.
+
+---
+
+## Phase 5b — execution dispatch (D-039 … D-045)
+
+### D-039 — the dataset registry lives in `limits.py`, not `datasets.py`
+
+`models.py` needs the dataset list to build the `DatasetName` Literal, and `datasets.py` already
+imports `models.py` for `DatasetConfig`. Putting the registry in its natural home would have made
+`models → datasets → models`. `limits.py` was already imported by both and already owned
+`ALGORITHMS`, so it became the single source: `CLASSIFICATION_DATASETS`, `REGRESSION_DATASETS`,
+`ALL_DATASETS`, `TASK_BY_DATASET`, `TASK_BY_ALGORITHM`. `datasets.py` and `regression_data.py`
+re-export, and a test asserts the objects are `is`-identical.
+
+The Literal itself cannot be derived from a tuple without losing static typing, so it is written
+out and `test_the_dataset_literal_and_the_registry_cannot_drift` asserts the two agree. That is the
+registry rule applied honestly: one source, and where a second copy is unavoidable, a test that
+fails the moment they diverge.
+
+**Generalisable:** check the existing import direction before choosing where a single source of
+truth goes. The obvious home may be the forbidden one.
+
+### D-040 — the gap was made loud, not quiet
+
+`describe()` advertised six datasets while `DatasetConfig` rejected three of them. The cheap fix was
+deleting the regression names from `describe()`. That would have made the test pass and the product
+worse, and it is the instance-vs-class mistake `_base_table()` already taught. Instead the Literal
+widened, a task-compatibility validator landed on `QmlExperimentConfig`, and the mismatch became
+impossible in both directions: `quantum_regression + moons` and `vqc + sine` are now 422s with a
+message naming the valid alternatives.
+
+Widening the Literal had a consequence worth recording: `build_dataset`'s
+`# pragma: no cover - unreachable` fallback became reachable the instant `sine` was a valid name,
+and would have reported "unknown dataset" for a name that plainly exists. **When widening an
+enum, re-audit every exhaustiveness fallback keyed on it.**
+
+### D-041 — separate payloads per task, discriminated by `task` (D-033 applied, not re-opened)
+
+`result` is a JSON blob, so this costs zero migrations. `qml_epoch_metrics` is typed columns, so it
+costs exactly one additive migration, `j5e8f1a4b7c2`: nullable `train_r2`/`test_r2`, and
+`train_accuracy` relaxed to nullable.
+
+**R² is never written to `train_accuracy`.** It can be negative, and the live worker run measured
+exactly that: epochs 1–3 of the sine regression stored `train_r2 = -2.060, -0.844, -0.161`. Had
+those gone into the accuracy column, a chart labelled "accuracy" would have rendered −206%. The
+D-033 test guards the Pydantic model, not the column, so it would have kept passing throughout.
+
+Relaxing `NOT NULL` was a real loss of a safety property. It is replaced by
+`test_a_regression_epoch_row_stores_null_accuracy_not_zero`, which reads the column back and
+asserts `IS NULL` — 0.0 would be indistinguishable from a classifier that scored zero. The
+downgrade **deletes** NULL-accuracy rows rather than backfilling `0.0`: deleting is lossy and
+honest, backfilling is lossless and false.
+
+`record_epoch` duck-types via `_maybe()` rather than branching on a task string, so a record type
+that lacks `train_accuracy` writes NULL without the writer knowing what task it is serving.
+
+### D-042 — the kernel reports no epochs rather than one synthetic epoch
+
+An LSSVM is one `numpy.linalg.solve`. It writes zero rows to `qml_epoch_metrics`, returns
+`history=[]`, and emits `kernel:gram` / `kernel:solve` / `kernel:done` progress phases instead of
+fake epoch events. Its metrics live under `result["kernel"]`. Manufacturing an epoch to satisfy a
+uniform persistence path would have put a fabricated number in a chart.
+
+### D-043 — the trainer returned the wrong parameter type (latent Phase 5 defect, found and fixed)
+
+`trainer.train` rebuilt its result as `vqc.Parameters` regardless of what it was given.
+`hybrid.py:69` says `HybridParameters` is "deliberately not a subclass of Parameters" because that
+class reads `theta[:-1]` as circuit weights, which for a hybrid vector is the classical block, and
+would "reshape into silent nonsense" — the comment ends "a separate type makes the mistake
+impossible rather than merely documented."
+
+The engine made it impossible; the trainer undid it on the way out. Phase 5's tests missed this
+because they compared `params.theta` numerically, which is identical either way — only the type was
+wrong, and nothing asked. It surfaced when persistence tried to read `n_features` off the returned
+object.
+
+Fixed with `dataclasses.replace(initial, theta=...)`, which preserves the type and every other
+field, so a future parameter type needs no change here.
+`test_the_trainer_returns_the_parameter_type_it_was_given` was run against the reinstated bug
+before being trusted.
+
+**Generalisable:** a type-safety guarantee enforced at construction can be silently undone by any
+code that rebuilds the object. Asserting on values will not catch it; assert on the type.
+
+### D-044 — one inference contract, with no zeroed field for a task that lacks it
+
+`run_inference` returns a `task`-tagged payload. Classification carries `predictions` +
+`probabilities`; regression carries `values` + `target_range` and **no** `probabilities`; the
+kernel carries `predictions` + `decision_values`, because an LSSVM margin is a signed distance and
+calling it a probability would be an overclaim.
+
+A missing key is deliberate in preference to a null or a zero — the same reasoning as D-033. A UI
+that reads `probabilities` on a regression response should get a `KeyError` in development, not a
+plausible `0.0` in production.
+
+Regression inference **reloads** the train-fitted `TargetScaler` from the artifact and never
+refits. Refitting on whatever rows inference happens to receive would change the output units per
+request; `test_regression_inference_reuses_the_stored_scaler_rather_than_refitting` asserts a
+single-row and a four-row call return the identical value for the shared input.
+
+### D-045 — the capability document was advertising options the endpoint rejected
+
+The invariant held at the schema layer and at the engine layer, and the API still returned 422 for
+all three regression datasets. `POST /qml/experiments` pre-flight-probes the dataset with
+`service.datasets.build_dataset` — a third construction site, found only by posting all twelve
+advertised pairs at a live server.
+
+`describe()` had the mirror-image bug: both its branches iterated `DATASET_MAX_SAMPLES`, which now
+contains all six names, so every classification algorithm advertised `sine`. Both now derive from
+`_datasets_for_task()`, reading the one registry.
+
+The top-level `datasets` key is kept as the datasets valid for `default_algorithm` and documented
+as a compatibility field, because a client reading only that list would otherwise offer `sine` for
+a VQC.
+
+**Generalisable, and now the third time this shape of defect has appeared:** proving a rule holds
+in the model does not prove it holds at the boundary users touch. Enumerate every construction
+site, and assert the invariant at the outermost layer that serves it.

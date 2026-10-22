@@ -37,12 +37,11 @@ from app.models.qml import (
     QmlEpochMetric,
     QmlExperiment,
 )
-from app.quantum.qml_lab import datasets, evaluator, limits, trainer
+from app.quantum.qml_lab import algorithms, datasets, evaluator, limits, trainer
 from app.quantum.qml_lab.baseline import run_baseline
-from app.quantum.qml_lab.errors import QmlLabError
+from app.quantum.qml_lab.errors import QmlLabError, QmlPersistenceError
 from app.quantum.qml_lab.models import ProgressEvent, QmlExperimentConfig
 from app.quantum.qml_lab.persistence import load_model, save_model
-from app.quantum.qml_lab.vqc import VQC
 
 logger = logging.getLogger(__name__)
 
@@ -191,13 +190,24 @@ def record_epoch(db: Session, experiment_id: int, record) -> bool:
 
     Returns True if a row was inserted, False if this epoch already existed.
     """
+    # Duck-typed on the record, not branched on a task string: an
+    # EpochRecord carries accuracy and no R2, a RegressionEpochRecord the
+    # reverse. Writing a 0.0 into the column the record does not have is the
+    # exact hazard relaxing train_accuracy's NOT NULL introduced, so the
+    # absent metric is written as NULL.
+    def _maybe(name: str):
+        value = getattr(record, name, None)
+        return None if value is None else float(value)
+
     metric = QmlEpochMetric(
         experiment_id=experiment_id,
         epoch=record.epoch,
         train_loss=float(record.train_loss),
-        train_accuracy=float(record.train_accuracy),
-        test_loss=float(record.test_loss),
-        test_accuracy=float(record.test_accuracy),
+        train_accuracy=_maybe("train_accuracy"),
+        test_loss=_maybe("test_loss"),
+        test_accuracy=_maybe("test_accuracy"),
+        train_r2=_maybe("train_r2"),
+        test_r2=_maybe("test_r2"),
         elapsed_seconds=float(record.elapsed_seconds),
     )
     savepoint = db.begin_nested()
@@ -274,15 +284,12 @@ def execute_experiment(
         limits.enforce(config)
 
         rng = np.random.default_rng(config.seed)
-        dataset = datasets.build_dataset(config.dataset, rng)
+        dataset = algorithms.build_dataset_for_config(config, rng)
         if dataset.n_features > config.circuit.n_qubits:
             raise QmlLabError(
                 f"dataset '{config.dataset.name}' has {dataset.n_features} features but the "
                 f"circuit has {config.circuit.n_qubits} qubits"
             )
-
-        model = VQC(config.circuit, dataset.n_features, config.training.diff_method)
-        start_params = model.initialise(rng)
 
         def on_progress(event: ProgressEvent) -> None:
             # Only epoch boundaries are persisted; batch events exist for
@@ -291,52 +298,41 @@ def execute_experiment(
             if event.message == "epoch":
                 db.commit()
 
-        outcome = trainer.train(
-            model,
+        # One dispatch call. Everything that varies by algorithm -- engine,
+        # trainer, metric set, baseline, result shape -- is decided inside,
+        # from a table, so this path cannot quietly train a VQC for an
+        # algorithm the user did not pick.
+        outcome = algorithms.run_algorithm(
+            config,
             dataset,
-            config.training,
             rng,
-            start_params,
             on_progress=on_progress,
             should_cancel=CancelPoller(db, experiment_id),
             deadline_seconds=deadline_seconds,
         )
 
+        # The kernel writes no epoch rows: it is a closed-form solve with no
+        # loop, so its history is empty by design rather than by omission.
         for record in outcome.history:
             record_epoch(db, experiment_id, record)
 
         if outcome.interrupted:
             return _finish_interrupted(db, experiment, outcome)
 
-        predictions = model.predict(dataset.x_test, outcome.params)
-        evaluation = evaluator.evaluate(dataset.y_test, predictions)
-        baseline = run_baseline(
-            dataset.x_train,
-            dataset.y_train,
-            dataset.x_test,
-            dataset.y_test,
-            np.random.default_rng(config.seed),
-        )
-
         target = save_model(
             artifact_root(),
             experiment_id,
             config,
-            outcome.params,
-            metrics={"evaluation": evaluation.model_dump(), "baseline": baseline.model_dump()},
+            outcome.artifact,
+            metrics={
+                "task": outcome.task,
+                "evaluation": outcome.result.get("evaluation", {}),
+                "baseline": outcome.result.get("baseline", {}),
+            },
         )
 
         experiment.model_path = str(target)
-        experiment.result = {
-            "evaluation": evaluation.model_dump(),
-            "baseline": baseline.model_dump(),
-            "circuit": model.describe(),
-            "dataset": dataset.summary(),
-            "epochs_completed": outcome.epochs_completed,
-            "duration_seconds": outcome.duration_seconds,
-            "final_train_loss": outcome.history[-1].train_loss if outcome.history else None,
-            "final_train_accuracy": outcome.history[-1].train_accuracy if outcome.history else None,
-        }
+        experiment.result = outcome.result
         experiment.status = COMPLETED
         experiment.finished_at = datetime.now(timezone.utc)
         db.commit()
@@ -421,24 +417,64 @@ def run_inference(experiment: QmlExperiment, features: list[list[float]]) -> dic
     # seed. Deterministic by construction: the same seed yields the same split
     # and therefore the same train-only scaler.
     rng = np.random.default_rng(config.seed)
-    dataset = datasets.build_dataset(config.dataset, rng)
+    dataset = algorithms.build_dataset_for_config(config, rng)
 
     raw = np.asarray(features, dtype=float)
     if raw.ndim != 2 or raw.shape[1] != dataset.n_features:
         raise ValueError(f"expected rows of {dataset.n_features} features, got shape {tuple(raw.shape)}")
 
     scaled = dataset.scaler.transform(raw)
-    model = VQC(config.circuit, dataset.n_features, config.training.diff_method)
+    task = algorithms.task_for(config.algorithm)
 
-    probabilities = model.predict_proba(scaled, loaded.params)
-    labels = model.predict(scaled, loaded.params)
-
-    return {
-        "predictions": [int(v) for v in labels],
-        "probabilities": [float(v) for v in probabilities],
+    # One contract, task-tagged. The response never carries a zeroed field
+    # for a task that lacks it: a regression row has no `probabilities`, and
+    # a classification row has no `values`. A null there is the same hazard
+    # D-033 rejected for results -- a UI renders 0 and it reads as a real
+    # prediction of zero.
+    payload: dict[str, Any] = {
+        "task": task,
+        "algorithm": config.algorithm,
         "feature_names": list(dataset.feature_names),
         "n_features": dataset.n_features,
     }
+
+    if config.algorithm == "quantum_kernel":
+        from app.quantum.qml_lab.kernel import decision_values as kernel_decision
+        from app.quantum.qml_lab.kernel import predict as kernel_predict
+
+        model = algorithms.build_model(config, dataset.n_features)
+        rows = model.rectangular(scaled, loaded.support_x)
+        payload["predictions"] = [int(v) for v in kernel_predict(loaded.params, rows)]
+        # An LSSVM decision value is a signed margin, not a probability.
+        # Reporting it as one would be an overclaim, so it is named for what
+        # it is (§2C.3's labelling discipline).
+        payload["decision_values"] = [
+            float(v) for v in kernel_decision(loaded.params, rows)
+        ]
+        return payload
+
+    if task == "regression":
+        if loaded.target_scaler is None:
+            raise QmlPersistenceError(
+                "regression artifact is missing its target scaler; predictions would be "
+                "in scaled units and silently wrong"
+            )
+        model = algorithms.build_model(config, dataset.n_features)
+        # The *stored* scaler, never a refit one.
+        values = model.predict(scaled, loaded.params, loaded.target_scaler)
+        payload["values"] = [float(v) for v in values]
+        payload["target_range"] = [
+            float(loaded.target_scaler.y_min),
+            float(loaded.target_scaler.y_max),
+        ]
+        return payload
+
+    model = algorithms.build_model(config, dataset.n_features)
+    payload["predictions"] = [int(v) for v in model.predict(scaled, loaded.params)]
+    payload["probabilities"] = [
+        float(v) for v in model.predict_proba(scaled, loaded.params)
+    ]
+    return payload
 
 
 def describe() -> dict[str, Any]:
@@ -449,13 +485,15 @@ def describe() -> dict[str, Any]:
     """
     return {
         "limits": limits.LIMITS,
+        # Compatibility field: the datasets valid for ``default_algorithm``.
+        # It predates per-algorithm entries and is deliberately NOT the union
+        # of all six -- a client reading only this list would otherwise offer
+        # `sine` for a VQC, which the schema rejects with a 422.
+        # ``algorithms[].datasets`` is the authoritative, task-filtered list
+        # (§2C.7).
         "datasets": [
-            {
-                "name": name,
-                "max_samples": maximum if maximum is not None else limits.MAX_SAMPLES,
-                "n_features": 4 if name == "iris_binary" else 2,
-            }
-            for name, maximum in datasets.DATASET_MAX_SAMPLES.items()
+            _describe_dataset(name)
+            for name in _datasets_for_task(limits.task_for_algorithm(limits.DEFAULT_ALGORITHM))
         ],
         "diff_methods": ["backprop", "parameter-shift"],
         "rotations": ["X", "Y", "Z"],
@@ -516,6 +554,32 @@ _ALGORITHM_META: dict[str, dict[str, Any]] = {
 }
 
 
+def _datasets_for_task(task: str) -> tuple[str, ...]:
+    """The dataset names valid for a task, from the single registry."""
+    return (
+        limits.REGRESSION_DATASETS if task == "regression" else limits.CLASSIFICATION_DATASETS
+    )
+
+
+def _describe_dataset(name: str) -> dict[str, Any]:
+    """One dataset entry, one key shape for every task (D-032's rule)."""
+    from app.quantum.qml_lab import regression_data
+
+    maximum = datasets.DATASET_MAX_SAMPLES.get(name)
+    if limits.task_for_dataset(name) == "regression":
+        n_features = 2 if name == "linear_mix" else 1
+        required = regression_data.REQUIRED_ANGLE_FREQUENCY[name]
+    else:
+        n_features = 4 if name == "iris_binary" else 2
+        required = None
+    return {
+        "name": name,
+        "max_samples": maximum if maximum is not None else limits.MAX_SAMPLES,
+        "n_features": n_features,
+        "required_angle_frequency": required,
+    }
+
+
 def _describe_algorithms() -> list[dict[str, Any]]:
     """Per-algorithm capability entries, all with an identical key shape.
 
@@ -524,33 +588,15 @@ def _describe_algorithms() -> list[dict[str, Any]]:
     client-side**. D-032 guarantees every ``limits_for`` table has the same
     keys, so the UI reads one shape and never branches on algorithm name.
     """
-    from app.quantum.qml_lab import regression_data
-
     entries: list[dict[str, Any]] = []
     for name in limits.ALGORITHMS:
         meta = _ALGORITHM_META[name]
         task = meta["task"]
 
-        if task == "regression":
-            available = [
-                {
-                    "name": dataset,
-                    "max_samples": limits.MAX_SAMPLES,
-                    "n_features": 2 if dataset == "linear_mix" else 1,
-                    "required_angle_frequency": regression_data.REQUIRED_ANGLE_FREQUENCY[dataset],
-                }
-                for dataset in regression_data.REGRESSION_DATASETS
-            ]
-        else:
-            available = [
-                {
-                    "name": dataset,
-                    "max_samples": maximum if maximum is not None else limits.MAX_SAMPLES,
-                    "n_features": 4 if dataset == "iris_binary" else 2,
-                    "required_angle_frequency": None,
-                }
-                for dataset, maximum in datasets.DATASET_MAX_SAMPLES.items()
-            ]
+        # Filtered from the one registry, not from a per-branch literal.
+        # DATASET_MAX_SAMPLES carries all six names now, so iterating it here
+        # is what offered `sine` to a VQC.
+        available = [_describe_dataset(dataset) for dataset in _datasets_for_task(task)]
 
         entries.append(
             {

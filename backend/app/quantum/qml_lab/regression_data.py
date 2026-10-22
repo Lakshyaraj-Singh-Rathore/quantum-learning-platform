@@ -21,6 +21,7 @@ from typing import Callable
 import numpy as np
 from pennylane import numpy as pnp
 
+from app.quantum.qml_lab import limits
 from app.quantum.qml_lab.datasets import ANGLE_MAX, ANGLE_MIN, MinMaxScaler
 from app.quantum.qml_lab.errors import QmlCancelledError, QmlDatasetError
 from app.quantum.qml_lab.models import (
@@ -39,10 +40,12 @@ from app.quantum.qml_lab.regression import (
 ProgressCallback = Callable[[ProgressEvent], None]
 CancelCallback = Callable[[], bool]
 
-#: Datasets with a continuous target. Deliberately a separate registry from
-#: the classification one: asking for "moons" here, or "sine" there, must be
-#: a loud failure rather than a silent fallback.
-REGRESSION_DATASETS: tuple[str, ...] = ("sine", "damped_cosine", "linear_mix")
+#: Datasets with a continuous target. **Re-exported, not redefined** -- the
+#: single registry is ``limits.REGRESSION_DATASETS``. Phase 5 defined this
+#: tuple here while ``models.DatasetName`` was hand-written elsewhere, and the
+#: two drifted immediately: describe() advertised these names and the schema
+#: rejected them.
+REGRESSION_DATASETS: tuple[str, ...] = limits.REGRESSION_DATASETS
 
 
 @dataclass(frozen=True)

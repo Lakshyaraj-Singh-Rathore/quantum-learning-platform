@@ -24,8 +24,17 @@ from pathlib import Path
 
 import numpy as np
 
+from app.quantum.qml_lab import limits
 from app.quantum.qml_lab.errors import QmlDatasetError
 from app.quantum.qml_lab.models import DatasetConfig
+
+#: Re-exported from the single registry in ``limits`` so callers can keep
+#: importing dataset facts from the dataset module, without a second copy
+#: of the list existing anywhere.
+CLASSIFICATION_DATASETS = limits.CLASSIFICATION_DATASETS
+REGRESSION_DATASETS = limits.REGRESSION_DATASETS
+ALL_DATASETS = limits.ALL_DATASETS
+task_for_dataset = limits.task_for_dataset
 
 #: Bundled copy of Fisher's Iris measurements (1936), a public-domain dataset.
 #: Vendored from the scikit-learn wheel's ``sklearn/datasets/data/iris.csv``
@@ -261,6 +270,15 @@ def build_dataset(config: DatasetConfig, rng: np.random.Generator) -> Dataset:
         feature_names = ("x1", "x2")
     elif config.name == "iris_binary":
         x, y, feature_names = load_iris_binary(config.n_samples, rng)
+    elif config.name in limits.REGRESSION_DATASETS:
+        # Reachable now that DatasetName spans both tasks. The schema's
+        # task-compatibility validator should have caught this already, so
+        # arriving here means a caller bypassed it -- say so plainly rather
+        # than reporting "unknown dataset" for a name that plainly exists.
+        raise QmlDatasetError(
+            f"{config.name!r} is a regression dataset; build it with "
+            f"regression_data.build_regression_dataset, not build_dataset"
+        )
     else:  # pragma: no cover - Literal in the schema makes this unreachable
         raise QmlDatasetError(f"unknown dataset {config.name!r}")
 
@@ -284,4 +302,8 @@ DATASET_MAX_SAMPLES: dict[str, int | None] = {
     "moons": None,
     "circles": None,
     "iris_binary": 100,
+    # Regression generators are analytic, so they have no source-data ceiling.
+    "sine": None,
+    "damped_cosine": None,
+    "linear_mix": None,
 }

@@ -94,6 +94,63 @@ LIMITS: dict[str, dict[str, Any]] = _base_table()
 
 #: Every algorithm the lab can run. The schema's Literal is built from this,
 #: so a new entry cannot be accepted by the API until it is listed.
+#: ---------------------------------------------------------------------------
+#: The dataset registry. **One source of truth.**
+#: ---------------------------------------------------------------------------
+#:
+#: This lives in ``limits`` rather than ``datasets`` because ``datasets``
+#: imports ``models`` for ``DatasetConfig``, so ``models`` cannot import
+#: ``datasets`` back without a cycle — and ``models`` is exactly what needs
+#: the list, to build the ``DatasetName`` Literal.
+#:
+#: Phase 5 kept the regression names in ``regression_data`` and the
+#: classification names in a Literal hand-written in ``models``. They drifted
+#: immediately: ``/qml/describe`` advertised ``sine`` while ``DatasetConfig``
+#: 422-rejected it, so a client built to "drive everything from describe"
+#: would render three datasets that always fail. Same failure mode as the
+#: frozen-dict drift — two hand-maintained copies of one fact.
+#:
+#: ``test_the_dataset_literal_and_the_registry_cannot_drift`` asserts the
+#: Literal and this tuple agree.
+CLASSIFICATION_DATASETS: tuple[str, ...] = ("moons", "circles", "iris_binary")
+REGRESSION_DATASETS: tuple[str, ...] = ("sine", "damped_cosine", "linear_mix")
+ALL_DATASETS: tuple[str, ...] = CLASSIFICATION_DATASETS + REGRESSION_DATASETS
+
+TASK_BY_DATASET: dict[str, str] = {
+    **{name: "classification" for name in CLASSIFICATION_DATASETS},
+    **{name: "regression" for name in REGRESSION_DATASETS},
+}
+
+#: Which task each algorithm solves. Drives result shape, metric set, epoch
+#: columns and the inference contract, so it is declared once here.
+TASK_BY_ALGORITHM: dict[str, str] = {
+    "vqc": "classification",
+    "hybrid_qnn": "classification",
+    "quantum_kernel": "classification",
+    "quantum_regression": "regression",
+}
+
+
+def task_for_dataset(name: str) -> str:
+    """The task a dataset belongs to. Raises rather than guessing."""
+    try:
+        return TASK_BY_DATASET[name]
+    except KeyError:
+        raise QmlConfigError(
+            f"unknown dataset {name!r}; expected one of {', '.join(ALL_DATASETS)}"
+        ) from None
+
+
+def task_for_algorithm(name: str) -> str:
+    """The task an algorithm solves. Raises rather than defaulting."""
+    try:
+        return TASK_BY_ALGORITHM[name]
+    except KeyError:
+        raise QmlConfigError(
+            f"unknown algorithm {name!r}; expected one of {', '.join(ALGORITHMS)}"
+        ) from None
+
+
 ALGORITHMS: tuple[str, ...] = (
     "vqc",
     "hybrid_qnn",
