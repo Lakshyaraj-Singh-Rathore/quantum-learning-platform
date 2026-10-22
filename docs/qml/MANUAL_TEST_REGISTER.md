@@ -84,18 +84,36 @@ complete history of everything that was ever deferred.
 - **Deferred by:** Phase 4 (`954b9d2`)
 - **Blocks release?** **Yes — Phase 8 cannot close without it.** It is the only source of the
   numbers that set the shipped timeout.
-- **What to do:** on the i5-13450HX / RTX 4050 / 16 GB / Windows target, from a clean checkout
-  with the backend venv active (PowerShell 5 — `&&` is a parser error, so these are separate
-  statements):
+  - **What to do:** on the i5-13450HX / RTX 4050 / 16 GB / Windows target, from a clean checkout
+    with the backend venv active (PowerShell 5 — `&&` is a parser error, so these are separate
+    statements):
 
-  ```powershell
-  cd backend
-  $env:PYTHONPATH = "."
-  python scripts\bench_qml.py --full --json ..\artifacts\bench-full.json --md ..\artifacts\bench-full.md
-  ```
+    ```powershell
+    cd backend
+    pip install psutil
+    $env:PYTHONPATH = "."
+    python scripts\bench_qml.py --full --json ..\artifacts\bench-full.json --md ..\artifacts\bench-full.md
+    ```
 
-  Return `artifacts/bench-full.json`. Run it on mains power with no other heavy process, and do
-  not interrupt it — a killed run is a ceiling data point, not a timing (§2B.6).
+    **`pip install psutil` is not optional cosmetics.** `total_ram_gib()` reads `/proc/meminfo`,
+    which does not exist on Windows, and falls back to `psutil` (`bench_qml.py:89-101`). `psutil` is
+    **not** in `requirements.txt` — it is a benchmark-only dependency and does not belong there — so
+    without it the run completes but records `total_ram_gib: null`. Peak RAM is one of the
+    measurements §2B.1 says does not transfer from the sandbox and must come from this machine, so a
+    null there is a hole in the only report that can fill it. Do not add it to `requirements.txt` to
+    fix this; install it into the venv.
+
+    Return `artifacts/bench-full.json`. Run it on mains power with no other heavy process, and do
+    not interrupt it — a killed run is a ceiling data point, not a timing (§2B.6). Note that
+    `artifacts/` is gitignored, so the file will not commit itself; it has to be sent back
+    deliberately.
+
+    **It will not take 25 hours.** That figure from Phase 4 is a *projection the script outputs*,
+    not something it measures. `--full` times a **single gradient step** in each of **45 cells**
+    (7 qubit-scaling + 4 layer-scaling + 4 batch-scaling tuples, × 2 gradient methods × 2 devices,
+    minus the 15 lightning+backprop cells that are skipped because a C++ statevector cannot
+    differentiate), 5 reps each, and then extrapolates. Every cell carries a `budget_s = 120.0` cap,
+    so a slow cell is recorded with a non-`ok` status rather than hanging the run.
 - **Expected:** completes in roughly 10–40 minutes and writes both files.
   `execution_law_verified` must be `true`; if it is `false` that is a finding, not a flaky run.
   The number that matters is the `projections` entry for
