@@ -1030,3 +1030,32 @@ Both forms were shown to fail the same mutation (`?? FEATURES_CLOSED` changed to
 `?? { qml_enabled: true }`) *before* the regex was removed, so the replacement
 is proven at least as strong on the behaviour that matters. The regex is now
 deleted: keeping both would mean a correct refactor still fails the suite.
+
+## D-054 — the 57 pre-existing harness failures are tabled, not fixed
+
+**Phase 8, Stage 3.** The four red render harnesses (`results` 8, `codelab` 9,
+`p5` 20, `games` 20 = **57**) were re-measured and reproduce Phase 7's counts
+exactly. **No assertion was changed.**
+
+Classification is mechanical — does the string the assertion expects still
+exist anywhere in `frontend/web/src`? 34 expect copy the product no longer
+contains; 6 are interpolated and undecidable by that test; 7 have no string
+literal; 5 are partially drifted; 5 are present in source but not rendered on
+the path under test.
+
+Every one sits on the meaning side of the line (an expected string), or cannot
+be decided without a judgement the owner should make. Hence **0 fixed, 34
+tabled, 23 recorded with evidence**. Two exceptions are identified as genuine
+plumbing and left for the next pass: `render-p5.mts:124` and `:144` assert that
+quiz and challenge titles render, but `ChallengesPage.tsx:1230` puts them in a
+Radix `Select`, whose items are portalled and therefore unreachable by
+`renderToString` — a browser-path fix, allowed and now possible.
+
+The table, with the mandatory "what regression would go undetected" field on
+every row, is `docs/qml/08-assertion-proposals.md`. `K = 34` is not counted as
+green anywhere in Phase 8.
+
+One field §2I.3 requires cannot be supplied: "cite the commit that changed the
+UI". `git rev-list --count origin/main` is **1** — the repository is a single
+squashed commit, so no commit changed it and there is no before/after to cite.
+Current source text is substituted, and the requirement should be withdrawn.
