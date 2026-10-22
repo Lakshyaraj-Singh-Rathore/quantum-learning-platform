@@ -172,7 +172,35 @@ to the id the server returned for that run.
 
 ---
 
-## 6. Defects found and fixed in this phase
+## 6a. Phase 8D — defects found and fixed
+
+| id | defect | fix | proof |
+|---|---|---|---|
+| — | `GamesPage.tsx` lost **20 assertions' worth** of teaching copy to `effdc6b` while keeping every control | `963c158` restores it | `render:games` 12/20 → **32 PASS / 0 FAIL**; 7 mandated strings each mutation-tested, 1 FAIL apiece, **no survivors** |
+| **QL-019** | the samples field's `max` was the global limit, not the dataset's cap, so `checkValidity()` returned **true** on a value the server rejects, and the over-cap state was enforced by **silently disabling Train** | `17bafa0` | `max` 1000 → **100**, `checkValidity()` true → **false**, hint `20–1000` → **20–100**, and an `ErrorNote` naming the cap and the rejected value |
+| **QL-005** | populations, probabilities and coherences rounded to 6dp **at computation** | `196c80f` moves it to the serialisation boundary | wire output byte-identical (`0.333333`); in-process now `0.3333333333333334`; 142 tests unchanged |
+| **QL-017** | diagonal cells displayed `∠ρ = 0π rad` — a phase for a population, which is not defined | `053064e` suppresses it on the diagonal only | both the tooltip and the inspector panel, so they cannot contradict each other |
+| — | two assertions were wrong about the **bytes** (`rho` vs `ρ`; a trailing period) | `4ea0c11` under the closed exception **D-060** | product mutation still fails both (2→3, 19→20) |
+
+**One defect class, not two patches.** QL-018 and QL-019 are the same bug from
+opposite sides — a constraint attribute disagreeing with the limits
+`/qml/describe` publishes. `scripts/qml-constraint-check.mts` now asserts that
+property directly: **134 checks over 12 algorithm/dataset pairs**, 3 of which
+carry a cap tighter than the global max, and that count is itself asserted so
+the sweep cannot pass by never meeting the case. Mutants: reinstating QL-019
+→ 3 FAIL, reinstating QL-018 → 12 FAIL, flipping `min()` to `max()` → 5 FAIL.
+
+**D-028 needed no fix: it was already applied.** The per-epoch evaluation term
+shipped in `2ee0896` (Phase 5) and `limits.py:357` reads
+`epochs * n_samples`, pinned by two tests including one that counts a real run
+with `qml.Tracker`. **Only the record was stale** — `DECISIONS.md` still titled
+it "proposed fix, not applied". Corrected. The capacity risk the brief flagged
+**cannot arise**: `enforce()` calls `check()`, which compares only dimensional
+values against the ceilings and **never consults `estimate_cost`**. No
+previously-valid configuration becomes rejected, and no limit constant was
+touched.
+
+## 6. Defects found and fixed in Phase 8/8C
 
 **QL-018 — the QML Lab could not submit a single experiment in any browser.**
 `QmlConfigForm.tsx` set `step={50}` with `min={20}` on the Samples field. HTML
@@ -236,6 +264,34 @@ Stated plainly, because this is the section that matters for a go/no-go.
   The fix is specified and deliberately not applied.
 
 ---
+
+## 8a. Phase 8D — gates, every number measured in this session
+
+| gate | measured |
+|---|---|
+| `pytest` | **1304 passed, 5 skipped** (388.8 s), 0 regressions |
+| `ruff` | **118 on HEAD = 118 on base `6414263`**, 0 new |
+| `npm run typecheck` | **0 errors** |
+| `npm run build` | PASS; shared **641 361 B** on HEAD **= 641 361 B** on base; `QmlLabPage` **49 740 B** vs **49 355 B** (+385 B, the QL-019 error and cap logic) |
+| CSS | **168 319 B**, byte-identical to base including the content hash ⇒ **0 rule-level diff** (both fixes reuse existing tokens) |
+| `qml-browser-metrics.mts` | **16 / 16**, mutation-tested |
+| `qml-constraint-check.mts` | **134 / 134** over 12 pairs, 3 mutants killed |
+| `qml:circuit` | 49 assertions, PASS |
+| `qml:ui` | 57 contract guards, PASS |
+| token ratchet | PASS — 107 utilities scanned, **0 new dead** |
+| migration | single head **`j5e8f1a4b7c2`** |
+| **K (the 57)** | **24** — codelab 3, results 2, p5 19, games **0** |
+
+**Not re-measured this session, and therefore not claimed:** a11y criticals,
+the 190/804/3306 goldens, the CSS diff against pre-QML `46576c8` (the diff
+above is against `6414263`), the 1366×768 viewport, and the `celery` 8/15
+safety count. Phase 8C's report carried Phase 8's numbers for these; this one
+does not carry them at all rather than restating a figure it did not take.
+
+**Still open in the ledger: QL-015 and QL-016 were not attempted.** QL-015
+(toast occlusion, local fix only) and QL-016 (preset-card truncation at
+1366×768) remain exactly where they were. Neither was started, so nothing about
+them has changed and no claim is made about either.
 
 ## 8. The pre-existing harness suite, exactly as it stands
 

@@ -211,6 +211,59 @@ trailing period, is an expected-string change — but it is not a weakening,
 because the product's text is correct and the assertion was always wrong about
 the bytes. Recorded as a narrow exception rather than silently applied.
 
+### 4.0b Resolved by product fix — Phase 8D
+
+The field-5 question (*does the feature still exist?*) put every row below in
+the allowed column: the feature survived, the copy did not, so the assertion
+was right and the product regressed.
+
+| rows | component | commit | evidence |
+|---|---|---|---|
+| **20** | `GamesPage.tsx` | `963c158` | `effdc6b` rewrote the file 480+/341− keeping every control. `Graded` 6× but `fidelity` 0×; `Shots` 6× but `tolerance` 0×. `render:games` **12 PASS / 20 FAIL → 32 PASS / 0 FAIL**. |
+
+The seven mandated strings were each mutation-tested by replacing them with a
+plausible paraphrase: **every one produced exactly 1 FAIL and no mutant
+survived**, so each is uniquely load-bearing rather than incidentally present.
+
+A second group inside that commit failed on a **systematic Title Case restyle**
+with no feature loss — `Clear Circuit`, `All Games`, `Level Complete`,
+`Not Yet Completed`, `Measurement Histogram`, `Reset to Starter`. These were
+reverted to the bytes the assertions pin rather than the assertions being
+relaxed, because the information is identical either way and there is nothing
+to trade. `Reset to Starter` was the exception that mattered: the control
+resets to the *broken* circuit, so the restyle had also made it less accurate.
+
+### 4.0c Resolved by assertion correction — Phase 8D
+
+Two rows only, under the closed exception recorded as **D-060**. Neither is a
+regression; both assertions were wrong about the bytes. Commit `4ea0c11`.
+
+| row | expected | product | mutation check |
+|---|---|---|---|
+| `render-results.mts:67` | `F(ideal, noisy rho)` | `F(ideal, noisy ρ)` | product mutation: 2 FAIL → 3 |
+| `render-p5.mts:191` | `No simulations yet.` | `No simulations yet` | product mutation: 19 FAIL → 20 |
+
+### 4.0d The new K
+
+| harness | Phase 8 | Phase 8C | **Phase 8D** |
+|---|---|---|---|
+| `render:codelab` | 8 | 3 | **3** |
+| `render:results` | 9 | 3 | **2** |
+| `render:p5` | 20 | 20 | **19** |
+| `render:games` | 20 | 20 | **0** |
+| **K** | **57** | **46** | **24** |
+
+**The table does shrink substantially: 57 → 24, and 20 of the 33 closed came
+from one component.** What remains is dominated by `render:p5`'s 19, which is
+not a copy problem: those rows drive Radix `Select` and portalled listboxes
+that SSR does not render at all, so whole sections fail together
+(*every quiz is selectable*, *there is a submit control*, *every student is
+listed*). That is the plumbing group identified in Phase 8 Stage 3 and it is
+still **allowed but not implemented** — closing it needs the harness moved into
+a browser, not more product copy. `render:codelab`'s 3 are the same family plus
+one genuine naming question (the product renders **Build & Run**, the assertion
+expects a build button), which is left tabled rather than guessed at.
+
 ### 4.1 `render-codelab.mts` — 8 rows
 
 The Code Lab assertions are not cosmetic. Six of them guard **promises the UI

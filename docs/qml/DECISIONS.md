@@ -484,7 +484,7 @@ structural gap, and it is the senior's call plus one measurement away from being
 sample with no broadcasting, and parameter-shift cost per sample is flat to 2.3% across an 8×
 batch change. Batch size is a statistics knob here, not a throughput knob.
 
-## D-028 — `limits.estimate_cost` undercounts by `(epochs − 1) · n_samples`; proposed fix, not applied
+## D-028 — `limits.estimate_cost` undercounts by `(epochs − 1) · n_samples`; **APPLIED in `2ee0896`, record corrected in Phase 8D**
 
 **Found by measurement.** `estimate_cost` (`limits.py:116-146`) charges one evaluation pass
 (`eval_execs = config.dataset.n_samples`, line 137). `trainer.train` evaluates **both splits at
@@ -1107,3 +1107,95 @@ an acceptable substitute for an error message is a teaching-design call of the
 same kind as QL-017, and the stale `max` is a contract question about whether
 the field's constraints should follow the dataset. Both belong to the owner.
 Filed as **QL-019**; MT-009 stays blocking in the register.
+
+
+## D-057 — QL-005: rounding is a presentation concern, so it happens at the boundary
+
+`qudit_lab/simulator.py` rounded populations (`:140`), probabilities (`:151`)
+and coherences (`:160`) to 6dp at the point of computation. The ruling was to
+enumerate the consumers before deciding, and the enumeration settled it: every
+consumer is display or serialisation — the Pydantic `SimulationResult`,
+`quditLab.ts`'s typed client, `DensityMatrixInspector.tsx` and
+`QuditNoisePanel.tsx`. Nothing computes on these three.
+
+The sampling path had already avoided the trap: `probabilities_list` appends
+the **unrounded** value and `normalized_probs` derives from that, so shot
+sampling was never fed a 6dp number. This was therefore a contract and
+cleanliness problem, not a live physics bug.
+
+**Decision:** the simulator returns full precision; `SimulationResult` carries a
+`field_serializer` that rounds the three display fields once, at the boundary
+where a number stops being arithmetic and becomes a reading.
+
+**The wire contract is unchanged, and that was measured.** A `d=3` Fourier state
+still serialises `0.333333`; the in-process value is now `0.3333333333333334`.
+No test pinned a rounded simulator value, so no test had to move — the
+enumeration predicted that and the run confirmed it (142 tests).
+
+`round(elapsed_ms, 2)` at `:199` is left alone: a measured duration whose
+precision beyond 10 µs is noise, not a computed physical quantity.
+
+## D-058 — QL-017: a diagonal density-matrix element has no phase, so none is shown
+
+A diagonal element is a population: real and non-negative. The arithmetic still
+returns 0 or π for it, so the phase view printed a confident `∠ρ = 0π rad` on
+every diagonal cell — **displaying a quantity that is not defined, which teaches
+something false.** Off-diagonal cells keep their phase, where the angle is the
+physically meaningful coherence phase.
+
+Fixed in both places that read the cell (the grid tooltip and the inspector
+panel), because fixing one would have left them contradicting each other about
+the same element.
+
+This is a **teaching-design call, not a defect**, and the owner may overrule it.
+It is recorded here so it can be reverted on a decision rather than on a guess.
+
+## D-059 — QL-019: an over-cap sample count stays and errors; it is not clamped
+
+The form's `max` was the global published limit while the dataset carried its
+own, tighter `max_samples`. `checkValidity()` therefore returned **true** on a
+value the server would reject, while the hint beside it correctly read
+`max 100 for this set`. **The UI contradicted itself, and that contradiction was
+the bug** — not the disabled button it produced.
+
+`max` now tracks the tighter of the two. The form already narrowed limits per
+*algorithm* for exactly this reason (§2C.3's kernel cap); it simply never did
+the same per *dataset*.
+
+**Decision, where either answer was defensible: the value is NOT clamped.**
+Switching dataset changes the cap underneath a number the learner chose, and
+silently rewriting it hides that a choice was overridden. The value stays, the
+field reads invalid, and an `ErrorNote` names the dataset, the cap and the
+requested value. That is the same contract `tooFewQubits` already uses three
+lines below, so no new component or visual element was introduced.
+
+Generalised rather than patched: QL-018 (`step=50` made the API's own default
+invalid) and QL-019 (a stale `max` let an over-cap value read as valid) are one
+defect class — a constraint attribute disagreeing with the published limit.
+`scripts/qml-constraint-check.mts` now asserts the property itself over all four
+algorithms × every dataset × `min`/`max`/`step`: 134 checks over 12 pairs, three
+of which have a cap tighter than the global max. **That last count is itself
+asserted**, so the sweep cannot pass by never meeting the case it exists to test.
+
+## D-060 — a narrow, closed exception for two assertions that were wrong about the bytes
+
+Correcting an assertion to match the product is normally forbidden; Stage A
+exists because Phase 8 could not tell a regression from a drift. Two rows were
+neither:
+
+| assertion expected | product renders | why the product is right |
+|---|---|---|
+| `F(ideal, noisy rho)` | `F(ideal, noisy ρ)` | Greek ρ is the correct notation for a density matrix |
+| `No simulations yet.` | `No simulations yet` | no `EmptyState` title in the codebase ends in a period |
+
+Making the first expect `rho` would be making it expect a typo. Both were
+reported as missing features by a byte-exact `git grep -F`, which nearly filed
+two defects against working code.
+
+**Verified not to be a weakening:** mutating the product still fails both —
+replacing the fidelity subtitle takes `render:results` from 2 FAIL to 3, and
+replacing the empty state takes `render:p5` from 19 to 20.
+
+**The exception covers these two named rows and nothing else.** The moment "it
+is just drift" becomes a category, the forbidden column of the field-5 test is
+empty.
