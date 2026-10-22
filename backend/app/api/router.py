@@ -9,6 +9,7 @@ from app.api import (
     circuits,
     curriculum,
     dashboard,
+    features,
     jobs,
     noise_lab,
     qml_lab,
@@ -18,6 +19,9 @@ from app.api import (
 
 api_router = APIRouter()
 api_router.include_router(auth.router)
+# Always mounted: the browser must be able to ask which features are on even
+# when they are off, so flag discovery can never depend on a 404.
+api_router.include_router(features.router)
 api_router.include_router(jobs.router)
 api_router.include_router(circuits.router)
 api_router.include_router(ai.router)

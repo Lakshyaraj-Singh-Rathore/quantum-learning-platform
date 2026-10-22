@@ -36,6 +36,10 @@ const TopicDetailPage = lazy(() =>
 const QuditLabPage = lazy(() =>
   import("./pages/QuditLabPage").then((m) => ({ default: m.QuditLabPage })),
 );
+// Lazy like every other page, so the lab's chunk is never downloaded by a
+// deployment that has the flag off. The page gates itself as well: the route
+// stays registered, and renders the 404 body when the server says off.
+const QmlLabPage = lazy(() => import("./pages/QmlLabPage"));
 
 function NotFound() {
   return (
@@ -70,6 +74,7 @@ export default function App() {
             <Route path="/curriculum/topic/:topicId" element={<TopicDetailPage />} />
             <Route path="/composer" element={<ComposerPage />} />
             <Route path="/qudit-lab" element={<QuditLabPage />} />
+            <Route path="/qml-lab" element={<QmlLabPage />} />
             <Route path="/challenges" element={<ChallengesPage />} />
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/codelab" element={<CodeLabPage />} />

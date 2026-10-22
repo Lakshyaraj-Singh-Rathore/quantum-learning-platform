@@ -93,21 +93,21 @@ def _get_experiment(experiment_id: int, db: Session, user: User) -> QmlExperimen
 # --------------------------------------------------------------------------
 
 
-@router.get("/features")
-def features(user: User = Depends(get_current_user)) -> dict[str, Any]:
-    """Tells the browser the feature is on.
-
-    Reaching this at all means the router was mounted, so the flag is true.
-    With the flag off the path does not exist and the client sees 404, which
-    is how the UI decides whether to show the nav entry -- an environment
-    flip, not a rebuild.
-    """
-    return {"qml_enabled": True}
-
-
 @router.get("/describe")
 def describe(user: User = Depends(get_current_user)) -> dict[str, Any]:
-    """Limits, datasets and defaults, so the UI cannot drift from the server."""
+    """Capability detail: limits, datasets, gradient methods, defaults.
+
+    This is the gated half of the §2A.6 split. Its 404 when the flag is off is
+    honest -- it means "this feature does not exist here" -- because nothing
+    depends on it for *visibility*. Visibility comes from the always-mounted
+    ``GET /features`` (``api/features.py``), which answers
+    ``{"qml_enabled": false}`` instead of failing.
+
+    There is deliberately no ``/qml/features``: this endpoint already returns
+    exactly the capability payload §2A.6 asks for (limits table, dataset
+    names, gradient methods), so a second gated route would be a third name
+    for one thing. Noted in docs/qml/phase-3-report.md.
+    """
     return service.describe()
 
 

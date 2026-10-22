@@ -329,3 +329,109 @@ deliberate, reported deviation from the column names sketched in §2A.1: the eng
 held-out split it calls `test` (`Dataset.x_test`), `EpochRecord` already uses those names, and
 there is no third split in Phase 1. Naming the columns `val_*` would require a translation layer
 between the ORM and the engine whose only purpose is to rename two floats.
+
+---
+
+## D-020 — `/qml/features` is removed; the flag lives on an always-mounted `/features`
+
+**Decision.** A single unauthenticated `GET /features` returns the flag **map**
+`{"qml_enabled": bool}`, mounted unconditionally in `router.py` right after `auth.router`.
+`GET /qml/features`, which §2A.6 asked to keep, is **deleted**.
+
+**Why the deletion.** A flag endpoint behind the flag cannot answer the only question worth
+asking. With the feature off, `/qml/features` 404s, and a 404 cannot distinguish "the server says
+off" from "the request never arrived" — so the client would have to treat both identically and the
+endpoint earns nothing. The capability payload §2A.6 described is already `/qml/describe`, verbatim;
+keeping a second gated route would have made three names for one thing. `GET /backends`
+(`api/jobs.py:45`) is the precedent for an unauthenticated capability read.
+
+**Deviation, reported.** §2A.6 says to keep `/qml/features`. This removes it.
+
+## D-021 — The nav gate needs `Sidebar.tsx` and `CommandPalette.tsx`, not just `nav.ts`
+
+**Decision.** `nav.ts` gains a `flag?: keyof Features` field on `NavItem` and exports
+`useNavItems()`, which filters gated entries. `Sidebar.tsx` and `CommandPalette.tsx` switch from
+`NAV_ITEMS` to `useNavItems()`. `TopBar.tsx` keeps reading `NAV_ITEMS` and is **not** touched.
+
+**Why it cannot be confined to `nav.ts`.** §4 permits touching only `nav.ts` for the nav item, but
+`NAV_ITEMS` is a static `const` evaluated at module load, while the flag arrives asynchronously
+over react-query. No change confined to `nav.ts` can hide an entry from a consumer that has
+already read the array. The three consumers are `Sidebar.tsx:95`, `TopBar.tsx:17` and
+`CommandPalette.tsx:70`.
+
+**Why `TopBar.tsx` is left alone.** It reads `NAV_ITEMS` only to derive a page title
+(`currentItem?.label ?? "Overview"`). It renders no link and offers no way to reach the route, so
+it cannot leak the feature. Leaving the entry visible to it means the title reads "Quantum ML Lab"
+when the flag is on; the cost is that a hand-typed `/qml-lab` with the flag **off** shows that
+title above a 404 body. That is cosmetic, and strictly better than the alternative, which is
+"Overview" on a legitimately enabled lab.
+
+**Deviation, reported.** Two files outside the §4 allowlist are modified. Both are modified for
+one reason: without them the sidebar and the command palette advertise a feature this deployment
+has switched off.
+
+## D-022 — The flag has three states, and the third is the one that breaks
+
+**Decision.** `useFeatures()` returns `{ features, resolved, isError }`. Consumers hide gated UI
+unless `features.qml_enabled === true`; the route additionally waits for `resolved` before
+rendering its 404 branch.
+
+**Why.** A flag is on, off, or *not yet answered*. Code that reads `data?.qml_enabled` collapses
+the third into the second, so a user who **has** the feature sees a 404 flash on every hard
+refresh before the lab appears. Hiding-then-revealing is correct in both directions: nothing is
+ever rendered and then retracted, and nothing is ever offered that cannot be opened.
+
+An error is treated as a resolved "off" — fail closed, and silently. For every deployment without
+the feature, off is the normal state, so surfacing it as an error would be noise.
+
+## D-023 — The circuit preview is checked against a real PennyLane tape, not a restatement
+
+**Decision.** `scripts/qml-circuit-fixtures.py` builds the genuine ansatz with
+`apply_angle_encoding` + `apply_ansatz`, captures `tape.operations`, and writes
+`test-fixtures/qml-circuit-golden.json`. `scripts/qml-circuit-check.mts` rebuilds each case in
+TypeScript and compares.
+
+**Why not a positional diff.** PennyLane emits Z-encoding as `H(0),RZ(0),H(1),RZ(1)` while the IR
+builder groups the Hadamards first. Single-qubit gates on disjoint wires commute, so that is not a
+defect — but an index-by-index comparison would fail on it permanently and get deleted. The
+harness instead compares the per-wire operation sequence (with control and target roles
+distinguished), the ordered two-qubit pairings, and the backend's own parameter counts. Agreement
+on all three means the circuits differ at most by reordering gates on disjoint wires.
+
+**`parameterCount` excludes the bias.** `limits.n_parameters` is `n_layers * n_qubits * 2`; the
+trainable bias is classical and counted separately (`limits.py:106-113`). An earlier draft added
+`+ 1` and would have reported a drift against the server on every run.
+
+## D-024 — Three `.mts` harnesses, twelve mutants, and two of them initially survived
+
+**Decision.** `npm run qml:circuit`, `npm run qml:ui`, `npm run qml:render` — 49, 58 and 33
+assertions. Every one was mutation-tested.
+
+**What the campaign actually bought.** Four of twelve mutants exposed defects in the *tests*:
+
+- Two mutants (QL-001 interpolation, a non-existent class) appeared to be caught but had never
+  applied — they targeted a `className="…"` literal that does not exist, because those classes
+  live inside `cn(…)`. Validating the mutant itself revealed that the guard only scanned
+  `className="…"` attributes and had never looked inside `cn()` at all. Both checks now scan every
+  string literal in the comment-stripped source: 16 colour utilities and 36 interpolated templates,
+  up from a handful.
+- Blanking every chart line left the harness green, because the gradient *area* path still carried
+  `M…L…L` geometry. The check now counts only `fill="none"` stroked paths.
+- Transposing the confusion matrix left it green, because `[[23,4],[3,30]]` transposed contains the
+  same four numbers. The check now reads cell positions out of the markup in document order.
+- Flattening the y-scale (every curve a horizontal line) left it green. The check now requires each
+  curve to span a range of y values.
+
+Lesson, consistent with Phase 1 and 2: a passing assertion is not evidence until something has been
+broken underneath it, and a mutant that "is caught" must be confirmed to have applied.
+
+## D-025 — The render fixture is captured from the live server, never hand-written
+
+**Decision.** `test-fixtures/qml-describe.json` is a recorded `GET /qml/describe` response.
+
+**Why.** The first draft of the render harness hand-wrote the capability payload and invented
+`learning_rate`, `noise`, `test_fraction` and `seed` limits. The server publishes none of them — it
+publishes `batch_size, concurrent_jobs, density_matrix_qubits, epochs, n_layers, n_qubits,
+n_samples`. The harness was therefore testing a contract that does not exist. Those four form
+fields now read "validated on submit" instead of a bound, which is the truth: the server still
+rejects an out-of-range value, but it does not advertise the range.

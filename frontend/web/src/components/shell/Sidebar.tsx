@@ -1,6 +1,6 @@
 import { NavLink } from "react-router-dom";
 import { Atom, ChevronLeft, ChevronRight } from "lucide-react";
-import { NAV_ITEMS, NAV_SECTIONS } from "./nav";
+import { NAV_SECTIONS, useNavItems } from "./nav";
 import { cn, Tooltip } from "../ui";
 import { create } from "zustand";
 
@@ -35,6 +35,9 @@ export function Sidebar({
   onNavigate?: () => void;
 }) {
   const { isCollapsed, toggleCollapsed } = useSidebarStore();
+  // Flag-gated entries are absent until the server confirms them, so the
+  // sidebar never offers a link to a feature this deployment has off.
+  const navItems = useNavItems();
   const collapsed = !mobile && isCollapsed;
 
   return (
@@ -92,7 +95,7 @@ export function Sidebar({
         aria-label="Primary"
       >
         {NAV_SECTIONS.map((sec, secIdx) => {
-          const items = NAV_ITEMS.filter((item) => item.section === sec.id);
+          const items = navItems.filter((item) => item.section === sec.id);
           if (items.length === 0) return null;
 
           return (

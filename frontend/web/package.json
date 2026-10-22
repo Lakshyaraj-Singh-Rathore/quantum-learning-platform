@@ -32,7 +32,11 @@
     "fixtures:games": "python3 scripts/game-fixtures.py",
     "fixtures:game-results": "python3 scripts/game-results.py",
     "curriculum": "tsx scripts/curriculum-check.mts && tsx scripts/curriculum-check.mts --auth",
-    "push:overlay": "tsx scripts/push-overlay-check.mts"
+    "push:overlay": "tsx scripts/push-overlay-check.mts",
+    "qml:circuit": "tsx scripts/qml-circuit-check.mts",
+    "qml:ui": "tsx scripts/qml-ui-check.mts",
+    "fixtures:qml-circuit": "python3 scripts/qml-circuit-fixtures.py",
+    "qml:render": "tsx scripts/qml-render-check.mts"
   },
   "dependencies": {
     "@codemirror/lang-python": "^6.2.1",

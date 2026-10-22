@@ -29,7 +29,6 @@ from fastapi.testclient import TestClient
 from app.config import get_settings
 
 QML_PATHS = [
-    ("get", "/qml/features"),
     ("get", "/qml/describe"),
     ("post", "/qml/experiments"),
     ("get", "/qml/experiments"),
@@ -118,8 +117,9 @@ def qml_client(client, tmp_path_factory):
     importlib.reload(router_module)
 
 
-def test_features_endpoint_answers_when_flag_is_on(qml_client, student_headers):
-    response = qml_client.get("/qml/features", headers=student_headers)
+def test_global_features_endpoint_reports_true_when_flag_is_on(qml_client):
+    """The always-mounted endpoint tracks the flag -- unauthenticated."""
+    response = qml_client.get("/features")
     assert response.status_code == 200
     assert response.json() == {"qml_enabled": True}
 

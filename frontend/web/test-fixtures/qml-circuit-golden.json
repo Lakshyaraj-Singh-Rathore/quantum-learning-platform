@@ -1,0 +1,1383 @@
+{
+  "cases": [
+    {
+      "n_qubits": 2,
+      "n_layers": 1,
+      "rotation": "Y",
+      "entanglement": "ring",
+      "n_features": 2,
+      "ops": [
+        {
+          "gate": "ry",
+          "qubits": [
+            0
+          ],
+          "controls": []
+        },
+        {
+          "gate": "ry",
+          "qubits": [
+            1
+          ],
+          "controls": []
+        },
+        {
+          "gate": "ry",
+          "qubits": [
+            0
+          ],
+          "controls": []
+        },
+        {
+          "gate": "rz",
+          "qubits": [
+            0
+          ],
+          "controls": []
+        },
+        {
+          "gate": "ry",
+          "qubits": [
+            1
+          ],
+          "controls": []
+        },
+        {
+          "gate": "rz",
+          "qubits": [
+            1
+          ],
+          "controls": []
+        },
+        {
+          "gate": "x",
+          "qubits": [
+            1
+          ],
+          "controls": [
+            0
+          ]
+        }
+      ],
+      "describe": {
+        "n_qubits": 2,
+        "n_layers": 1,
+        "entanglement": "ring",
+        "rotations_per_layer": 4,
+        "entanglers_per_layer": 1,
+        "n_parameters": 4,
+        "depth_estimate": 3
+      }
+    },
+    {
+      "n_qubits": 2,
+      "n_layers": 2,
+      "rotation": "Y",
+      "entanglement": "linear",
+      "n_features": 2,
+      "ops": [
+        {
+          "gate": "ry",
+          "qubits": [
+            0
+          ],
+          "controls": []
+        },
+        {
+          "gate": "ry",
+          "qubits": [
+            1
+          ],
+          "controls": []
+        },
+        {
+          "gate": "ry",
+          "qubits": [
+            0
+          ],
+          "controls": []
+        },
+        {
+          "gate": "rz",
+          "qubits": [
+            0
+          ],
+          "controls": []
+        },
+        {
+          "gate": "ry",
+          "qubits": [
+            1
+          ],
+          "controls": []
+        },
+        {
+          "gate": "rz",
+          "qubits": [
+            1
+          ],
+          "controls": []
+        },
+        {
+          "gate": "x",
+          "qubits": [
+            1
+          ],
+          "controls": [
+            0
+          ]
+        },
+        {
+          "gate": "ry",
+          "qubits": [
+            0
+          ],
+          "controls": []
+        },
+        {
+          "gate": "rz",
+          "qubits": [
+            0
+          ],
+          "controls": []
+        },
+        {
+          "gate": "ry",
+          "qubits": [
+            1
+          ],
+          "controls": []
+        },
+        {
+          "gate": "rz",
+          "qubits": [
+            1
+          ],
+          "controls": []
+        },
+        {
+          "gate": "x",
+          "qubits": [
+            1
+          ],
+          "controls": [
+            0
+          ]
+        }
+      ],
+      "describe": {
+        "n_qubits": 2,
+        "n_layers": 2,
+        "entanglement": "linear",
+        "rotations_per_layer": 4,
+        "entanglers_per_layer": 1,
+        "n_parameters": 8,
+        "depth_estimate": 6
+      }
+    },
+    {
+      "n_qubits": 3,
+      "n_layers": 1,
+      "rotation": "Z",
+      "entanglement": "ring",
+      "n_features": 2,
+      "ops": [
+        {
+          "gate": "hadamard",
+          "qubits": [
+            0
+          ],
+          "controls": []
+        },
+        {
+          "gate": "rz",
+          "qubits": [
+            0
+          ],
+          "controls": []
+        },
+        {
+          "gate": "hadamard",
+          "qubits": [
+            1
+          ],
+          "controls": []
+        },
+        {
+          "gate": "rz",
+          "qubits": [
+            1
+          ],
+          "controls": []
+        },
+        {
+          "gate": "ry",
+          "qubits": [
+            0
+          ],
+          "controls": []
+        },
+        {
+          "gate": "rz",
+          "qubits": [
+            0
+          ],
+          "controls": []
+        },
+        {
+          "gate": "ry",
+          "qubits": [
+            1
+          ],
+          "controls": []
+        },
+        {
+          "gate": "rz",
+          "qubits": [
+            1
+          ],
+          "controls": []
+        },
+        {
+          "gate": "ry",
+          "qubits": [
+            2
+          ],
+          "controls": []
+        },
+        {
+          "gate": "rz",
+          "qubits": [
+            2
+          ],
+          "controls": []
+        },
+        {
+          "gate": "x",
+          "qubits": [
+            1
+          ],
+          "controls": [
+            0
+          ]
+        },
+        {
+          "gate": "x",
+          "qubits": [
+            2
+          ],
+          "controls": [
+            1
+          ]
+        },
+        {
+          "gate": "x",
+          "qubits": [
+            0
+          ],
+          "controls": [
+            2
+          ]
+        }
+      ],
+      "describe": {
+        "n_qubits": 3,
+        "n_layers": 1,
+        "entanglement": "ring",
+        "rotations_per_layer": 6,
+        "entanglers_per_layer": 3,
+        "n_parameters": 6,
+        "depth_estimate": 3
+      }
+    },
+    {
+      "n_qubits": 4,
+      "n_layers": 2,
+      "rotation": "X",
+      "entanglement": "ring",
+      "n_features": 2,
+      "ops": [
+        {
+          "gate": "rx",
+          "qubits": [
+            0
+          ],
+          "controls": []
+        },
+        {
+          "gate": "rx",
+          "qubits": [
+            1
+          ],
+          "controls": []
+        },
+        {
+          "gate": "ry",
+          "qubits": [
+            0
+          ],
+          "controls": []
+        },
+        {
+          "gate": "rz",
+          "qubits": [
+            0
+          ],
+          "controls": []
+        },
+        {
+          "gate": "ry",
+          "qubits": [
+            1
+          ],
+          "controls": []
+        },
+        {
+          "gate": "rz",
+          "qubits": [
+            1
+          ],
+          "controls": []
+        },
+        {
+          "gate": "ry",
+          "qubits": [
+            2
+          ],
+          "controls": []
+        },
+        {
+          "gate": "rz",
+          "qubits": [
+            2
+          ],
+          "controls": []
+        },
+        {
+          "gate": "ry",
+          "qubits": [
+            3
+          ],
+          "controls": []
+        },
+        {
+          "gate": "rz",
+          "qubits": [
+            3
+          ],
+          "controls": []
+        },
+        {
+          "gate": "x",
+          "qubits": [
+            1
+          ],
+          "controls": [
+            0
+          ]
+        },
+        {
+          "gate": "x",
+          "qubits": [
+            2
+          ],
+          "controls": [
+            1
+          ]
+        },
+        {
+          "gate": "x",
+          "qubits": [
+            3
+          ],
+          "controls": [
+            2
+          ]
+        },
+        {
+          "gate": "x",
+          "qubits": [
+            0
+          ],
+          "controls": [
+            3
+          ]
+        },
+        {
+          "gate": "ry",
+          "qubits": [
+            0
+          ],
+          "controls": []
+        },
+        {
+          "gate": "rz",
+          "qubits": [
+            0
+          ],
+          "controls": []
+        },
+        {
+          "gate": "ry",
+          "qubits": [
+            1
+          ],
+          "controls": []
+        },
+        {
+          "gate": "rz",
+          "qubits": [
+            1
+          ],
+          "controls": []
+        },
+        {
+          "gate": "ry",
+          "qubits": [
+            2
+          ],
+          "controls": []
+        },
+        {
+          "gate": "rz",
+          "qubits": [
+            2
+          ],
+          "controls": []
+        },
+        {
+          "gate": "ry",
+          "qubits": [
+            3
+          ],
+          "controls": []
+        },
+        {
+          "gate": "rz",
+          "qubits": [
+            3
+          ],
+          "controls": []
+        },
+        {
+          "gate": "x",
+          "qubits": [
+            1
+          ],
+          "controls": [
+            0
+          ]
+        },
+        {
+          "gate": "x",
+          "qubits": [
+            2
+          ],
+          "controls": [
+            1
+          ]
+        },
+        {
+          "gate": "x",
+          "qubits": [
+            3
+          ],
+          "controls": [
+            2
+          ]
+        },
+        {
+          "gate": "x",
+          "qubits": [
+            0
+          ],
+          "controls": [
+            3
+          ]
+        }
+      ],
+      "describe": {
+        "n_qubits": 4,
+        "n_layers": 2,
+        "entanglement": "ring",
+        "rotations_per_layer": 8,
+        "entanglers_per_layer": 4,
+        "n_parameters": 16,
+        "depth_estimate": 6
+      }
+    },
+    {
+      "n_qubits": 4,
+      "n_layers": 1,
+      "rotation": "Y",
+      "entanglement": "none",
+      "n_features": 4,
+      "ops": [
+        {
+          "gate": "ry",
+          "qubits": [
+            0
+          ],
+          "controls": []
+        },
+        {
+          "gate": "ry",
+          "qubits": [
+            1
+          ],
+          "controls": []
+        },
+        {
+          "gate": "ry",
+          "qubits": [
+            2
+          ],
+          "controls": []
+        },
+        {
+          "gate": "ry",
+          "qubits": [
+            3
+          ],
+          "controls": []
+        },
+        {
+          "gate": "ry",
+          "qubits": [
+            0
+          ],
+          "controls": []
+        },
+        {
+          "gate": "rz",
+          "qubits": [
+            0
+          ],
+          "controls": []
+        },
+        {
+          "gate": "ry",
+          "qubits": [
+            1
+          ],
+          "controls": []
+        },
+        {
+          "gate": "rz",
+          "qubits": [
+            1
+          ],
+          "controls": []
+        },
+        {
+          "gate": "ry",
+          "qubits": [
+            2
+          ],
+          "controls": []
+        },
+        {
+          "gate": "rz",
+          "qubits": [
+            2
+          ],
+          "controls": []
+        },
+        {
+          "gate": "ry",
+          "qubits": [
+            3
+          ],
+          "controls": []
+        },
+        {
+          "gate": "rz",
+          "qubits": [
+            3
+          ],
+          "controls": []
+        }
+      ],
+      "describe": {
+        "n_qubits": 4,
+        "n_layers": 1,
+        "entanglement": "none",
+        "rotations_per_layer": 8,
+        "entanglers_per_layer": 0,
+        "n_parameters": 8,
+        "depth_estimate": 2
+      }
+    },
+    {
+      "n_qubits": 4,
+      "n_layers": 4,
+      "rotation": "Y",
+      "entanglement": "linear",
+      "n_features": 3,
+      "ops": [
+        {
+          "gate": "ry",
+          "qubits": [
+            0
+          ],
+          "controls": []
+        },
+        {
+          "gate": "ry",
+          "qubits": [
+            1
+          ],
+          "controls": []
+        },
+        {
+          "gate": "ry",
+          "qubits": [
+            2
+          ],
+          "controls": []
+        },
+        {
+          "gate": "ry",
+          "qubits": [
+            0
+          ],
+          "controls": []
+        },
+        {
+          "gate": "rz",
+          "qubits": [
+            0
+          ],
+          "controls": []
+        },
+        {
+          "gate": "ry",
+          "qubits": [
+            1
+          ],
+          "controls": []
+        },
+        {
+          "gate": "rz",
+          "qubits": [
+            1
+          ],
+          "controls": []
+        },
+        {
+          "gate": "ry",
+          "qubits": [
+            2
+          ],
+          "controls": []
+        },
+        {
+          "gate": "rz",
+          "qubits": [
+            2
+          ],
+          "controls": []
+        },
+        {
+          "gate": "ry",
+          "qubits": [
+            3
+          ],
+          "controls": []
+        },
+        {
+          "gate": "rz",
+          "qubits": [
+            3
+          ],
+          "controls": []
+        },
+        {
+          "gate": "x",
+          "qubits": [
+            1
+          ],
+          "controls": [
+            0
+          ]
+        },
+        {
+          "gate": "x",
+          "qubits": [
+            2
+          ],
+          "controls": [
+            1
+          ]
+        },
+        {
+          "gate": "x",
+          "qubits": [
+            3
+          ],
+          "controls": [
+            2
+          ]
+        },
+        {
+          "gate": "ry",
+          "qubits": [
+            0
+          ],
+          "controls": []
+        },
+        {
+          "gate": "rz",
+          "qubits": [
+            0
+          ],
+          "controls": []
+        },
+        {
+          "gate": "ry",
+          "qubits": [
+            1
+          ],
+          "controls": []
+        },
+        {
+          "gate": "rz",
+          "qubits": [
+            1
+          ],
+          "controls": []
+        },
+        {
+          "gate": "ry",
+          "qubits": [
+            2
+          ],
+          "controls": []
+        },
+        {
+          "gate": "rz",
+          "qubits": [
+            2
+          ],
+          "controls": []
+        },
+        {
+          "gate": "ry",
+          "qubits": [
+            3
+          ],
+          "controls": []
+        },
+        {
+          "gate": "rz",
+          "qubits": [
+            3
+          ],
+          "controls": []
+        },
+        {
+          "gate": "x",
+          "qubits": [
+            1
+          ],
+          "controls": [
+            0
+          ]
+        },
+        {
+          "gate": "x",
+          "qubits": [
+            2
+          ],
+          "controls": [
+            1
+          ]
+        },
+        {
+          "gate": "x",
+          "qubits": [
+            3
+          ],
+          "controls": [
+            2
+          ]
+        },
+        {
+          "gate": "ry",
+          "qubits": [
+            0
+          ],
+          "controls": []
+        },
+        {
+          "gate": "rz",
+          "qubits": [
+            0
+          ],
+          "controls": []
+        },
+        {
+          "gate": "ry",
+          "qubits": [
+            1
+          ],
+          "controls": []
+        },
+        {
+          "gate": "rz",
+          "qubits": [
+            1
+          ],
+          "controls": []
+        },
+        {
+          "gate": "ry",
+          "qubits": [
+            2
+          ],
+          "controls": []
+        },
+        {
+          "gate": "rz",
+          "qubits": [
+            2
+          ],
+          "controls": []
+        },
+        {
+          "gate": "ry",
+          "qubits": [
+            3
+          ],
+          "controls": []
+        },
+        {
+          "gate": "rz",
+          "qubits": [
+            3
+          ],
+          "controls": []
+        },
+        {
+          "gate": "x",
+          "qubits": [
+            1
+          ],
+          "controls": [
+            0
+          ]
+        },
+        {
+          "gate": "x",
+          "qubits": [
+            2
+          ],
+          "controls": [
+            1
+          ]
+        },
+        {
+          "gate": "x",
+          "qubits": [
+            3
+          ],
+          "controls": [
+            2
+          ]
+        },
+        {
+          "gate": "ry",
+          "qubits": [
+            0
+          ],
+          "controls": []
+        },
+        {
+          "gate": "rz",
+          "qubits": [
+            0
+          ],
+          "controls": []
+        },
+        {
+          "gate": "ry",
+          "qubits": [
+            1
+          ],
+          "controls": []
+        },
+        {
+          "gate": "rz",
+          "qubits": [
+            1
+          ],
+          "controls": []
+        },
+        {
+          "gate": "ry",
+          "qubits": [
+            2
+          ],
+          "controls": []
+        },
+        {
+          "gate": "rz",
+          "qubits": [
+            2
+          ],
+          "controls": []
+        },
+        {
+          "gate": "ry",
+          "qubits": [
+            3
+          ],
+          "controls": []
+        },
+        {
+          "gate": "rz",
+          "qubits": [
+            3
+          ],
+          "controls": []
+        },
+        {
+          "gate": "x",
+          "qubits": [
+            1
+          ],
+          "controls": [
+            0
+          ]
+        },
+        {
+          "gate": "x",
+          "qubits": [
+            2
+          ],
+          "controls": [
+            1
+          ]
+        },
+        {
+          "gate": "x",
+          "qubits": [
+            3
+          ],
+          "controls": [
+            2
+          ]
+        }
+      ],
+      "describe": {
+        "n_qubits": 4,
+        "n_layers": 4,
+        "entanglement": "linear",
+        "rotations_per_layer": 8,
+        "entanglers_per_layer": 3,
+        "n_parameters": 32,
+        "depth_estimate": 12
+      }
+    },
+    {
+      "n_qubits": 8,
+      "n_layers": 2,
+      "rotation": "Y",
+      "entanglement": "ring",
+      "n_features": 2,
+      "ops": [
+        {
+          "gate": "ry",
+          "qubits": [
+            0
+          ],
+          "controls": []
+        },
+        {
+          "gate": "ry",
+          "qubits": [
+            1
+          ],
+          "controls": []
+        },
+        {
+          "gate": "ry",
+          "qubits": [
+            0
+          ],
+          "controls": []
+        },
+        {
+          "gate": "rz",
+          "qubits": [
+            0
+          ],
+          "controls": []
+        },
+        {
+          "gate": "ry",
+          "qubits": [
+            1
+          ],
+          "controls": []
+        },
+        {
+          "gate": "rz",
+          "qubits": [
+            1
+          ],
+          "controls": []
+        },
+        {
+          "gate": "ry",
+          "qubits": [
+            2
+          ],
+          "controls": []
+        },
+        {
+          "gate": "rz",
+          "qubits": [
+            2
+          ],
+          "controls": []
+        },
+        {
+          "gate": "ry",
+          "qubits": [
+            3
+          ],
+          "controls": []
+        },
+        {
+          "gate": "rz",
+          "qubits": [
+            3
+          ],
+          "controls": []
+        },
+        {
+          "gate": "ry",
+          "qubits": [
+            4
+          ],
+          "controls": []
+        },
+        {
+          "gate": "rz",
+          "qubits": [
+            4
+          ],
+          "controls": []
+        },
+        {
+          "gate": "ry",
+          "qubits": [
+            5
+          ],
+          "controls": []
+        },
+        {
+          "gate": "rz",
+          "qubits": [
+            5
+          ],
+          "controls": []
+        },
+        {
+          "gate": "ry",
+          "qubits": [
+            6
+          ],
+          "controls": []
+        },
+        {
+          "gate": "rz",
+          "qubits": [
+            6
+          ],
+          "controls": []
+        },
+        {
+          "gate": "ry",
+          "qubits": [
+            7
+          ],
+          "controls": []
+        },
+        {
+          "gate": "rz",
+          "qubits": [
+            7
+          ],
+          "controls": []
+        },
+        {
+          "gate": "x",
+          "qubits": [
+            1
+          ],
+          "controls": [
+            0
+          ]
+        },
+        {
+          "gate": "x",
+          "qubits": [
+            2
+          ],
+          "controls": [
+            1
+          ]
+        },
+        {
+          "gate": "x",
+          "qubits": [
+            3
+          ],
+          "controls": [
+            2
+          ]
+        },
+        {
+          "gate": "x",
+          "qubits": [
+            4
+          ],
+          "controls": [
+            3
+          ]
+        },
+        {
+          "gate": "x",
+          "qubits": [
+            5
+          ],
+          "controls": [
+            4
+          ]
+        },
+        {
+          "gate": "x",
+          "qubits": [
+            6
+          ],
+          "controls": [
+            5
+          ]
+        },
+        {
+          "gate": "x",
+          "qubits": [
+            7
+          ],
+          "controls": [
+            6
+          ]
+        },
+        {
+          "gate": "x",
+          "qubits": [
+            0
+          ],
+          "controls": [
+            7
+          ]
+        },
+        {
+          "gate": "ry",
+          "qubits": [
+            0
+          ],
+          "controls": []
+        },
+        {
+          "gate": "rz",
+          "qubits": [
+            0
+          ],
+          "controls": []
+        },
+        {
+          "gate": "ry",
+          "qubits": [
+            1
+          ],
+          "controls": []
+        },
+        {
+          "gate": "rz",
+          "qubits": [
+            1
+          ],
+          "controls": []
+        },
+        {
+          "gate": "ry",
+          "qubits": [
+            2
+          ],
+          "controls": []
+        },
+        {
+          "gate": "rz",
+          "qubits": [
+            2
+          ],
+          "controls": []
+        },
+        {
+          "gate": "ry",
+          "qubits": [
+            3
+          ],
+          "controls": []
+        },
+        {
+          "gate": "rz",
+          "qubits": [
+            3
+          ],
+          "controls": []
+        },
+        {
+          "gate": "ry",
+          "qubits": [
+            4
+          ],
+          "controls": []
+        },
+        {
+          "gate": "rz",
+          "qubits": [
+            4
+          ],
+          "controls": []
+        },
+        {
+          "gate": "ry",
+          "qubits": [
+            5
+          ],
+          "controls": []
+        },
+        {
+          "gate": "rz",
+          "qubits": [
+            5
+          ],
+          "controls": []
+        },
+        {
+          "gate": "ry",
+          "qubits": [
+            6
+          ],
+          "controls": []
+        },
+        {
+          "gate": "rz",
+          "qubits": [
+            6
+          ],
+          "controls": []
+        },
+        {
+          "gate": "ry",
+          "qubits": [
+            7
+          ],
+          "controls": []
+        },
+        {
+          "gate": "rz",
+          "qubits": [
+            7
+          ],
+          "controls": []
+        },
+        {
+          "gate": "x",
+          "qubits": [
+            1
+          ],
+          "controls": [
+            0
+          ]
+        },
+        {
+          "gate": "x",
+          "qubits": [
+            2
+          ],
+          "controls": [
+            1
+          ]
+        },
+        {
+          "gate": "x",
+          "qubits": [
+            3
+          ],
+          "controls": [
+            2
+          ]
+        },
+        {
+          "gate": "x",
+          "qubits": [
+            4
+          ],
+          "controls": [
+            3
+          ]
+        },
+        {
+          "gate": "x",
+          "qubits": [
+            5
+          ],
+          "controls": [
+            4
+          ]
+        },
+        {
+          "gate": "x",
+          "qubits": [
+            6
+          ],
+          "controls": [
+            5
+          ]
+        },
+        {
+          "gate": "x",
+          "qubits": [
+            7
+          ],
+          "controls": [
+            6
+          ]
+        },
+        {
+          "gate": "x",
+          "qubits": [
+            0
+          ],
+          "controls": [
+            7
+          ]
+        }
+      ],
+      "describe": {
+        "n_qubits": 8,
+        "n_layers": 2,
+        "entanglement": "ring",
+        "rotations_per_layer": 16,
+        "entanglers_per_layer": 8,
+        "n_parameters": 32,
+        "depth_estimate": 6
+      }
+    }
+  ]
+}
