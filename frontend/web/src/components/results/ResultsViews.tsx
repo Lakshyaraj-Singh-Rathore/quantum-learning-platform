@@ -368,18 +368,26 @@ export function Histogram({
             </div>
           ) : <div />}
           <div className="flex items-center gap-4 text-xs font-mono text-ink-3">
-            <label className="flex items-center gap-1.5 cursor-pointer hover:text-ink">
+            <label
+              className="flex items-center gap-1.5 cursor-pointer hover:text-ink"
+              title="Show probability instead of counts"
+            >
               <input
                 type="checkbox"
+                aria-label="Show probability instead of counts"
                 checked={asProbability}
                 onChange={(e) => setAsProbability(e.target.checked)}
                 className="rounded accent-accent h-3.5 w-3.5"
               />
               Probability (%)
             </label>
-            <label className="flex items-center gap-1.5 cursor-pointer hover:text-ink">
+            <label
+              className="flex items-center gap-1.5 cursor-pointer hover:text-ink"
+              title="Colour bars by relative phase"
+            >
               <input
                 type="checkbox"
+                aria-label="Colour bars by relative phase"
                 checked={colourByPhase}
                 onChange={(e) => setColourByPhase(e.target.checked)}
                 className="rounded accent-accent h-3.5 w-3.5"
