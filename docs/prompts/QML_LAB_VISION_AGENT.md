@@ -1407,16 +1407,25 @@ deployable with the flag off, and document how to turn it on."*
 
 ### 2H.0 Sequencing: the owner's qudit work lands first
 
-**Do not confirm deployability of a tree that is about to change.** The project owner has unpushed
-local work adding qudit gates and polishing the Qudit Lab, with **zero file overlap** with the QML
-work. Confirming `main` deployable now and then merging that work measures the wrong thing — the
-same error class as a Makefile target that times the container instead of the machine.
+**RESOLVED — it has landed.** `main @ 32e459d` (644 tracked files) contains the owner's qudit work,
+merged from `qudit-gates` and verified before the push: all **81 QML files byte-identical**, the
+alembic chain still single-headed at `j5e8f1a4b7c2` with no new migration, `package.json` resolved
+with **zero scripts lost, zero changed and three added**, and every safety invariant intact
+(`celery` 8/15, `qml_enabled=False`, `requirements.txt` untouched, `numpy==1.26.4`, no
+torch/sklearn, 0 artifacts tracked). The recovery tag `qml-phase7-verified` → `47fab49` still exists
+and should be left alone until Phase 8 closes.
 
-So: the qudit branch merges, **then** Phase 8 runs. If it has not merged when this phase starts,
-stop and say so rather than verifying a tree with a known pending change.
+The reasoning is recorded because it still governs any future merge: **do not confirm deployability
+of a tree that is about to change.** Measuring `main` deployable and then merging pending work
+measures the wrong thing — the same error class as a Makefile target that times the container
+instead of the machine.
 
-This is also why **§2C.6 remains deferred** — a qudit spike cannot be scoped against qudit code
-nobody can read.
+This is also why **§2C.6 remains deferred** — and now that the qudit code *is* readable, the spike
+can be scoped properly if the owner wants it at all. That is the owner's call, not this phase's.
+
+**Phase 8 must re-verify the gates against `32e459d`, not inherit Phase 7's numbers.** The tree has
+29 new files and 12 modified, including five new frontend harnesses and two new backend test files.
+Phase 7's `1230 passed / 5 skipped` and its harness decomposition were measured on a different tree.
 
 ### 2H.1 Close Finding 2 — the fourth flag state must be rendered, not grepped
 
@@ -1449,15 +1458,18 @@ risk, and it is the owner's call, not a phase's.
 
 ### 2H.3 `bg-card` — record, and hand it to the owner
 
-**10 uses across 6 files emit zero CSS**: no `--color-card` token exists, while `border-line` on the
-same elements emits 19 rules. So `border border-line bg-card/60` renders the border and silently
-drops the background.
+**Updated after the owner's qudit merge: now 7 uses across 5 files, down from 10 across 6.** Their
+polish removed three uses, but **`--color-card` is still not defined**, so the remaining seven still
+emit **zero CSS** while `border-line` on the same elements emits 19 rules. `border border-line
+bg-card/60` renders the border and silently drops the background.
 
-All ten uses are in `src/components/qudit/` and `QuditLabPage.tsx` — **the owner's active files.** Do
-not fix this in Phase 8: it would collide with unpushed work, and the fix (define the token, or
-replace the class) is a design decision. Record it in `08-release.md` as a known cosmetic defect with
-its exact measurement, and note that it is a *plausible* token name that fails silently, which is why
-it survived — Tailwind emits nothing for an undefined colour and no tool complains.
+The seven are `DensityMatrixInspector.tsx:134,143`, `QuditGatePalette.tsx:20`,
+`QuditLearnPanel.tsx:21`, `QuditNoisePanel.tsx:71`, `QuditLabPage.tsx:273,304`.
+
+Do not fix this in Phase 8 without asking — it is the owner's active surface and the choice between
+defining the token and replacing the class is a design decision. Record it in `08-release.md` with
+the exact measurement, and note *why* it survived: `bg-card` is a plausible token name that fails
+silently, Tailwind emits nothing for an undefined colour, and no tool complains.
 
 ### 2H.4 What `08-release.md` must contain
 
