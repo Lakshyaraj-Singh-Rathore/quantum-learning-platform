@@ -565,6 +565,67 @@ Two follow-ups this creates, both for Phase 2's report rather than new code:
   artifact is committed.
 
 
+### 2A.6 Flag delivery to the browser — your `GET /qml/features` is in the wrong place
+
+You asked for a sanity-check on this, and it needs one: **an endpoint that only exists when the
+feature is enabled cannot be the thing the UI asks in order to decide whether the feature is
+enabled.** That is self-referential, and it makes 404 load-bearing.
+
+Today `GET /features` lives at `backend/app/api/qml_lab.py:96`, inside the router that
+`api/router.py` mounts only when `qml_enabled` is true. So with the flag off the nav's source of
+truth returns 404 — and **404 is indistinguishable** from a typo'd path, a proxy misconfiguration,
+a stripped `/api` prefix, or a backend that failed to boot. The nav would then be deciding
+visibility by pattern-matching an error, and any of those unrelated failures would silently hide a
+feature that is actually on. Fail-closed is the right default, but it must fail closed *because the
+server said so*, not because a request broke.
+
+**Required: split the two concerns.**
+
+1. **Visibility — always-mounted, never 404s.** Add `backend/app/api/features.py` with
+   `GET /features` returning `{"qml_enabled": bool}`, and include it in `api/router.py`
+   **unconditionally**, next to the existing includes. This route exists whether or not QML is on.
+   Precedent: `GET /backends` (`api/jobs.py:45`) is already an always-on, unauthenticated
+   capability-discovery endpoint, consumed by `src/api/backends.ts`. A single boolean is less
+   sensitive than what `/backends` already publishes, so keep it unauthenticated and consistent —
+   that also lets the login screen react if you ever want it to.
+
+   Structure it as a **map of flags**, not a QML-specific payload — `{"qml_enabled": false}` today,
+   room for the next feature without a new endpoint:
+
+   ```python
+   @router.get("/features")
+   def features() -> dict[str, bool]:
+       s = get_settings()
+       return {"qml_enabled": s.qml_enabled}
+   ```
+
+2. **Capability detail — stays gated, 404-when-off is fine.** Keep `/qml/features` (or rename it
+   `/qml/capabilities`) inside `qml_lab.py` for the things only a mounted feature can meaningfully
+   report: the limits table, the algorithm allow-list, the gradient methods, the dataset names.
+   Nothing depends on it for *visibility*, so its 404 is honest — it means "this feature does not
+   exist here", which is true.
+
+**Frontend:** `src/api/features.ts` → `api.get<Features>("/features")`, consumed with react-query at
+`staleTime: Infinity` (flags do not change within a session). Filter `NAV_ITEMS` in
+`components/shell/nav.ts` on it. Three rules:
+
+- **No flash.** While the query is loading, the QML item is **absent** — default to hidden, then
+  reveal. Never render it and retract it.
+- **Fail closed on error.** A failed `/features` request hides QML; it must not throw, and must not
+  be surfaced to the user as an error, because for everyone without the flag this is the normal
+  state.
+- **The route is gated too, not just the nav.** Hiding a link is not access control. `/qml-lab` must
+  render the existing `NotFound` (or a "feature unavailable" state built from `EmptyState`) when the
+  flag is off, so a bookmarked or hand-typed URL cannot reach a page whose APIs all 404.
+
+**Test all four states**, because this is the contract four views will rest on: flag off ⇒ no nav
+item, `/qml-lab` renders NotFound, `/features` returns `qml_enabled: false`, `/qml/*` returns 404;
+flag on ⇒ nav item present, route renders, both endpoints answer. Prove the off state against a
+**live server**, as you did in Phase 2 — that is what made the Phase 2 flag proof credible.
+
+This adds one file to §2A.4's expected set: `backend/app/api/features.py` (new) and one more
+unconditional `include_router` line in `api/router.py` (already in the set).
+
 ---
 
 ## 3. The UI/UX contract — match this exactly
@@ -678,8 +739,63 @@ write both class strings literally. This is a hard rule, and there is a regressi
    it. **Never** write a raw `fetch` with your own token handling — the token comes from the
    session store so that a 401 always means the same thing.
 
-There is **no `src/components/ui/` directory.** Primitives are written inline per feature. If you
-create shared QML primitives, put them under `src/components/qml/`, built from the same tokens.
+⚠ **Correction — there IS a shared primitive library, and this section previously said there was
+not.** `frontend/web/src/components/ui.tsx` is **798 lines** of exactly the primitives Phase 3
+needs. There is no `ui/` *directory* — it is one file — but it is the house component layer, and
+hand-rolling equivalents of any of these is how new UI ends up looking foreign.
+
+**Use these, in this order, before writing anything new:**
+
+| You need for Phase 3 | Already exported from `components/ui.tsx` |
+|---|---|
+| Class merging | `cn(...)` (a `clsx` wrapper) — line 20 |
+| Buttons, incl. Start / Cancel | `Button` (`forwardRef`, `ButtonProps`) — 32 |
+| Text fields, numbers, textareas | `Input` 69 · `Textarea` 82 · `Label` 98 |
+| Panels / cards | `Card` 107 · `Separator` 146 |
+| Status chips (queued/running/failed…) | `Badge` 116 |
+| Loading + skeleton states | `Spinner` 150 · `Skeleton` 177 |
+| Inline error display | `ErrorNote` 165 |
+| Algorithm / dataset / optimizer pickers | `Select` 195 · `SelectItem` 263 · `SelectOption` 189 |
+| **The four views A–D** | `Tabs` 304 · `TabsList` 331 · `TabsTrigger` 344 · `TabsContent` 375 |
+| Confirming a destructive Cancel | `ConfirmModal` 465 (plus the `Dialog*` family, 398-453) |
+| Help text on limits | `Tooltip` 525 (plus `TooltipProvider/Root/Trigger`) |
+| Transient notices | `ToastProvider` 556 |
+| **Empty states** (no experiment yet) | `EmptyState` 580 |
+| Config-beside-results layout | `SplitPane` 621 |
+| **The predictions table** | `DataTable<T>` 747 with `ColumnDef<T>` 740 |
+
+`DataTable` and `EmptyState` are the two that matter most: the master prompt asks for a predictions
+table and for empty states, and both already exist and already match the theme. Do not build a
+`<table>` from scratch.
+
+If you genuinely need a primitive that is not in that list, put it in `src/components/qml/` and
+build it from `cn()` plus the §3.1 tokens — and say in the phase report which existing primitive
+was insufficient and why.
+
+**Polling: copy this exact idiom, do not write `setInterval`.** `ChallengesPage.tsx:966-976` and
+`GamesPage.tsx:287` already do it:
+
+```tsx
+const outcome = useQuery({
+  queryKey: ["attempt", attemptId],
+  queryFn: () => getAttempt(attemptId as number),
+  enabled: attemptId !== null,
+  refetchInterval: (query) =>
+    query.state.data?.status === "graded" || query.state.data?.status === "failed" ? false : 500,
+  staleTime: 0,
+});
+```
+
+The function form of `refetchInterval` **is** the no-leak pattern the master prompt demands: it
+returns `false` on terminal statuses, and react-query tears the interval down on unmount, so there
+is no cleanup to forget. Your terminal set is
+`completed | failed | cancelled | timed_out`. `api/assessments.ts:21` documents the same
+"poll until it settles" contract.
+
+**API paths:** `API_BASE = "/api"` (`src/api/client.ts:57`) and the proxy **strips** `/api` before
+forwarding to the FastAPI root (`vite.config.ts:20-21,52-56`, mirrored in
+`frontend/web/nginx.conf`). So `api.get("/qml/features")` reaches FastAPI's `/qml/features`.
+`main.py:75` mounts `api_router` with **no prefix** — do not add one.
 
 ### 3.4 Responsiveness and accessibility
 
@@ -715,6 +831,11 @@ justification in the phase report, and anything structural is a §5 stop.
 | `frontend/web/src/App.tsx` | One lazy import + one `<Route path="/qml-lab">` inside `RequireAuth` › `AppShell`, before the `*` catch-all. |
 | `frontend/web/package.json` | `scripts` entries for new harnesses only. No new dependencies without §5. |
 | `frontend/web/scripts/link-shared.mjs` | Only if you add a shared package that needs linking. |
+| `docker-compose.yml` | **Add** the `qml-worker` service per §2A.5. Do **not** edit the existing `worker` service's `command` — its `--concurrency=2` is a shipped feature's throughput. |
+
+`backend/app/api/features.py` (§2A.6) and `backend/app/api/qml_lab.py` are **new** files, not
+modifications; the only existing file §2A.6 adds to the modified set is the one extra
+`include_router` line in `api/router.py`, already listed above.
 
 **Do not touch:** `frontend/web/src/pages/ComposerPage.tsx`, `QuditLabPage.tsx`,
 `src/components/qudit/*`, `src/components/noise/*`, `src/components/smart_composer/*`,
