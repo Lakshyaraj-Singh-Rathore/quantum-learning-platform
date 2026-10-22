@@ -270,7 +270,7 @@ export const QuditLabPage: React.FC = () => {
               key={preset.id}
               type="button"
               onClick={() => handleApplyPreset(preset)}
-              className="p-2.5 rounded-lg border border-line bg-card/60 hover:border-accent/40 hover:bg-accent/5 text-left transition-all group"
+              className="p-2.5 rounded-lg border border-line bg-raised/60 hover:border-accent/40 hover:bg-accent/5 text-left transition-all group"
             >
               <div className="flex items-center justify-between mb-1">
                 <Badge tone="neutral" className="text-[10px]">
@@ -301,7 +301,7 @@ export const QuditLabPage: React.FC = () => {
       </div>
 
       {/* Simulation Controls Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 p-4 rounded-xl border border-line bg-card/60 shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-3 p-4 rounded-xl border border-line bg-raised/60 shadow-sm">
         <div className="flex flex-wrap items-center gap-4 text-xs">
           <div className="flex items-center gap-2">
             <span className="text-ink-3">Shots (Sampling):</span>

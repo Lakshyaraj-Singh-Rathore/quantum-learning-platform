@@ -17,7 +17,7 @@ export const QuditGatePalette: React.FC<QuditGatePaletteProps> = ({
   disabled = false,
 }) => {
   return (
-    <div className="rounded-xl border border-line bg-card/60 backdrop-blur-md p-4 shadow-sm">
+    <div className="rounded-xl border border-line bg-raised/60 backdrop-blur-md p-4 shadow-sm">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-accent" />

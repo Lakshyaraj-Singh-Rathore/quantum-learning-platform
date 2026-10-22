@@ -131,7 +131,7 @@ export const DensityMatrixInspector: React.FC<DensityMatrixInspectorProps> = ({
 
   if (loading) {
     return (
-      <div className="rounded-xl border border-line bg-card/60 backdrop-blur-md p-8 flex flex-col items-center justify-center min-h-[350px] space-y-3">
+      <div className="rounded-xl border border-line bg-raised/60 backdrop-blur-md p-8 flex flex-col items-center justify-center min-h-[350px] space-y-3">
         <div className="h-8 w-8 rounded-full border-2 border-accent border-t-transparent animate-spin" />
         <span className="text-sm text-ink-3 font-mono">Simulating genuine qudit density matrix evolution (Cirq)...</span>
       </div>
@@ -140,7 +140,7 @@ export const DensityMatrixInspector: React.FC<DensityMatrixInspectorProps> = ({
 
   if (!result) {
     return (
-      <div className="rounded-xl border border-line bg-card/60 backdrop-blur-md p-8 flex flex-col items-center justify-center min-h-[350px] text-center space-y-2">
+      <div className="rounded-xl border border-line bg-raised/60 backdrop-blur-md p-8 flex flex-col items-center justify-center min-h-[350px] text-center space-y-2">
         <Activity className="h-10 w-10 text-ink-3/40" />
         <h3 className="text-sm font-semibold text-ink">No Simulation Data Yet</h3>
         <p className="text-xs text-ink-3 max-w-sm">

@@ -18,7 +18,7 @@ export const QuditLearnPanel: React.FC = () => {
   };
 
   return (
-    <div className="rounded-xl border border-line bg-card/60 backdrop-blur-md p-4 shadow-sm space-y-3">
+    <div className="rounded-xl border border-line bg-raised/60 backdrop-blur-md p-4 shadow-sm space-y-3">
       <div className="flex items-center gap-2 border-b border-line/60 pb-3">
         <BookOpen className="h-4 w-4 text-accent" />
         <h2 className="text-sm font-semibold tracking-wide text-ink">

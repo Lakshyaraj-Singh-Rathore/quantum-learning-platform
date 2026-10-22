@@ -68,7 +68,7 @@ export const QuditNoisePanel: React.FC<QuditNoisePanelProps> = ({
     config.depolarizing.enabled || config.dephasing.enabled || config.relaxation.enabled;
 
   return (
-    <div className="rounded-xl border border-line bg-card/60 backdrop-blur-md p-4 shadow-sm space-y-4">
+    <div className="rounded-xl border border-line bg-raised/60 backdrop-blur-md p-4 shadow-sm space-y-4">
       <div className="flex items-center justify-between border-b border-line/60 pb-3">
         <div className="flex items-center gap-2">
           <Activity className="h-4 w-4 text-accent" />
