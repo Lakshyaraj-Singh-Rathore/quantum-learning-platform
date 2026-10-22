@@ -886,6 +886,22 @@ If you genuinely need a primitive that is not in that list, put it in `src/compo
 build it from `cn()` plus the §3.1 tokens — and say in the phase report which existing primitive
 was insufficient and why.
 
+⚠ **`cn()` is plain `clsx` (`ui.tsx:20`) — there is no `tailwind-merge`.** So a utility you pass
+does **not** override the same-family utility baked into the primitive; both land in the class list
+and the winner is whichever appears later in the generated stylesheet, which is not something you
+control. `className="p-4"` on a `Card` whose own classes include `p-6` is a **collision, not an
+override**. Do not add `tailwind-merge` to fix it — that is a new dependency and would silently
+change the cascade for every existing screen. Either accept the primitive's spacing, wrap it in a
+sizing container, or read the primitive's own classes before choosing yours.
+
+⚠ **Read a primitive's signature before calling it.** `ErrorNote` takes `children`, not
+`title`/`message`. Phase 3 wrote three wrong call sites this way and only `tsc` caught them.
+
+⚠ **Derive fixture payloads from a real response, never from the type you intended to write.**
+Phase 3's render fixture invented `learning_rate`, `noise`, `test_fraction` and `seed` keys that
+`/qml/describe` does not return, so the harness was testing a contract that does not exist. Start a
+server, capture the actual JSON, commit that as the fixture.
+
 **Polling: copy this exact idiom, do not write `setInterval`.** `ChallengesPage.tsx:966-976` and
 `GamesPage.tsx:287` already do it:
 
