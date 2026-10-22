@@ -13,6 +13,13 @@ import { QmlCircuitPreview } from "../components/qml/QmlCircuitPreview";
 import { QmlTrainingDashboard } from "../components/qml/QmlTrainingDashboard";
 import { QmlResultsPanel } from "../components/qml/QmlResultsPanel";
 import { useQmlExperiment } from "../hooks/useQmlExperiment";
+import { runInference } from "../api/qml";
+import {
+  isClassificationResult,
+  isInterrupted,
+  isRegressionResult,
+  type RegressionResult,
+} from "../api/qml";
 import { useQmlEnabled } from "../hooks/useFeatures";
 import {
   createExperiment,
@@ -104,15 +111,83 @@ export default function QmlLabPage() {
   const status = (experiment?.status ?? "queued") as ExperimentStatus;
   const running = experiment !== undefined && !isTerminal(status);
 
+  const algorithmInfo = useMemo(
+    () => describe.data?.algorithms.find((a) => a.name === config.algorithm),
+    [describe.data, config.algorithm],
+  );
+
   const nFeatures = useMemo(() => {
-    const ds = describe.data?.datasets.find((d) => d.name === config.dataset.name);
+    const pool = algorithmInfo?.datasets ?? describe.data?.datasets ?? [];
+    const ds = pool.find((d) => d.name === config.dataset.name);
     return ds?.n_features ?? 2;
-  }, [describe.data, config.dataset.name]);
+  }, [algorithmInfo, describe.data, config.dataset.name]);
 
   const serverParameters = useMemo(() => {
-    const circuit = experiment?.result?.circuit as { n_parameters?: number } | undefined;
+    // An interrupted result has no `circuit` key at all, so this must narrow
+    // before reading one -- the union is what makes that a compile error
+    // rather than an undefined at runtime.
+    const result = experiment?.result;
+    if (!result || isInterrupted(result)) return undefined;
+    const circuit = result.circuit as { n_parameters?: number } | undefined;
     return typeof circuit?.n_parameters === "number" ? circuit.n_parameters : undefined;
   }, [experiment]);
+
+  const kernelSummary = useMemo(() => {
+    const result = experiment?.result;
+    return isClassificationResult(result) ? result.kernel : undefined;
+  }, [experiment]);
+
+  // Response curve for a single-feature regression target.
+  //
+  // This is the model's own prediction swept across the input range, taken
+  // from the real inference endpoint. It is NOT the predicted-vs-actual
+  // scatter §2E.3 asks for: that needs per-sample test predictions and their
+  // targets, and no endpoint serves them. Sweeping is what the shipped API
+  // can answer honestly.
+  const regressionResult = isRegressionResult(experiment?.result)
+    ? (experiment?.result as RegressionResult)
+    : undefined;
+  const curveFeatures = useMemo(() => {
+    if (!regressionResult) return null;
+    if (Number(regressionResult.dataset?.n_features ?? 0) !== 1) return null;
+    const steps = 48;
+    const rows: number[][] = [];
+    for (let i = 0; i < steps; i += 1) {
+      rows.push([-Math.PI + (2 * Math.PI * i) / (steps - 1)]);
+    }
+    return rows;
+  }, [regressionResult]);
+
+  const curve = useQuery({
+    queryKey: ["qml", "response-curve", experimentId],
+    queryFn: () => runInference(experimentId as number, curveFeatures as number[][]),
+    enabled: enabled && experimentId !== null && curveFeatures !== null,
+    staleTime: Infinity,
+    retry: false,
+  });
+
+  const responseCurve = useMemo(() => {
+    if (!regressionResult) return undefined;
+    if (curveFeatures === null) {
+      return {
+        points: [],
+        unavailableReason:
+          "A response curve is drawn for single-feature targets only; this one has more than one input.",
+      };
+    }
+    const data = curve.data;
+    if (!data || data.task !== "regression") {
+      return {
+        points: [],
+        unavailableReason: curve.isError
+          ? "The saved model could not be queried for a response curve."
+          : "Sampling the model…",
+      };
+    }
+    return {
+      points: data.values.map((y, i) => ({ x: curveFeatures[i][0], y })),
+    };
+  }, [regressionResult, curveFeatures, curve.data, curve.isError]);
 
   // Flag resolution order matters: show nothing while the answer is in
   // flight, then either the lab or the same NotFound any unknown URL gets.
@@ -210,6 +285,8 @@ export default function QmlLabPage() {
                 cancelling={cancel.isPending}
                 cancelError={cancel.error as Error | null}
                 onViewResults={() => setView("results")}
+                algorithm={algorithmInfo}
+                kernel={kernelSummary}
               />
             )}
           </TabsContent>
@@ -229,6 +306,7 @@ export default function QmlLabPage() {
                 onRunInference={(features) => inference.mutate(features)}
                 inferenceRunning={inference.isPending}
                 inferenceError={inference.error as Error | null}
+                responseCurve={responseCurve}
               />
             )}
           </TabsContent>

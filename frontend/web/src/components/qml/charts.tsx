@@ -314,4 +314,271 @@ export function ProbabilityBar({ value, className }: { value: number; className?
   );
 }
 
+/* -------------------------------------------------------------------------- */
+/* Model response curve — regression (§2E.3)                                   */
+/* -------------------------------------------------------------------------- */
+
+/** The learned function, sampled across the input range.
+ *
+ *  ⚠ This is deliberately **not** the predicted-vs-actual scatter §2E.3 asks
+ *  for. That chart needs the per-sample test predictions and their targets,
+ *  and no endpoint serves them: a result payload carries only aggregates
+ *  (`mae`, `rmse`, `r2`, `n_samples`). Rather than invent the actuals, this
+ *  plots what the shipped API *can* answer for — the model's own prediction
+ *  at each point of a swept input, obtained from the real inference endpoint
+ *  — and labels itself as exactly that. See the phase report.
+ *
+ *  The dashed band is the training target range, which is the honest way to
+ *  show saturation: a model whose response flattens against that band has
+ *  stopped tracking the target rather than learned it.
+ */
+export function ModelResponseCurve({
+  points,
+  targetRange,
+  unitLabel,
+  height = 240,
+  className,
+}: {
+  /** `x` is the swept input, `y` the model's prediction in target units. */
+  points: { x: number; y: number }[];
+  /** `[y_min, y_max]` the scaler was fitted on, drawn as a reference band. */
+  targetRange?: [number, number];
+  /** The target's own units. Never a percentage (MT-006). */
+  unitLabel?: string;
+  height?: number;
+  className?: string;
+}) {
+  const pairs = points.filter((d) => Number.isFinite(d.x) && Number.isFinite(d.y));
+
+  if (pairs.length === 0) {
+    return (
+      <div
+        className={cn(
+          "flex items-center justify-center rounded-xl border border-line-soft bg-subtle/40 text-xs text-ink-3",
+          className,
+        )}
+        style={{ height }}
+      >
+        No predictions to plot
+      </div>
+    );
+  }
+
+  const xs = pairs.map((d) => d.x);
+  const ys = pairs.map((d) => d.y);
+  const yPool = targetRange ? [...ys, ...targetRange] : ys;
+  const xLo = Math.min(...xs);
+  const xHi = Math.max(...xs);
+  const lo = Math.min(...yPool);
+  const hi = Math.max(...yPool);
+  // A degenerate range (every value identical) would divide by zero.
+  const pad = hi - lo < 1e-9 ? 1 : (hi - lo) * 0.08;
+  const min = lo - pad;
+  const max = hi + pad;
+
+  const padLeft = 44;
+  const padBottom = 28;
+  const padTop = 10;
+  const padRight = 10;
+  const width = 320;
+  const plotW = width - padLeft - padRight;
+  const plotH = height - padTop - padBottom;
+
+  const xPad = xHi - xLo < 1e-9 ? 1 : (xHi - xLo) * 0.04;
+  const xMin = xLo - xPad;
+  const xMax = xHi + xPad;
+
+  const sx = (v: number) => padLeft + ((v - xMin) / (xMax - xMin)) * plotW;
+  const sy = (v: number) => padTop + plotH - ((v - min) / (max - min)) * plotH;
+
+  const xTicks = [xMin, (xMin + xMax) / 2, xMax];
+  const ticks = [min, (min + max) / 2, max];
+  const path = pairs
+    .slice()
+    .sort((a, b) => a.x - b.x)
+    .map((d, i) => `${i === 0 ? "M" : "L"}${sx(d.x).toFixed(2)},${sy(d.y).toFixed(2)}`)
+    .join(" ");
+  const fmt = (v: number) => (Math.abs(v) >= 100 ? v.toFixed(0) : v.toFixed(2));
+
+  return (
+    <figure className={cn("w-full", className)}>
+      <svg
+        viewBox={`0 0 ${width} ${height}`}
+        className="h-auto w-full"
+        role="img"
+        aria-label={`Predicted versus actual values for ${pairs.length} test samples, with the identity line`}
+      >
+        <rect
+          x={padLeft}
+          y={padTop}
+          width={plotW}
+          height={plotH}
+          fill="none"
+          stroke={TOKEN.line}
+          strokeWidth={1}
+        />
+
+        {/* Training target range, drawn first so the curve sits on top. */}
+        {targetRange?.map((bound) => (
+          <line
+            key={`band-${bound}`}
+            x1={padLeft}
+            y1={sy(bound)}
+            x2={padLeft + plotW}
+            y2={sy(bound)}
+            stroke={TOKEN.ink3}
+            strokeWidth={1}
+            strokeDasharray="4 3"
+          />
+        ))}
+
+        <path d={path} fill="none" stroke={TOKEN.accent} strokeWidth={1.75} />
+
+        {pairs.map((d, i) => (
+          <circle key={i} cx={sx(d.x)} cy={sy(d.y)} r={2} fill={TOKEN.accent} />
+        ))}
+
+        {xTicks.map((t) => (
+          <g key={`x-${t}`}>
+            <text
+              x={sx(t)}
+              y={height - 8}
+              textAnchor="middle"
+              fontSize={9}
+              fill={TOKEN.ink3}
+              className="tabular-nums"
+            >
+              {fmt(t)}
+            </text>
+          </g>
+        ))}
+        {ticks.map((t) => (
+          <g key={`y-${t}`}>
+            <text
+              x={padLeft - 6}
+              y={sy(t) + 3}
+              textAnchor="end"
+              fontSize={9}
+              fill={TOKEN.ink3}
+              className="tabular-nums"
+            >
+              {fmt(t)}
+            </text>
+          </g>
+        ))}
+
+        <text
+          x={padLeft + plotW / 2}
+          y={height - 19}
+          textAnchor="middle"
+          fontSize={9}
+          fill={TOKEN.ink3}
+        >
+          input x
+        </text>
+        <text
+          x={12}
+          y={padTop + plotH / 2}
+          textAnchor="middle"
+          fontSize={9}
+          fill={TOKEN.ink3}
+          transform={`rotate(-90 12 ${padTop + plotH / 2})`}
+        >
+          predicted{unitLabel ? ` (${unitLabel})` : ""}
+        </text>
+      </svg>
+      <figcaption className="mt-1 max-w-[22rem] text-[10px] leading-relaxed text-ink-3">
+        The model&rsquo;s own prediction across the input range, from the inference endpoint — not
+        a comparison against held-out targets, which the API does not expose.
+        {targetRange ? " Dashed lines are the training target range." : ""}
+      </figcaption>
+    </figure>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* Kernel Gram matrix heatmap (§2E.3)                                          */
+/* -------------------------------------------------------------------------- */
+
+/** Heatmap of the quantum kernel's Gram matrix.
+ *
+ *  Built the way `DensityMatrixInspector` builds its cells: a computed inline
+ *  `style`, never an interpolated Tailwind class. `bg-opacity-${x}` would
+ *  produce a class name that exists in the markup and in no stylesheet — the
+ *  QL-001 failure that shipped the density-matrix heatmap invisible.
+ *
+ *  The matrix is symmetric with a unit diagonal, and the full square is drawn
+ *  rather than a triangle, because showing half of a symmetric matrix invites
+ *  the reader to wonder what is in the other half. The caption says so.
+ */
+export function KernelHeatmap({
+  values,
+  nTotal,
+  truncated,
+  className,
+}: {
+  values: number[][];
+  /** Dimension of the full matrix; `values` may be a top-left corner of it. */
+  nTotal: number;
+  truncated: boolean;
+  className?: string;
+}) {
+  const size = values.length;
+  if (size === 0) {
+    return (
+      <div className={cn("text-xs text-ink-3", className)}>No kernel matrix available</div>
+    );
+  }
+
+  // A quantum kernel from a normalised state overlap is already in [0, 1],
+  // but the scale is computed rather than assumed so a different kernel does
+  // not silently render as a single flat colour.
+  const flat = values.flat().filter((v) => Number.isFinite(v));
+  const lo = Math.min(...flat);
+  const hi = Math.max(...flat);
+  const span = hi - lo < 1e-12 ? 1 : hi - lo;
+
+  const cell = size <= 20 ? 12 : size <= 40 ? 8 : 5;
+
+  return (
+    <figure className={cn("inline-block", className)}>
+      <div
+        className="grid gap-px rounded-md border border-line-soft p-1"
+        style={{ gridTemplateColumns: `repeat(${size}, ${cell}px)` }}
+        role="img"
+        aria-label={
+          `Quantum kernel Gram matrix, ${size} by ${size}` +
+          (truncated ? `, the top-left corner of a ${nTotal} by ${nTotal} matrix` : "") +
+          ". Symmetric with a unit diagonal."
+        }
+      >
+        {values.map((row, r) =>
+          row.map((v, c) => {
+            const t = (v - lo) / span;
+            return (
+              <div
+                key={`${r}-${c}`}
+                style={{
+                  width: cell,
+                  height: cell,
+                  // Inline style, computed. Never `bg-accent/${n}`.
+                  backgroundColor: TOKEN.accent,
+                  opacity: 0.12 + t * 0.88,
+                }}
+              />
+            );
+          }),
+        )}
+      </div>
+      <figcaption className="mt-1 max-w-[22rem] text-[10px] leading-relaxed text-ink-3">
+        {truncated
+          ? `Top-left ${size}x${size} corner of the full ${nTotal}x${nTotal} matrix.`
+          : `Full ${size}x${size} matrix.`}{" "}
+        Symmetric, unit diagonal; the whole square is drawn rather than a triangle. Darker is a
+        higher kernel value, scaled over {lo.toFixed(2)}-{hi.toFixed(2)}.
+      </figcaption>
+    </figure>
+  );
+}
+
 export { TOKEN as CHART_TOKENS };

@@ -1,5 +1,8 @@
 """Job submission lifecycle, backend routing and autograding."""
 
+import json
+import re
+
 import pytest
 
 
@@ -122,6 +125,58 @@ def test_qasm_import_export_roundtrip_over_http(client, student_headers, bell_ir
     ).json()
     assert imported["is_dynamic"] is False
     assert imported["circuit_ir"]["n_qubits"] == 2
+
+
+def _advertised_frameworks(client, student_headers, dynamic_ir) -> list[str]:
+    """The framework names the endpoint itself claims to support.
+
+    Read out of its own 400 message rather than hardcoded, so the list
+    cannot drift away from the implementation the way a literal would. This
+    is what the old parametrize missed: it named three of the seven, and the
+    four it skipped included one that raised NameError in production.
+    """
+    detail = client.post(
+        "/export/definitely-not-a-framework",
+        json={"circuit_ir": dynamic_ir},
+        headers=student_headers,
+    ).json()["detail"]
+    tail = detail.split("must be", 1)[1]
+    return [w for w in re.findall(r"[a-z0-9_]+", tail) if w != "or"]
+
+
+def test_every_advertised_export_framework_actually_works(
+    client, student_headers, dynamic_ir
+):
+    """Advertised == working, for all of them.
+
+    `json` was advertised in the 400 message and present in the OpenAPI
+    schema while raising `NameError: name 'json' is not defined` -- a 500 on
+    a reachable branch, because the module never imported json. Nothing
+    caught it: ruff was never run, and the export test named only the three
+    frameworks that happened to work.
+    """
+    frameworks = _advertised_frameworks(client, student_headers, dynamic_ir)
+    assert len(frameworks) >= 7, f"parsed too few framework names: {frameworks}"
+
+    broken = {}
+    for framework in frameworks:
+        response = client.post(
+            f"/export/{framework}", json={"circuit_ir": dynamic_ir}, headers=student_headers
+        )
+        if response.status_code != 200 or not response.text.strip():
+            broken[framework] = response.status_code
+    assert not broken, f"advertised but not working: {broken}"
+
+
+def test_json_and_ir_export_return_parseable_ir(client, student_headers, dynamic_ir):
+    """The two aliases that were broken, asserted on content, not just status."""
+    for framework in ("json", "ir"):
+        text = client.post(
+            f"/export/{framework}", json={"circuit_ir": dynamic_ir}, headers=student_headers
+        ).text
+        parsed = json.loads(text)
+        assert parsed["n_qubits"] == dynamic_ir["n_qubits"]
+        assert parsed["ops"], "exported IR carried no operations"
 
 
 @pytest.mark.parametrize("framework", ["qiskit", "cirq", "qasm3"])

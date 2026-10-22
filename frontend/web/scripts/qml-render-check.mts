@@ -232,7 +232,11 @@ check(
   ySpans.length > 0 && ySpans.every((span) => span > 1),
   ySpans.map((v) => v.toFixed(1)).join(", "),
 );
-check("charts: legend labels both series", dash.includes("train loss") && dash.includes("test loss"));
+check(
+  "charts: legend labels both series",
+  /train loss/i.test(dash) && /test loss/i.test(dash),
+  "case-insensitive since Phase 5c: labels now come from EPOCH_FIELD_LABELS (\"Train loss\")",
+);
 check("charts: colours come from theme tokens", dash.includes("var(--color-accent)"));
 check(
   "charts: no interpolated class reached the markup",

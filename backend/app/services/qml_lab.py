@@ -245,6 +245,15 @@ def load_history(db: Session, experiment_id: int, after_epoch: int = 0) -> list[
             "train_accuracy": row.train_accuracy,
             "test_loss": row.test_loss,
             "test_accuracy": row.test_accuracy,
+            # Regression stores its quality metric here and leaves accuracy
+            # NULL; classification does the reverse. Both pairs are always
+            # serialised and the absent one is null, so the response shape
+            # does not depend on the task -- what varies is which keys carry
+            # a value, and `_TASK_EPOCH_FIELDS` is the document that says
+            # which those are. Omitting these two made `quantum_regression`
+            # advertise `train_r2`/`test_r2` that no response ever contained.
+            "train_r2": row.train_r2,
+            "test_r2": row.test_r2,
             "elapsed_seconds": row.elapsed_seconds,
         }
         for row in rows
@@ -517,7 +526,7 @@ _TASK_METRICS: dict[str, list[str]] = {
 
 #: Which per-epoch series the training chart should plot, per task.
 _TASK_EPOCH_FIELDS: dict[str, list[str]] = {
-    "classification": ["train_loss", "train_accuracy", "test_accuracy"],
+    "classification": ["train_loss", "test_loss", "train_accuracy", "test_accuracy"],
     "regression": ["train_loss", "test_loss", "train_r2", "test_r2"],
 }
 

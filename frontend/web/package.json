@@ -36,7 +36,9 @@
     "qml:circuit": "tsx scripts/qml-circuit-check.mts",
     "qml:ui": "tsx scripts/qml-ui-check.mts",
     "fixtures:qml-circuit": "python3 scripts/qml-circuit-fixtures.py",
-    "qml:render": "tsx scripts/qml-render-check.mts"
+    "qml:render": "tsx scripts/qml-render-check.mts",
+    "qml:tasks": "tsx scripts/qml-task-check.mts",
+    "fixtures:qml-tasks": "python3 scripts/qml-task-fixtures.py"
   },
   "dependencies": {
     "@codemirror/lang-python": "^6.2.1",

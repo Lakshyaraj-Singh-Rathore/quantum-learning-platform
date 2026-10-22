@@ -140,8 +140,10 @@ complete history of everything that was ever deferred.
 
 ## MT-006 — Regression results render as regression, not as a zeroed classifier
 
-- **Status:** DEFERRED
-- **Deferred by:** Phase 5 (regression commit)
+- **Status:** DEFERRED — **re-scoped by Phase 5c to its visual half.** ID retained deliberately:
+  the risk it names (a regression run wearing a classifier's clothes) is unchanged; what shrank
+  is the portion a human still has to look at.
+- **Deferred by:** Phase 5 (regression commit). Re-scoped Phase 5c (UI commit).
 - **Blocks release?** **Yes** — this is the exact failure §2C.4 exists to prevent.
 - **Steps:**
   1. Start the stack (`make up`), open the QML Lab, choose algorithm **Quantum regression**.
@@ -152,14 +154,46 @@ complete history of everything that was ever deferred.
   as `0`, not as `—`. The epoch chart plots loss and R², not accuracy. MAE and RMSE are in the
   target's own units (so for `sine`, roughly the `[-1, 1]` range of the raw target, **not** the
   scaled one). R² may be negative and must render with its sign.
-- **Missing capability:** no browser automation against a running stack in this environment,
-  and **no UI exists for the regression algorithm yet** — the engine, metrics, datasets,
-  trainer and baseline landed this phase; the config and results views did not.
-- **What *is* automated, so the gap is narrow:** `tests/test_qml_regression.py` asserts at the
-  type level that `RegressionResult` has **no** `accuracy`/`precision`/`recall`/`f1`/
-  `confusion_matrix` attribute, and that `RegressionEpochRecord` has no `train_accuracy`/
-  `test_accuracy`. A UI therefore *cannot* read a zeroed accuracy off the payload — it would
-  have to invent one. The deferred part is purely what the rendered page shows.
+
+### What Phase 5c automated (the structural half — no longer manual)
+
+`frontend/web/scripts/qml-task-check.mts` renders the real components server-side against
+payloads captured from an actual worker-path run and asserts, against the regression payload:
+
+| Assertion | What it rules out |
+| --- | --- |
+| no tile headed `Train acc` / `Test acc` exists in the markup | the zeroed-classifier failure itself |
+| the string `0.0%` never appears | `null` coerced to `0` by `*100` |
+| no `—` appears under an accuracy heading | a placeholder implying the metric merely went missing |
+| `finiteSeries` returns 0 points for `train_accuracy` over 3 null epochs | a flat line at 0% under an "accuracy" legend |
+| `finiteSeries` emits no `value === 0` for those rows | the same bug via a different route |
+| MAE/RMSE render with the `y` unit suffix, never `%` | a target-unit error read as a percentage |
+| the VQC payload *still* shows an accuracy tile and no R² | an over-broad fix that hides real accuracies |
+
+Both halves are mutation-proven: reinstating the Phase 3 behaviour (plot nulls as-is, render the
+tile unconditionally) turns two assertions red, and making `finiteSeries` coerce `null → 0` turns
+two different ones red. The failing output is pasted in `docs/qml/phase-5c-report.md`.
+
+### What remains manual, and why it is now narrow
+
+Three things only, all of which need eyes on a running browser:
+
+1. **R²'s sign is legible at a glance** — the harness asserts a `+`/`−` character is emitted next
+   to the value; it cannot judge whether a negative score *reads* as negative to a person, or
+   whether the colour chosen for "worse" reinforces or fights the sign.
+2. **MAE/RMSE units are believable in context** — the harness asserts the literal suffix ` y`;
+   only a human can confirm that a 0.595 next to a target ranging over `[-1.099, 1.014]` is
+   presented so the reader understands it is an error in target units, not a fraction.
+3. **The R² epoch curve reads as a curve, not a glitch** — the series now arrives
+   (`load_history` was fixed in `85d7bda`; the captured regression history carries
+   `train_r2 = -2.060, -0.844, -0.161`) and `qml-task-check` asserts the points are plotted
+   with their signs and that no null becomes a zero. What a human still has to judge is
+   whether a curve that *starts below the axis at -2.06 and climbs* reads as a model
+   improving from worse-than-the-mean, rather than as a rendering fault.
+
+- **Missing capability:** no browser automation against a running stack in this environment.
+  (The Phase 5 note "no UI exists for the regression algorithm yet" is **obsolete** — the config,
+  training and results views all landed in Phase 5c.)
 
 ## MT-007 — Re-uploading frequency budget holds for a human-chosen configuration
 

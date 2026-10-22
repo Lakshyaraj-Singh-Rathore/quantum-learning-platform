@@ -861,3 +861,80 @@ a VQC.
 **Generalisable, and now the third time this shape of defect has appeared:** proving a rule holds
 in the model does not prove it holds at the boundary users touch. Enumerate every construction
 site, and assert the invariant at the outermost layer that serves it.
+
+---
+
+## D-046 — The client branches on `task` and `supports`, never on an algorithm's name
+
+**Context.** §2E.0 forbids the client from testing `algorithm === "quantum_kernel"`. That is the
+same hardcoding §2D removed from the backend, relocated: it means a fifth algorithm cannot appear
+without a frontend edit, which defeats the registry.
+
+**Decision.** Every behavioural fork in the Lab reads either `result.task` (a discriminated-union
+tag that `tsc` enforces) or a boolean from `algorithm.supports`. Concretely: the epoch-loop UI is
+gated on `supports.epochs`, the hidden-layer field on `supports.n_hidden`, the gradient selector
+on `supports.diff_method`, the re-uploading note on `supports.data_reuploading`; the results body
+is chosen by `task`; the inference columns are chosen by `task` plus which optional arrays the
+payload actually carries.
+
+**The trap this avoided.** `quantum_kernel` advertises
+`epoch_fields: ["train_loss", "train_accuracy", "test_accuracy"]` while writing **zero** epoch
+rows. The obvious gate — "draw the training chart when `epoch_fields` is non-empty" — produces a
+permanently empty axis for the kernel. `supports.epochs === false` is the only field that tells
+the truth, so that is what the UI reads.
+
+---
+
+## D-047 — `epoch_fields` and `load_history` disagree in **both** directions; the dashboard takes the union
+
+**Context.** Phase 5c drove the training chart off the capability document, as §2E.2 requires.
+Two gaps surfaced immediately, in opposite directions:
+
+- **Advertised, never served.** `quantum_regression` advertises `train_r2` and `test_r2`.
+  `load_history` (`app/services/qml_lab.py`) serialises exactly six keys — `epoch`, `train_loss`,
+  `train_accuracy`, `test_loss`, `test_accuracy`, `elapsed_seconds` — and **not** the two r2
+  columns that Phase 5b added and `record_epoch` writes. The series arrive `undefined`.
+- **Served, never advertised.** All three classification algorithms advertise
+  `["train_loss", "train_accuracy", "test_accuracy"]`, but `load_history` also returns
+  `test_loss`, which Phase 3's hardcoded dashboard drew. Driving purely off `epoch_fields`
+  silently deleted that curve — caught by `qml-render-check` as a regression, not by review.
+
+**Decision.** The dashboard plots the **union** of what the document advertises and what the
+history actually contains, in a fixed display order, then drops any field with no finite points.
+A stale document in either direction costs no curve, and an advertised-but-absent metric draws
+nothing rather than an empty axis.
+
+**What this does *not* fix.** The union cannot invent data. `train_r2`/`test_r2` are absent from
+every history response, so the regression epoch chart shows loss only. The fix is two lines in
+`load_history`; it is a backend change and Phase 5c's gate is "backend files changed = 0", so it
+is **reported, not made**. Four assertions in `qml-task-check.mts` fail today and are the
+regression test for it.
+
+**Generalisable.** A capability document is a second source of truth about the same data, and
+nothing in the build makes the two agree. When a UI switches from hardcoded knowledge to a
+served document, diff the document against a real response first — the document is as likely to
+be wrong as the code it replaces.
+
+---
+
+## D-048 — `ColumnDef.render` takes `(value, row)`, and the shipped table read the wrong one
+
+**Context.** `ui.tsx:743` declares `render?: (value: any, row: T) => ReactNode` and
+`DataTable` calls it as `col.render(row[col.key], row)`. The QML predictions table, shipped in
+Phase 3 and live on `main`, wrote `render: (r) => <Badge>{r.prediction}</Badge>` — reading
+`.prediction` off the *cell value*, which is a number.
+
+**Evidence.** Rendering the shipped idiom server-side puts the literal string `undefined` in the
+cell; the corrected idiom puts `1`. The class badge and the probability bar have therefore been
+blank for every inference since Phase 3.
+
+**Why nothing caught it.** `render`'s parameters are typed `any`, so `tsc` is silent, and
+`qml-render-check` asserted the table *existed* rather than what its cells contained.
+
+**Decision.** All four render callbacks in `QmlResultsPanel` take `(_value, row)`. The comment at
+the call site states the signature, because the mistake is invisible at the point it is made.
+
+**Generalisable, and the fourth instance of this shape:** after `ErrorNote`'s `children`,
+`cn`-is-plain-`clsx`, and `page.evaluate`'s single argument — **read the signature of a helper
+before calling it, even when the call "obviously" works.** An `any` in a callback signature is a
+type hole exactly where review is weakest.

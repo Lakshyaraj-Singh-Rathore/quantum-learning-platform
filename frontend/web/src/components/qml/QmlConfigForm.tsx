@@ -19,6 +19,8 @@ import {
   Spinner,
 } from "../ui";
 import {
+  type AlgorithmInfo,
+  type AlgorithmName,
   type DatasetName,
   type DiffMethod,
   type Entanglement,
@@ -27,6 +29,7 @@ import {
   type Rotation,
 } from "../../api/qml";
 import { parameterCount } from "./circuitIr";
+import { nextConfigForAlgorithm } from "./algorithmSwitch";
 
 /** One numeric field, bounded by the server's own range. */
 function NumberField({
@@ -103,14 +106,29 @@ export function QmlConfigForm({
   submitError: Error | null;
   disabled: boolean;
 }) {
-  const limits = describe?.limits;
+  // The selected algorithm's own table, not the flat one. §2C.3 gives the
+  // kernel a lower sample cap, and it has to appear the moment the kernel is
+  // picked -- a form bounded by the global maximum would let a user build a
+  // config the server then rejects.
+  const algorithm: AlgorithmInfo | undefined = useMemo(
+    () => describe?.algorithms.find((a) => a.name === config.algorithm),
+    [describe, config.algorithm],
+  );
+  const limits = algorithm?.limits ?? describe?.limits;
   const range = (key: string) =>
     limits?.[key] ? { min: limits[key].min, max: limits[key].max } : undefined;
 
+  // Datasets are the selected algorithm's, so a classification set is never
+  // offered for a regressor (and vice versa). The 12 valid pairs are the
+  // server's; the client just renders them.
+  const datasetOptions = algorithm?.datasets ?? describe?.datasets ?? [];
+
   const dataset = useMemo(
-    () => describe?.datasets.find((d) => d.name === config.dataset.name),
-    [describe, config.dataset.name],
+    () => datasetOptions.find((d) => d.name === config.dataset.name),
+    [datasetOptions, config.dataset.name],
   );
+
+  const supports = algorithm?.supports;
 
   // The one cross-field rule the schema cannot express as a bound: angle
   // encoding needs a wire per feature (`encoder.py:21-28`). Catching it here
@@ -122,6 +140,16 @@ export function QmlConfigForm({
 
   const set = <K extends keyof QmlConfig>(key: K, value: QmlConfig[K]) =>
     onChange({ ...config, [key]: value });
+
+  /** Switching algorithm can strand the form on a dataset the new algorithm
+   *  cannot accept. The rule lives in `algorithmSwitch.ts` as a pure
+   *  function so it can be tested against all 16 combinations directly --
+   *  Radix renders Select items in a portal, so an SSR harness cannot see
+   *  which options this form offers. */
+  const selectAlgorithm = (name: AlgorithmName) => {
+    const next = describe?.algorithms.find((a) => a.name === name);
+    if (next) onChange(nextConfigForAlgorithm(config, next));
+  };
 
   if (describeError) {
     return (
@@ -150,6 +178,35 @@ export function QmlConfigForm({
     >
       <Card className="space-y-4">
         <header className="flex items-baseline justify-between gap-3">
+          <h3 className="text-sm font-semibold text-ink">Algorithm</h3>
+          {algorithm && (
+            <span className="text-[11px] uppercase tracking-wider text-ink-3">
+              {algorithm.task}
+            </span>
+          )}
+        </header>
+
+        <div className="space-y-1">
+          <Label htmlFor="qml-algorithm">Model</Label>
+          <Select
+            value={config.algorithm}
+            onValueChange={(v) => selectAlgorithm(v as AlgorithmName)}
+            disabled={disabled}
+          >
+            {describe.algorithms.map((a) => (
+              <SelectItem key={a.name} value={a.name}>
+                {a.label}
+              </SelectItem>
+            ))}
+          </Select>
+          <p className="text-[11px] leading-relaxed text-ink-3">
+            {algorithm?.summary ?? "Select a model."}
+          </p>
+        </div>
+      </Card>
+
+      <Card className="space-y-4">
+        <header className="flex items-baseline justify-between gap-3">
           <h3 className="text-sm font-semibold text-ink">Dataset</h3>
           <span className="text-[11px] text-ink-3">
             {dataset ? `${dataset.n_features} features` : ""}
@@ -166,13 +223,17 @@ export function QmlConfigForm({
               }
               disabled={disabled}
             >
-              {describe.datasets.map((d) => (
+              {datasetOptions.map((d) => (
                 <SelectItem key={d.name} value={d.name}>
                   {d.name}
                 </SelectItem>
               ))}
             </Select>
-            <p className="text-[11px] text-ink-3">Generated locally, seeded.</p>
+            <p className="text-[11px] text-ink-3">
+              {dataset?.required_angle_frequency != null
+                ? `Needs angle frequency ${dataset.required_angle_frequency}; re-uploading supplies it.`
+                : "Generated locally, seeded."}
+            </p>
           </div>
 
           <NumberField
@@ -279,6 +340,18 @@ export function QmlConfigForm({
           </div>
         </div>
 
+        {supports?.n_hidden && (
+          <NumberField
+            id="qml-n-hidden"
+            label="Hidden units"
+            value={config.circuit.n_hidden ?? limits?.n_hidden?.default ?? 4}
+            range={range("n_hidden")}
+            disabled={disabled}
+            hint="classical layer before the circuit"
+            onChange={(v) => set("circuit", { ...config.circuit, n_hidden: v })}
+          />
+        )}
+
         {tooFewQubits && (
           <ErrorNote>
             Angle encoding needs one wire per feature: {dataset?.name} has{" "}
@@ -291,57 +364,75 @@ export function QmlConfigForm({
       <Card className="space-y-4">
         <h3 className="text-sm font-semibold text-ink">Training</h3>
 
+        {/* `supports.epochs`, never a name check. An algorithm with no
+            training loop gets no epoch, batch-size or learning-rate control,
+            because none of them would do anything -- showing a disabled
+            slider would still imply the knob is meaningful here. */}
+        {supports?.epochs === false && (
+          <p className="text-[11px] leading-relaxed text-ink-3">
+            This algorithm has no training loop. It builds the kernel matrix and solves one linear
+            system, so there are no epochs, no batches and no learning rate to set. Sample count
+            dominates its cost: the matrix grows as n².
+          </p>
+        )}
+
         <div className="grid gap-4 sm:grid-cols-2">
-          <NumberField
-            id="qml-epochs"
-            label="Epochs"
-            value={config.training.epochs}
-            range={range("epochs")}
-            disabled={disabled}
-            onChange={(v) => set("training", { ...config.training, epochs: v })}
-          />
+          {supports?.epochs !== false && (
+            <>
+              <NumberField
+                id="qml-epochs"
+                label="Epochs"
+                value={config.training.epochs}
+                range={range("epochs")}
+                disabled={disabled}
+                onChange={(v) => set("training", { ...config.training, epochs: v })}
+              />
 
-          <NumberField
-            id="qml-batch-size"
-            label="Batch size"
-            value={config.training.batch_size}
-            range={range("batch_size")}
-            disabled={disabled}
-            hint="cancellation is checked per batch"
-            onChange={(v) => set("training", { ...config.training, batch_size: v })}
-          />
+              <NumberField
+                id="qml-batch-size"
+                label="Batch size"
+                value={config.training.batch_size}
+                range={range("batch_size")}
+                disabled={disabled}
+                hint="cancellation is checked per batch"
+                onChange={(v) => set("training", { ...config.training, batch_size: v })}
+              />
 
-          <NumberField
-            id="qml-learning-rate"
-            label="Learning rate"
-            value={config.training.learning_rate}
-            range={range("learning_rate")}
-            step={0.01}
-            disabled={disabled}
-            onChange={(v) => set("training", { ...config.training, learning_rate: v })}
-          />
+              <NumberField
+                id="qml-learning-rate"
+                label="Learning rate"
+                value={config.training.learning_rate}
+                range={range("learning_rate")}
+                step={0.01}
+                disabled={disabled}
+                onChange={(v) => set("training", { ...config.training, learning_rate: v })}
+              />
+            </>
+          )}
 
-          <div className="space-y-1">
-            <Label htmlFor="qml-diff-method">Gradient</Label>
-            <Select
-              value={config.training.diff_method}
-              onValueChange={(v) =>
-                set("training", { ...config.training, diff_method: v as DiffMethod })
-              }
-              disabled={disabled}
-            >
-              {describe.diff_methods.map((m) => (
-                <SelectItem key={m} value={m}>
-                  {m}
-                </SelectItem>
-              ))}
-            </Select>
-            <p className="text-[11px] text-ink-3">
-              {config.training.diff_method === "backprop"
-                ? "fast; simulator only"
-                : "hardware-compatible, 2 evaluations per parameter"}
-            </p>
-          </div>
+          {supports?.diff_method !== false && (
+            <div className="space-y-1">
+              <Label htmlFor="qml-diff-method">Gradient</Label>
+              <Select
+                value={config.training.diff_method}
+                onValueChange={(v) =>
+                  set("training", { ...config.training, diff_method: v as DiffMethod })
+                }
+                disabled={disabled}
+              >
+                {describe.diff_methods.map((m) => (
+                  <SelectItem key={m} value={m}>
+                    {m}
+                  </SelectItem>
+                ))}
+              </Select>
+              <p className="text-[11px] text-ink-3">
+                {config.training.diff_method === "backprop"
+                  ? "fast; simulator only"
+                  : "hardware-compatible, 2 evaluations per parameter"}
+              </p>
+            </div>
+          )}
 
           <NumberField
             id="qml-seed"
@@ -353,6 +444,14 @@ export function QmlConfigForm({
             onChange={(v) => set("seed", v)}
           />
         </div>
+
+        {supports?.data_reuploading && (
+          <p className="text-[11px] leading-relaxed text-ink-3">
+            Data re-uploading is on: the input is re-encoded before every layer, which raises the
+            reachable Fourier frequency. Without it a single encoding caps the model at frequency
+            1 and these targets are unreachable.
+          </p>
+        )}
       </Card>
 
       {submitError && (
