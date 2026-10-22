@@ -1507,6 +1507,131 @@ else is `docs/qml/`.
 
 ---
 
+## 2I. Phase 8A — remediation before release: make the browser real, then fix what it finds
+
+Phase 8 was going to be a documentation phase. It cannot be, because Phase 7's largest caveat — *no
+browser has ever rendered the QML Lab* — turns out to be **fixable**, and fixing it changes what
+"verified" means for the whole project. So Phase 8 splits: **8A is this remediation**, 8B is the
+release document. 8A runs first and must be green before 8B starts.
+
+### 2I.0 The unlock: seven browser harnesses cannot run anywhere
+
+`playwright@^1.64.0` **is** a declared devDependency, and `tools/browser-setup.sh` exists to install
+a working Chromium. But **all seven** playwright harnesses hardcode a machine-specific launch path:
+
+```
+frontend/web/scripts/browser-verify-matrix-view.mjs:4      EDGE_PATH = C:\Program Files (x86)\...\msedge.exe
+frontend/web/scripts/browser-verify-new-features.mjs:31    EDGE_PATH
+frontend/web/scripts/browser-verify-qudit-lab.mjs:7,8      EDGE_PATH + ARTIFACT_DIR
+frontend/web/scripts/qa-circuit-visual-fix.mjs:5,7         EDGE_PATH + ARTIFACT_DIR
+frontend/web/scripts/qa-qudit-master-upgrade.mjs:8         EDGE_PATH
+frontend/web/scripts/qa-qudit-user-remediation.mjs:5       EDGE_PATH
+frontend/web/scripts/vision-qa-master-suite.mjs:19         EDGE_PATH
+```
+
+Two also hardcode `ARTIFACT_DIR` to `C:\Users\laksh\.gemini\antigravity-ide\brain\<session-uuid>` —
+an **ephemeral IDE session directory** that no longer exists, so those scripts fail on the owner's
+own machine too. And two are wired into `package.json` (`test:new-features:browser`,
+`test:vision-qa`), so the published commands crash for anyone who runs them.
+
+Four of the seven predate this project; three arrived with the owner's qudit merge. None is QML's,
+and none has ever produced evidence anyone could reproduce. **This is the structural reason every
+frontend claim in Phases 3, 5c, 6 and 7 is SSR-only.**
+
+**The fix already exists in this repo — copy it, do not invent one.** `push-overlay-check.mts` is the
+only portable browser harness. Its pattern:
+
+- resolve the browser in order, preferring `$UITEST_DIR/bin/chromium` (what `browser-setup.sh`
+  produces) and falling back rather than assuming (`:56`, `:19`)
+- set `LD_LIBRARY_PATH` before launching (`:61-63`)
+- `chromium.launch({ ...(exePath ? { executablePath: exePath } : {}), args: ["--no-sandbox",
+  "--disable-dev-shm-usage", "--disable-gpu"] })` (`:96-98`) — note the conditional spread, so it
+  uses Playwright's own browser when no explicit path is needed
+- write artifacts to a **gitignored, relative or env-configured** directory, never a hardcoded
+  absolute user path
+
+Migrate all seven. A harness that cannot run is not a harness; it is an untested claim with a
+filename.
+
+### 2I.1 `bg-card` — the fix, and the trap that caused it
+
+**7 uses across 5 files emit zero CSS.** The cause is §3.1's two-layer trap: utilities are generated
+only from the `@theme` block (`globals.css:4-42`), and there is **no `--color-card`** there. Putting
+one in the `:root`/`html.dark` bare-vars block (`:44-92`) would **still emit nothing** — that layer
+does not produce utilities. If a new token is needed it must go in `@theme`.
+
+**Prefer reuse over a new token.** §3.1 forbids duplicating an existing one, and the sites are
+`border border-line bg-card/60 backdrop-blur-md` panels — a translucent raised surface, which
+`bg-raised` / `bg-subtle` / `bg-bg-raised` may already express. Check first. Add `--color-card` to
+`@theme` only if nothing existing fits, and say which and why.
+
+Either way the proof is the built CSS: `.bg-card` (or its replacement) must appear in the compiled
+output, and the CSS rule-level diff must show it. "It looks right in the source" is not evidence —
+that is precisely how this survived.
+
+Sites: `DensityMatrixInspector.tsx:134,143`, `QuditGatePalette.tsx:20`, `QuditLearnPanel.tsx:21`,
+`QuditNoisePanel.tsx:71`, `QuditLabPage.tsx:273,304`.
+
+### 2I.2 The carried defects
+
+- **QL-005** — `qudit_lab/simulator.py:140, 151, 160`, `round(…, 6)`. Confirmed still at those exact
+  lines after the owner's merge. Rounding a physical quantity for display purposes at the *computation*
+  layer loses precision downstream; decide whether it belongs there or at the presentation boundary.
+- **QL-015** toast overlap · **QL-016** preset titles at ≤1366px · **QL-017** diagonal sub-label.
+  Each needs a reproduction before a fix, and now that 2I.0 makes browsers runnable, each
+  reproduction should be a harness assertion rather than a screenshot someone looked at once.
+
+### 2I.3 The 57 pre-existing harness failures — triage before touching anything
+
+Phase 7 decomposed them as `render:codelab` 9 + `render:p5` 20 + `render:games` 20 +
+`render:results` 8. **Re-measure first** — the tree has since gained 29 files and five harnesses, so
+the number may have moved.
+
+Then **categorise every failure before fixing any**, because the three causes need opposite
+treatments:
+
+| Category | Correct action |
+|---|---|
+| Real product defect | Fix the product. The assertion was right. |
+| Stale assertion — the UI was redesigned and the test was not updated | Update the assertion to the *current intended* behaviour, and cite the commit that changed the UI. |
+| Harness bug — the test is wrong, vacuous, or order-dependent | Fix the harness. |
+
+**Never delete or weaken an assertion to make a number go green.** That is the standing rule, and 57
+failures is exactly the situation where it is most tempting. If a failure cannot be categorised,
+leave it failing and report it — an unexplained red is more useful than a fabricated green.
+
+One commit per category, with the count before and after in the message.
+
+### 2I.4 Explicitly out of scope
+
+**§2C.5 (noise experiments), §2C.6 (qudit spike) and §2F's WP6 (suggest-a-config) stay deferred.**
+They are features, not defects, and this phase already carries seven harness migrations, four
+carried defects, 57 triaged failures and the release document. Adding feature scope is how a
+remediation phase ends up half-done on both halves. They are recorded in `DECISIONS.md` as
+post-release candidates; the owner can promote them, but not into this phase.
+
+### 2I.5 What 8A must prove
+
+Real browser evidence, for the first time in this project:
+
+- The QML Lab **renders in a browser** with the flag on: all four views, the algorithm selector
+  driving dataset and limit changes, a Radix `Select` actually opening (no portalled content has ever
+  been rendered), and the kernel's zero-epoch-row state showing its closed-form outcome rather than
+  an empty chart.
+- The regression Results view shows **MAE/RMSE in target units and a signed R²**, with no classifier
+  metric anywhere — this is MT-006's visual half, and it can now be automated rather than deferred.
+- The kernel heatmap renders with computed inline styles (MT-008) and the sample cap error is legible
+  (MT-009).
+- Polling **actually stops** on a terminal status — observed as the absence of a second request, not
+  inferred from reading `refetchInterval`.
+- The fail-closed state, per §2H.1: `/features` erroring hides the nav entry and `/qml-lab` shows the
+  404 body. **Rendered, not grepped.** Then delete the regex guard at `qml-ui-check.mts:253`.
+
+Anything in MT-001…MT-010 that this closes must be re-marked `AUTOMATED by <phase/commit>` in the
+register — append-only, IDs never reused.
+
+---
+
 ## 3. The UI/UX contract — match this exactly
 
 This is the part most likely to look wrong, so it is specified concretely rather than as
