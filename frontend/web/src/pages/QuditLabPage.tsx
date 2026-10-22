@@ -13,12 +13,9 @@ import {
   type QuditGateCatalogueItem,
   type QuditLimits,
   type QuditNoiseConfig,
-  type QuditOp,
-  type QuditWire,
   type SimulationResult,
 } from "../api/quditLab";
 import { QuditCircuitEditor } from "../components/qudit/QuditCircuitEditor";
-import { QuditGatePalette } from "../components/qudit/QuditGatePalette";
 import { DensityMatrixInspector } from "../components/qudit/DensityMatrixInspector";
 import { QuditNoisePanel } from "../components/qudit/QuditNoisePanel";
 import { QuditLearnPanel } from "../components/qudit/QuditLearnPanel";
@@ -156,52 +153,6 @@ export const QuditLabPage: React.FC = () => {
     toast.success(`Dimension switched to d = ${newDim}`);
   };
 
-  // Add Gate from Palette
-  const handleAddGate = (gateId: string) => {
-    const isTwoQudit = ["sum", "cp", "swap"].includes(gateId);
-
-    // If 2-qudit gate is requested but only 1 wire exists, automatically add a second wire if permitted
-    let currentWires = [...circuit.wires];
-    const maxQudits = limits?.safe_limits[String(dimension)] ?? 4;
-
-    if (isTwoQudit && currentWires.length < 2) {
-      if (currentWires.length < maxQudits) {
-        const secondWire: QuditWire = {
-          id: "q1",
-          index: 1,
-          dimension,
-          initial_state: 0,
-          label: "q1",
-        };
-        currentWires.push(secondWire);
-      } else {
-        toast.error("Need at least 2 qudits to add a multi-qudit gate");
-        return;
-      }
-    }
-
-    const newOp: QuditOp = {
-      id: `op-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-      gate: gateId,
-      targets: isTwoQudit ? [1] : [0],
-      controls: isTwoQudit && gateId !== "swap" ? [0] : [],
-      params: gateId === "r_jk" ? { j: 0, k: 1, theta: 1.5708, phi: 0.0 } : {},
-      dimension,
-    };
-
-    if (gateId === "swap") {
-      newOp.targets = [0, 1];
-    }
-
-    const updatedCircuit = {
-      ...circuit,
-      wires: currentWires,
-      ops: [...circuit.ops, newOp],
-    };
-
-    setCircuit(updatedCircuit);
-  };
-
   // Apply Preset
   const handleApplyPreset = (preset: EducationalPreset) => {
     setDimension(preset.dimension);
@@ -254,7 +205,7 @@ export const QuditLabPage: React.FC = () => {
         {/* Dimension Selector & System Safety Badges */}
         <div className="flex flex-wrap items-center gap-2 shrink-0">
           <span className="text-xs font-semibold text-ink-3 mr-1">Local Dimension:</span>
-          {[2, 3, 4, 5].map((d) => (
+          {[3, 4, 5].map((d) => (
             <button
               key={d}
               type="button"
@@ -268,7 +219,7 @@ export const QuditLabPage: React.FC = () => {
             >
               d = {d}
               <span className="text-[10px] ml-1 opacity-70">
-                {d === 2 ? "Qubit" : d === 3 ? "Qutrit" : d === 4 ? "Ququart" : "5-Level"}
+                {d === 3 ? "Qutrit" : d === 4 ? "Ququart" : "5-Level"}
               </span>
             </button>
           ))}
@@ -338,20 +289,12 @@ export const QuditLabPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Circuit Building Section */}
+      {/* Circuit Building Section: 3-Column Composer matching Qubit Composer Layout */}
       <div className="space-y-4">
-        {/* Gate Palette */}
-        <QuditGatePalette
-          dimension={dimension}
-          catalogue={catalogue}
-          onAddGate={handleAddGate}
-          disabled={isSimulating}
-        />
-
-        {/* Visual Circuit Canvas */}
         <QuditCircuitEditor
           circuit={circuit}
           maxQudits={maxQuditsAllowed}
+          catalogue={catalogue}
           onUpdateCircuit={setCircuit}
           onResetCircuit={handleResetCircuit}
         />

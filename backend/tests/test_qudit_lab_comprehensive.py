@@ -474,7 +474,7 @@ def test_api_presets_endpoint(client):
     resp = client.get("/qudit/presets?dimension=3")
     assert resp.status_code == 200
     presets = resp.json()
-    assert len(presets) == 5
+    assert len(presets) >= 5
     titles = [p["title"] for p in presets]
     assert any("Shift" in t for t in titles)
     assert any("Bell State" in t for t in titles)

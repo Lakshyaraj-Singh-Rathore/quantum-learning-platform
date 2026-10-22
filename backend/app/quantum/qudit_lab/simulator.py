@@ -64,8 +64,8 @@ def build_cirq_circuit(
 
     for op in circuit.ops:
         gate_name = op.gate.lower().strip()
-        if gate_name == "measure":
-            # For exact density-matrix simulation, measurements are handled as projections or presentation
+        if gate_name in ("measure", "barrier"):
+            # Directives for measurement presentation or visual separation
             continue
 
         cirq_gate = create_cirq_qudit_gate(op.gate, op.dimension, op.params)

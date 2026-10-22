@@ -4,15 +4,19 @@ import {
   CheckCircle2,
   AlertTriangle,
   Layers,
-  Sparkles,
   BarChart3,
   Split,
+  ZoomIn,
+  ZoomOut,
+  RotateCcw,
+  Maximize2,
+  Minimize2,
 } from "lucide-react";
 import {
   type ComplexVal,
   type SimulationResult,
 } from "../../api/quditLab";
-import { Badge } from "../ui";
+import { Badge, cn } from "../ui";
 
 interface DensityMatrixInspectorProps {
   result: SimulationResult | null;
@@ -25,6 +29,79 @@ interface DensityMatrixInspectorProps {
 
 type ViewMode = "mag" | "real" | "imag" | "phase";
 
+// -----------------------------------------------------------------------------
+// Viridis Colormap (Screenshots A & normal Composer target)
+// -----------------------------------------------------------------------------
+const VIRIDIS_STOPS: [number, number, number][] = [
+  [68, 1, 84],     // 0.00: #440154 (dark purple)
+  [72, 40, 120],   // 0.10: #482878
+  [62, 73, 137],   // 0.20: #3e4989 (deep blue)
+  [49, 104, 142],  // 0.30: #31688e
+  [38, 130, 142],  // 0.40: #26828e
+  [31, 158, 137],  // 0.50: #1f9e89 (teal)
+  [53, 183, 121],  // 0.60: #35b779
+  [110, 206, 88],  // 0.70: #6ece58 (lime green)
+  [181, 222, 43],  // 0.80: #b5de2b
+  [229, 228, 25],  // 0.90: #e5e419
+  [253, 231, 37],  // 1.00: #fde725 (yellow)
+];
+
+function viridisColor(t: number): string {
+  const val = Math.max(0, Math.min(1, t));
+  const pos = val * (VIRIDIS_STOPS.length - 1);
+  const idx = Math.floor(pos);
+  const frac = pos - idx;
+
+  if (idx >= VIRIDIS_STOPS.length - 1) {
+    const last = VIRIDIS_STOPS[VIRIDIS_STOPS.length - 1];
+    return `rgb(${last[0]}, ${last[1]}, ${last[2]})`;
+  }
+
+  const c1 = VIRIDIS_STOPS[idx];
+  const c2 = VIRIDIS_STOPS[idx + 1];
+  const r = Math.round(c1[0] + frac * (c2[0] - c1[0]));
+  const g = Math.round(c1[1] + frac * (c2[1] - c1[1]));
+  const b = Math.round(c1[2] + frac * (c2[2] - c1[2]));
+
+  return `rgb(${r}, ${g}, ${b})`;
+}
+
+// Signed diverging colormap for Real/Imag [-1, 1]
+function signedColor(v: number): string {
+  const clamped = Math.max(-1, Math.min(1, v));
+  if (Math.abs(clamped) < 0.005) {
+    return "#111827"; // neutral dark slate
+  }
+  if (clamped > 0) {
+    // Green ramp
+    const a = Math.min(1, clamped);
+    const r = Math.round(17 + a * (16 - 17));
+    const g = Math.round(24 + a * (185 - 24));
+    const b = Math.round(39 + a * (129 - 39));
+    return `rgb(${r}, ${g}, ${b})`;
+  } else {
+    // Rose ramp
+    const a = Math.min(1, -clamped);
+    const r = Math.round(17 + a * (225 - 17));
+    const g = Math.round(24 + a * (29 - 24));
+    const b = Math.round(39 + a * (72 - 39));
+    return `rgb(${r}, ${g}, ${b})`;
+  }
+}
+
+// Cyclic hue colormap for Phase [-pi, pi]
+function phaseColor(phase: number, mag: number): { bg: string; undefinedPhase: boolean } {
+  if (mag < 0.005) {
+    return { bg: "#0d1322", undefinedPhase: true };
+  }
+  const deg = (((phase + Math.PI) / (2 * Math.PI)) * 360).toFixed(1);
+  const opacity = Math.min(1, 0.4 + 0.6 * Math.min(1, mag)).toFixed(2);
+  return {
+    bg: `hsla(${deg}, 85%, 52%, ${opacity})`,
+    undefinedPhase: false,
+  };
+}
+
 export const DensityMatrixInspector: React.FC<DensityMatrixInspectorProps> = ({
   result,
   loading = false,
@@ -32,6 +109,15 @@ export const DensityMatrixInspector: React.FC<DensityMatrixInspectorProps> = ({
   onRerun,
 }) => {
   const [viewMode, setViewMode] = useState<ViewMode>("mag");
+  const [zoom, setZoom] = useState<number>(1);
+  const [fullscreen, setFullscreen] = useState<boolean>(false);
+  const [hoveredCell, setHoveredCell] = useState<{
+    r: number;
+    c: number;
+    val: ComplexVal;
+    rowLabel: string;
+    colLabel: string;
+  } | null>(null);
   const [selectedCell, setSelectedCell] = useState<{
     r: number;
     c: number;
@@ -39,6 +125,7 @@ export const DensityMatrixInspector: React.FC<DensityMatrixInspectorProps> = ({
     rowLabel: string;
     colLabel: string;
   } | null>(null);
+
   const [activeTab, setActiveTab] = useState<"matrix" | "probabilities" | "reduced">("matrix");
   const [selectedReducedWire, setSelectedReducedWire] = useState<string>("q0");
 
@@ -46,7 +133,7 @@ export const DensityMatrixInspector: React.FC<DensityMatrixInspectorProps> = ({
     return (
       <div className="rounded-xl border border-line bg-card/60 backdrop-blur-md p-8 flex flex-col items-center justify-center min-h-[350px] space-y-3">
         <div className="h-8 w-8 rounded-full border-2 border-accent border-t-transparent animate-spin" />
-        <span className="text-sm text-ink-3">Simulating density matrix evolution (Cirq)...</span>
+        <span className="text-sm text-ink-3 font-mono">Simulating genuine qudit density matrix evolution (Cirq)...</span>
       </div>
     );
   }
@@ -63,92 +150,63 @@ export const DensityMatrixInspector: React.FC<DensityMatrixInspectorProps> = ({
     );
   }
 
-  const { state_validation: sv, total_dim, basis_labels, density_matrix, probabilities, samples, reduced_states } = result;
-
-  // Bra-ket formatting.
-  //
-  // `basis_labels` already arrive from the API as kets ("|0⟩", "|12⟩").
-  // Interpolating them straight into a ⟨row|ρ|col⟩ template therefore produced
-  // "⟨|0⟩|ρ||0⟩⟩" — doubled bars and an unbalanced bracket. This is a teaching
-  // surface, so the notation has to be the notation the lesson text uses:
-  // strip the decoration back to the bare index and rebuild the matrix element.
-  const ketIndex = (label: string) => label.replace(/[|⟩⟨]/g, "").trim();
-  const braket = (rowLabel: string, colLabel: string) =>
-    `⟨${ketIndex(rowLabel)}|ρ|${ketIndex(colLabel)}⟩`;
-
-  // "-0.00π" is not a phase. Math.atan2 returns tiny negative angles for
-  // entries that are real and positive up to floating-point noise, and
-  // toFixed() keeps the sign bit when it rounds them to zero. Round first,
-  // then drop a sign that only survives on a zero magnitude.
-  const fmtPhasePi = (phase: number, digits: number) => {
-    const s = (phase / Math.PI).toFixed(digits);
-    return /^-0(\.0+)?$/.test(s) ? s.slice(1) : s;
-  };
-
-  // Cell colour mapping.
-  //
-  // These values are computed per cell, so the colour CANNOT be expressed as a
-  // Tailwind utility: Tailwind generates CSS by statically scanning source for
-  // literal class strings, and a template literal like `bg-blue-500/${n}` is
-  // never emitted. An earlier version did exactly that, which is why every
-  // cell rendered with a transparent background and the heatmap carried no
-  // information at all. Inline styles are the correct tool for a continuous
-  // scale; the class list keeps only the static parts.
-  const clamp01 = (x: number) => Math.min(1, Math.max(0, x));
-  const mix = (rgb: string, a: number) => `rgba(${rgb}, ${(0.10 + 0.78 * clamp01(a)).toFixed(3)})`;
-  const EMPTY_CELL = { backgroundColor: "rgba(148, 163, 184, 0.06)", borderColor: "rgba(255,255,255,0.06)" };
-
-  // Magnitude ramp, extracted so the reduced-subsystem heatmap can use the
-  // identical encoding. It always displays |ρ_ij|, so it must not follow the
-  // main grid's view mode.
-  const magStyle = (val: ComplexVal, isDiagonal: boolean): React.CSSProperties => {
-    const a = clamp01(val.mag);
-    if (a < 0.001) return EMPTY_CELL;
-    return isDiagonal
-      ? { backgroundColor: mix("59, 130, 246", a), borderColor: "rgba(96,165,250,0.45)", color: "#dbeafe" }
-      : { backgroundColor: mix("99, 102, 241", a), borderColor: "rgba(129,140,248,0.35)", color: "#e0e7ff" };
-  };
-
-  const cellStyle = (val: ComplexVal, isDiagonal: boolean): React.CSSProperties => {
-    const EMPTY = EMPTY_CELL;
-
-    if (viewMode === "mag") {
-      return magStyle(val, isDiagonal);
-    }
-    if (viewMode === "real" || viewMode === "imag") {
-      const v = viewMode === "real" ? val.real : val.imag;
-      if (Math.abs(v) < 0.001) return EMPTY;
-      const a = clamp01(Math.abs(v));
-      return v > 0
-        ? { backgroundColor: mix(viewMode === "real" ? "16, 185, 129" : "245, 158, 11", a),
-            borderColor: viewMode === "real" ? "rgba(52,211,153,0.35)" : "rgba(251,191,36,0.35)",
-            color: viewMode === "real" ? "#d1fae5" : "#fef3c7" }
-        : { backgroundColor: mix(viewMode === "real" ? "244, 63, 94" : "168, 85, 247", a),
-            borderColor: viewMode === "real" ? "rgba(251,113,133,0.35)" : "rgba(192,132,252,0.35)",
-            color: viewMode === "real" ? "#ffe4e6" : "#f3e8ff" };
-    }
-    // Phase: hue encodes the angle, saturation fades out as magnitude -> 0, so
-    // a numerically meaningless phase on a zero entry cannot look significant.
-    if (val.mag < 0.01) return EMPTY;
-    const deg = ((val.phase + Math.PI) / (2 * Math.PI)) * 360;
-    return {
-      backgroundColor: `hsla(${deg.toFixed(1)}, 70%, 50%, ${(0.18 + 0.55 * clamp01(val.mag)).toFixed(3)})`,
-      borderColor: `hsla(${deg.toFixed(1)}, 70%, 65%, 0.45)`,
-      color: "#ffffff",
-    };
-  };
+  const {
+    state_validation: sv,
+    total_dim,
+    basis_labels,
+    density_matrix,
+    probabilities,
+    samples,
+    reduced_states,
+  } = result;
 
   const isPure = sv.purity >= 0.999;
 
+  // Clean basis labels without brackets for raw bra-ket construction
+  const rawIndex = (label: string) => label.replace(/[|⟩⟨]/g, "").trim();
+  const formatBraket = (rLab: string, cLab: string) => `⟨${rawIndex(rLab)}|ρ|${rawIndex(cLab)}⟩`;
+
+  // Format phase as multiple of pi
+  const formatPhasePi = (phase: number) => {
+    const s = (phase / Math.PI).toFixed(4);
+    return /^-0(\.0+)?$/.test(s) ? s.slice(1) : s;
+  };
+
+  // Base cell size adapted to matrix dimension
+  const baseCellSize =
+    total_dim <= 4 ? 64 : total_dim <= 9 ? 44 : total_dim <= 16 ? 32 : total_dim <= 25 ? 26 : 20;
+  const cellSize = Math.round(baseCellSize * zoom);
+
+  // Active cell being inspected (hover takes precedence, then selected)
+  const activeInspected = hoveredCell || selectedCell;
+
+  // Colorbar config based on view mode
+  const colorbarTicks =
+    viewMode === "mag"
+      ? [1.0, 0.8, 0.6, 0.4, 0.2, 0.0]
+      : viewMode === "phase"
+      ? [1.0, 0.5, 0.0, -0.5, -1.0]
+      : [1.0, 0.5, 0.0, -0.5, -1.0];
+
+  const colorbarGradient =
+    viewMode === "mag"
+      ? "linear-gradient(to top, #440154 0%, #3e4989 20%, #26828e 40%, #1f9e89 50%, #35b779 60%, #b5de2b 80%, #fde725 100%)"
+      : viewMode === "phase"
+      ? "linear-gradient(to top, hsl(360, 85%, 52%) 0%, hsl(270, 85%, 52%) 25%, hsl(180, 85%, 52%) 50%, hsl(90, 85%, 52%) 75%, hsl(0, 85%, 52%) 100%)"
+      : "linear-gradient(to top, #e11d48 0%, #111827 50%, #10b981 100%)";
+
+  const colorbarLabel =
+    viewMode === "mag" ? "|ρ|" : viewMode === "real" ? "Re(ρ)" : viewMode === "imag" ? "Im(ρ)" : "∠ρ";
+
   return (
     <div
-      className={`rounded-xl border bg-card/60 backdrop-blur-md p-4 shadow-sm space-y-4 ${
-        stale ? "border-warn/50" : "border-line"
-      }`}
+      className={cn(
+        "rounded-xl border bg-[#080c16]/95 border-line shadow-sm backdrop-blur-md p-5 space-y-4 select-none relative transition-all",
+        stale && "border-warn/50",
+        fullscreen && "fixed inset-4 z-50 bg-[#070a12]/98 border-accent/40 shadow-2xl overflow-auto p-6"
+      )}
     >
-      {/* These numbers describe a circuit the user has since edited. Saying so
-          is the whole point: a quantum result that silently belongs to a
-          different circuit is worse than no result. */}
+      {/* Staleness banner if circuit was edited */}
       {stale && (
         <div
           role="status"
@@ -156,15 +214,13 @@ export const DensityMatrixInspector: React.FC<DensityMatrixInspectorProps> = ({
         >
           <AlertTriangle className="h-4 w-4 shrink-0" />
           <span>
-            <strong className="font-semibold">These results are out of date.</strong>{" "}
-            The circuit or noise configuration changed after this run, so the matrix and
-            metrics below do not describe what is currently on the canvas.
+            <strong className="font-semibold">Results out of sync:</strong> The circuit or noise configuration was modified after this simulation run.
           </span>
           {onRerun && (
             <button
               type="button"
               onClick={onRerun}
-              className="ml-auto rounded-md border border-warn/50 px-2 py-0.5 font-semibold text-warn transition-colors hover:bg-warn/20"
+              className="ml-auto rounded-md border border-warn/50 px-2.5 py-0.5 font-semibold text-warn hover:bg-warn/20 transition-colors"
             >
               Re-run simulation
             </button>
@@ -172,75 +228,118 @@ export const DensityMatrixInspector: React.FC<DensityMatrixInspectorProps> = ({
         </div>
       )}
 
-      {/* Top Bar: Tabs & View Controls */}
+      {/* Top Header & Tab Switcher matching IBM Composer / Normal Composer */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line/60 pb-3">
         {/* Navigation Tabs */}
-        <div className="flex items-center gap-1.5 bg-subtle/60 p-1 rounded-lg border border-line/60">
+        <div className="flex items-center gap-1.5 bg-subtle/40 p-1 rounded-lg border border-line/60">
           <button
             type="button"
             onClick={() => setActiveTab("matrix")}
-            className={`px-3 py-1 rounded-md text-xs font-medium transition-all ${
+            className={`px-3 py-1 rounded-md text-xs font-mono font-medium transition-all ${
               activeTab === "matrix"
                 ? "bg-accent text-accent-ink shadow-sm"
                 : "text-ink-3 hover:text-ink"
             }`}
           >
-            <Layers className="h-3.5 w-3.5 inline mr-1" />
+            <Layers className="h-3.5 w-3.5 inline mr-1.5" />
             Density Matrix (ρ)
           </button>
           <button
             type="button"
             onClick={() => setActiveTab("probabilities")}
-            className={`px-3 py-1 rounded-md text-xs font-medium transition-all ${
+            className={`px-3 py-1 rounded-md text-xs font-mono font-medium transition-all ${
               activeTab === "probabilities"
                 ? "bg-accent text-accent-ink shadow-sm"
                 : "text-ink-3 hover:text-ink"
             }`}
           >
-            <BarChart3 className="h-3.5 w-3.5 inline mr-1" />
+            <BarChart3 className="h-3.5 w-3.5 inline mr-1.5" />
             Measurement Distribution
           </button>
           <button
             type="button"
             onClick={() => setActiveTab("reduced")}
-            className={`px-3 py-1 rounded-md text-xs font-medium transition-all ${
+            className={`px-3 py-1 rounded-md text-xs font-mono font-medium transition-all ${
               activeTab === "reduced"
                 ? "bg-accent text-accent-ink shadow-sm"
                 : "text-ink-3 hover:text-ink"
             }`}
           >
-            <Split className="h-3.5 w-3.5 inline mr-1" />
+            <Split className="h-3.5 w-3.5 inline mr-1.5" />
             Reduced Subsystems
           </button>
         </div>
 
-        {/* View Mode Toggle when matrix tab is active */}
+        {/* View Mode & Zoom Toolbar */}
         {activeTab === "matrix" && (
-          <div className="flex items-center gap-1 text-xs">
-            <span className="text-ink-3 mr-1 text-[11px]">Display:</span>
-            {(["mag", "real", "imag", "phase"] as ViewMode[]).map((mode) => (
+          <div className="flex items-center gap-3">
+            {/* Display Modes */}
+            <div className="flex items-center gap-1 text-xs bg-subtle/30 p-0.5 rounded border border-line/40">
+              <span className="text-ink-3 px-1.5 text-[11px] font-mono">Display:</span>
+              {(["mag", "real", "imag", "phase"] as ViewMode[]).map((mode) => (
+                <button
+                  key={mode}
+                  type="button"
+                  onClick={() => setViewMode(mode)}
+                  className={`px-2.5 py-0.5 rounded text-[11px] font-mono transition-colors ${
+                    viewMode === mode
+                      ? "bg-accent text-accent-ink font-bold shadow-sm"
+                      : "text-ink-3 hover:text-ink hover:bg-hover"
+                  }`}
+                >
+                  {mode === "mag" ? "|ρ|" : mode === "real" ? "Re(ρ)" : mode === "imag" ? "Im(ρ)" : "∠ρ"}
+                </button>
+              ))}
+            </div>
+
+            {/* Zoom & Fullscreen Toolbar Controls matching Screenshot A */}
+            <div className="flex items-center gap-1 border-l border-line/50 pl-2">
               <button
-                key={mode}
                 type="button"
-                onClick={() => setViewMode(mode)}
-                className={`px-2 py-0.5 rounded text-[11px] font-mono capitalize transition-colors ${
-                  viewMode === mode
-                    ? "bg-accent/20 text-accent font-bold border border-accent/40"
-                    : "text-ink-3 hover:text-ink bg-subtle/40 border border-transparent"
-                }`}
+                onClick={() => setZoom((z) => Math.min(2.0, +(z + 0.25).toFixed(2)))}
+                title="Zoom In"
+                className="p-1.5 rounded hover:bg-hover text-ink-3 hover:text-white transition-colors"
+                aria-label="Zoom in"
               >
-                {mode === "mag" ? "|ρ|" : mode === "real" ? "Re(ρ)" : mode === "imag" ? "Im(ρ)" : "∠ρ"}
+                <ZoomIn className="w-4 h-4" />
               </button>
-            ))}
+              <button
+                type="button"
+                onClick={() => setZoom((z) => Math.max(0.75, +(z - 0.25).toFixed(2)))}
+                title="Zoom Out"
+                className="p-1.5 rounded hover:bg-hover text-ink-3 hover:text-white transition-colors"
+                aria-label="Zoom out"
+              >
+                <ZoomOut className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setZoom(1.0)}
+                title="Reset View"
+                className="p-1.5 rounded hover:bg-hover text-ink-3 hover:text-white transition-colors"
+                aria-label="Reset zoom"
+              >
+                <RotateCcw className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setFullscreen((f) => !f)}
+                title={fullscreen ? "Exit Fullscreen" : "Fullscreen"}
+                className="p-1.5 rounded hover:bg-hover text-ink-3 hover:text-white transition-colors"
+                aria-label="Toggle fullscreen"
+              >
+                {fullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+              </button>
+            </div>
           </div>
         )}
       </div>
 
-      {/* Quantum Physical Invariants Card */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 p-3 rounded-lg bg-subtle/30 border border-line/60 text-xs">
+      {/* Quantum Physical Invariants Card (Scientific Validation) */}
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 p-3.5 rounded-lg bg-[#0c1220]/80 border border-line/60 text-xs">
         {/* Trace */}
         <div className="space-y-0.5">
-          <div className="text-ink-3 text-[11px] flex items-center gap-1">
+          <div className="text-ink-3 text-[11px] font-mono flex items-center gap-1.5">
             <span>Trace Tr(ρ)</span>
             {Math.abs(sv.trace - 1.0) < 1e-4 ? (
               <CheckCircle2 className="h-3 w-3 text-emerald-400" />
@@ -248,46 +347,38 @@ export const DensityMatrixInspector: React.FC<DensityMatrixInspectorProps> = ({
               <AlertTriangle className="h-3 w-3 text-rose-400" />
             )}
           </div>
-          <div className="font-mono font-bold text-ink">
+          <div className="font-mono font-bold text-ink text-sm">
             {sv.trace.toFixed(4)}
           </div>
         </div>
 
         {/* Hermiticity */}
         <div className="space-y-0.5">
-          <div className="text-ink-3 text-[11px]">Hermiticity</div>
+          <div className="text-ink-3 text-[11px] font-mono">Hermiticity</div>
           <div className="font-mono font-bold flex items-center gap-1">
             {sv.is_hermitian ? (
-              <Badge tone="ok">
-                ρ = ρ†
-              </Badge>
+              <Badge tone="ok">ρ = ρ†</Badge>
             ) : (
-              <Badge tone="danger">
-                Non-Hermitian
-              </Badge>
+              <Badge tone="danger">Non-Hermitian</Badge>
             )}
           </div>
         </div>
 
         {/* Positivity */}
         <div className="space-y-0.5">
-          <div className="text-ink-3 text-[11px]">Positivity</div>
+          <div className="text-ink-3 text-[11px] font-mono">Positivity</div>
           <div className="font-mono font-bold">
             {sv.is_positive_semidefinite ? (
-              <Badge tone="ok">
-                λ_min ≥ 0
-              </Badge>
+              <Badge tone="ok">λ_min ≥ 0</Badge>
             ) : (
-              <Badge tone="danger">
-                λ_min &lt; 0
-              </Badge>
+              <Badge tone="danger">λ_min &lt; 0</Badge>
             )}
           </div>
         </div>
 
         {/* Purity */}
         <div className="space-y-0.5">
-          <div className="text-ink-3 text-[11px]">Purity γ = Tr(ρ²)</div>
+          <div className="text-ink-3 text-[11px] font-mono">Purity γ = Tr(ρ²)</div>
           <div className="font-mono font-bold flex items-center gap-1.5">
             <span className={isPure ? "text-emerald-400" : "text-amber-400"}>
               {sv.purity.toFixed(4)}
@@ -298,10 +389,10 @@ export const DensityMatrixInspector: React.FC<DensityMatrixInspectorProps> = ({
           </div>
         </div>
 
-        {/* Von Neumann Entropy */}
+        {/* Entropy */}
         <div className="space-y-0.5">
-          <div className="text-ink-3 text-[11px]">Entropy S(ρ)</div>
-          <div className="font-mono font-bold text-ink">
+          <div className="text-ink-3 text-[11px] font-mono">Entropy S(ρ)</div>
+          <div className="font-mono font-bold text-ink text-sm">
             {sv.entropy !== null && sv.entropy !== undefined ? `${sv.entropy.toFixed(4)} bits` : "—"}
           </div>
         </div>
@@ -309,165 +400,231 @@ export const DensityMatrixInspector: React.FC<DensityMatrixInspectorProps> = ({
 
       {/* Main Tab Content */}
       {activeTab === "matrix" && (
-        <div className="space-y-3">
+        <div className="space-y-4">
           {result.density_matrix_truncated ? (
             <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs">
-              Density matrix dimension (D = {total_dim}) exceeds full interactive browser threshold (D &gt; 64). Compact summaries and reduced subsystem matrices are active below.
+              Density matrix dimension (D = {total_dim}) exceeds interactive full browser threshold (D &gt; 64). Reduced subsystem matrices and compact measurement distribution are active below.
             </div>
           ) : density_matrix ? (
-            <div className="overflow-x-auto pb-2 scrollbar-thin">
-              <div className="inline-block min-w-full">
-                {/* Column Basis Headers */}
-                <div className="flex pl-16 mb-1 gap-1">
-                  {basis_labels.map((colLabel, c) => (
-                    <div
-                      key={`col-${c}`}
-                      className="w-14 text-center font-mono text-[10px] text-ink-3 truncate"
-                      title={colLabel}
-                    >
-                      {colLabel}
-                    </div>
-                  ))}
+            /* Centered Heatmap Surface with Top 'ket' and Left 'bra' matching Screenshot A */
+            <div className="flex flex-col md:flex-row items-center justify-center gap-8 py-4 overflow-x-auto">
+              {/* Matrix Core */}
+              <div className="flex flex-col items-center">
+                {/* 'ket' axis label centered at top */}
+                <div className="text-xs font-mono font-semibold text-slate-400 tracking-widest mb-2 select-none">
+                  ket
                 </div>
 
-                {/* Matrix Rows */}
-                <div className="flex flex-col gap-1">
-                  {density_matrix.map((row, r) => (
-                    <div key={`row-${r}`} className="flex items-center gap-1">
-                      {/* Row Basis Header */}
-                      <div
-                        className="w-16 text-right pr-2 font-mono text-[10px] text-ink-3 truncate shrink-0"
-                        title={basis_labels[r]}
-                      >
-                        {basis_labels[r]}
-                      </div>
+                <div className="flex items-center">
+                  {/* 'bra' axis label on the left rotated -90deg */}
+                  <div className="text-xs font-mono font-semibold text-slate-400 tracking-widest -rotate-90 pr-3 select-none">
+                    bra
+                  </div>
 
-                      {/* Row Cells */}
-                      {row.map((cell, c) => {
-                        const isDiag = r === c;
-                        const isCellSelected =
-                          selectedCell?.r === r && selectedCell?.c === c;
-
-                        const select = () =>
-                          setSelectedCell({
-                            r,
-                            c,
-                            val: cell,
-                            rowLabel: basis_labels[r],
-                            colLabel: basis_labels[c],
-                          });
-
-                        return (
-                          <div
-                            key={`cell-${r}-${c}`}
-                            role="button"
-                            tabIndex={0}
-                            aria-label={`Row ${ketIndex(basis_labels[r])}, column ${ketIndex(basis_labels[c])}: real ${cell.real.toFixed(3)}, imaginary ${cell.imag.toFixed(3)}`}
-                            onClick={select}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter" || e.key === " ") {
-                                e.preventDefault();
-                                select();
-                              }
-                            }}
-                            style={cellStyle(cell, isDiag)}
-                            className={`w-14 h-11 flex flex-col items-center justify-center rounded border font-mono text-[10px] cursor-pointer transition-all duration-150 select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
-                              isCellSelected ? "ring-2 ring-accent scale-105 z-10" : ""
-                            }`}
-                            title={`${braket(basis_labels[r], basis_labels[c])} = ${cell.real >= 0 ? "+" : ""}${cell.real.toFixed(3)} ${cell.imag >= 0 ? "+" : ""}${cell.imag.toFixed(3)}i`}
-                          >
-                            <span className="font-bold leading-none">
-                              {viewMode === "mag"
-                                ? cell.mag.toFixed(3)
-                                : viewMode === "real"
-                                ? cell.real.toFixed(3)
-                                : viewMode === "imag"
-                                ? cell.imag.toFixed(3)
-                                : `${fmtPhasePi(cell.phase, 2)}π`}
-                            </span>
-                            {isDiag && (
-                              <span className="text-[8px] text-ink-3/70 leading-none mt-0.5">
-                                pop
-                              </span>
-                            )}
-                          </div>
-                        );
-                      })}
+                  {/* Grid Container */}
+                  <div className="flex flex-col">
+                    {/* Top Column Kets */}
+                    <div className="flex" style={{ marginLeft: total_dim <= 4 ? 48 : 36 }}>
+                      {basis_labels.map((colLabel, c) => (
+                        <div
+                          key={`col-${c}`}
+                          style={{ width: cellSize }}
+                          className="text-center font-mono text-[11px] font-medium text-slate-300 pb-2 truncate select-none"
+                          title={colLabel}
+                        >
+                          {colLabel}
+                        </div>
+                      ))}
                     </div>
-                  ))}
+
+                    {/* Matrix Rows */}
+                    {density_matrix.map((row, r) => (
+                      <div key={`row-${r}`} className="flex items-center">
+                        {/* Row Bra Label */}
+                        <div
+                          style={{ width: total_dim <= 4 ? 48 : 36 }}
+                          className="text-right font-mono text-[11px] font-medium text-slate-300 pr-2 truncate select-none"
+                          title={basis_labels[r]}
+                        >
+                          {basis_labels[r]}
+                        </div>
+
+                        {/* Row Cells */}
+                        <div className="flex">
+                          {row.map((cell, c) => {
+                            const isHovered = hoveredCell?.r === r && hoveredCell?.c === c;
+                            const isSelected = selectedCell?.r === r && selectedCell?.c === c;
+
+                            // Calculate cell color based on mode
+                            let bg = "";
+                            let cellTitle = "";
+
+                            if (viewMode === "mag") {
+                              bg = viridisColor(cell.mag);
+                              cellTitle = `|ρ| = ${cell.mag.toFixed(4)}`;
+                            } else if (viewMode === "real") {
+                              bg = signedColor(cell.real);
+                              cellTitle = `Re(ρ) = ${cell.real.toFixed(4)}`;
+                            } else if (viewMode === "imag") {
+                              bg = signedColor(cell.imag);
+                              cellTitle = `Im(ρ) = ${cell.imag.toFixed(4)}`;
+                            } else {
+                              const pInfo = phaseColor(cell.phase, cell.mag);
+                              bg = pInfo.bg;
+                              cellTitle = pInfo.undefinedPhase
+                                ? "Phase undefined (|ρ| ≈ 0)"
+                                : `∠ρ = ${formatPhasePi(cell.phase)}π rad`;
+                            }
+
+                            return (
+                              <div
+                                key={`cell-${r}-${c}`}
+                                onMouseEnter={() =>
+                                  setHoveredCell({
+                                    r,
+                                    c,
+                                    val: cell,
+                                    rowLabel: basis_labels[r],
+                                    colLabel: basis_labels[c],
+                                  })
+                                }
+                                onMouseLeave={() => setHoveredCell(null)}
+                                onClick={() =>
+                                  setSelectedCell({
+                                    r,
+                                    c,
+                                    val: cell,
+                                    rowLabel: basis_labels[r],
+                                    colLabel: basis_labels[c],
+                                  })
+                                }
+                                style={{
+                                  width: cellSize,
+                                  height: cellSize,
+                                  backgroundColor: bg,
+                                }}
+                                className={cn(
+                                  "cursor-pointer transition-transform border border-[#0d1527]/80 relative flex items-center justify-center",
+                                  isHovered && "ring-2 ring-white/95 scale-105 z-20 shadow-lg",
+                                  isSelected && !isHovered && "ring-2 ring-accent scale-105 z-10 shadow"
+                                )}
+                                title={`${formatBraket(basis_labels[r], basis_labels[c])}: ${cellTitle}`}
+                              />
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Vertical Colorbar Section matching Screenshot A */}
+              <div className="flex flex-col items-center">
+                <span className="text-xs font-mono font-bold text-slate-300 mb-1.5">{colorbarLabel}</span>
+                <div className="flex items-stretch gap-2">
+                  {/* Color Gradient Bar */}
+                  <div
+                    style={{
+                      height: Math.min(320, Math.max(160, cellSize * total_dim)),
+                      width: 16,
+                      background: colorbarGradient,
+                    }}
+                    className="rounded-sm border border-slate-700/80 shadow-inner"
+                  />
+                  {/* Numeric Ticks */}
+                  <div
+                    style={{ height: Math.min(320, Math.max(160, cellSize * total_dim)) }}
+                    className="flex flex-col justify-between text-[11px] font-mono text-slate-400 select-none py-0.5"
+                  >
+                    {colorbarTicks.map((tickVal) => (
+                      <div key={tickVal} className="flex items-center gap-1 leading-none">
+                        <span className="w-1.5 h-[1px] bg-slate-600 inline-block" />
+                        <span>
+                          {viewMode === "phase"
+                            ? tickVal === 1
+                              ? "+π"
+                              : tickVal === 0.5
+                              ? "+π/2"
+                              : tickVal === 0
+                              ? "0"
+                              : tickVal === -0.5
+                              ? "-π/2"
+                              : "-π"
+                            : tickVal === 1
+                            ? "1"
+                            : tickVal === 0
+                            ? "0"
+                            : tickVal.toFixed(1)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
           ) : null}
 
-          {/* Colour legend — without it the heatmap is not readable */}
-          {density_matrix && !result.density_matrix_truncated && (
-            <MatrixLegend viewMode={viewMode} />
-          )}
-
-          {/* Cell Detail Card */}
-          {selectedCell && (
-            <div className="rounded-lg border border-accent/40 bg-accent/10 p-3 text-xs flex flex-wrap items-center justify-between gap-3 animate-in fade-in duration-150">
-              <div className="space-y-0.5 font-mono">
-                <span className="text-accent font-semibold">
-                  {braket(selectedCell.rowLabel, selectedCell.colLabel)}:
-                </span>{" "}
-                <span className="text-ink font-bold">
-                  {selectedCell.val.real >= 0 ? "+" : ""}
-                  {selectedCell.val.real.toFixed(5)}{" "}
-                  {selectedCell.val.imag >= 0 ? "+" : ""}
-                  {selectedCell.val.imag.toFixed(5)}i
+          {/* Interactive Matrix-Cell Inspection Card matching Screenshot A */}
+          {activeInspected ? (
+            <div className="flex flex-wrap items-center justify-between gap-3 text-xs font-mono text-slate-300 py-2.5 px-4 bg-[#0a0f1d] rounded-lg border border-accent/30 shadow-sm">
+              <div className="flex items-center gap-2">
+                <span className="text-accent font-bold text-sm">
+                  {formatBraket(activeInspected.rowLabel, activeInspected.colLabel)}
+                </span>
+                <span className="text-slate-400">
+                  : Re: <strong className="text-white">{activeInspected.val.real.toFixed(5)}</strong>, Im:{" "}
+                  <strong className="text-white">{activeInspected.val.imag.toFixed(5)}</strong>
                 </span>
               </div>
-              <div className="flex items-center gap-4 text-ink-2 font-mono">
-                <span>Magnitude: <b>{selectedCell.val.mag.toFixed(5)}</b></span>
-                <span>Phase: <b>{fmtPhasePi(selectedCell.val.phase, 4)}π rad</b></span>
-                <span>Type: <b>{selectedCell.r === selectedCell.c ? "Diagonal (Population)" : "Off-Diagonal (Coherence)"}</b></span>
+              <div className="flex items-center gap-4 text-slate-300">
+                <span>
+                  Magnitude: <strong className="text-amber-300">{activeInspected.val.mag.toFixed(5)}</strong>
+                </span>
+                <span>
+                  Phase:{" "}
+                  <strong className="text-cyan-300">
+                    {activeInspected.val.mag < 0.005 ? "undefined" : `${formatPhasePi(activeInspected.val.phase)}π rad`}
+                  </strong>
+                </span>
+                <Badge tone={activeInspected.r === activeInspected.c ? "accent" : "warn"}>
+                  {activeInspected.r === activeInspected.c ? "Diagonal (Population)" : "Off-Diagonal (Coherence)"}
+                </Badge>
               </div>
             </div>
+          ) : (
+            <div className="text-center font-mono text-xs text-slate-500 py-2 bg-[#090d18] rounded-lg border border-line/30">
+              Hover over any matrix cell to inspect quantum amplitude & phase
+            </div>
           )}
+
+          {/* Educational Bell-State Coherence Annotation matching Screenshot A */}
+          <div className="p-3.5 rounded-lg bg-[#0b101f]/70 border border-line/50 text-xs text-slate-400 leading-relaxed font-sans">
+            <span className="font-semibold text-slate-300 font-mono mr-1">Scientific Note:</span>
+            A Bell state lights up the off-diagonal |00⟩⟨11| (or |0,0⟩⟨d-1,d-1⟩) corners — those coherences are the direct signature of quantum superposition and entanglement. A classical statistical mixture exhibits only diagonal entries (populations) without off-diagonal coherences.
+          </div>
         </div>
       )}
 
-      {/* Probabilities Tab */}
+      {/* Measurement Distribution Tab */}
       {activeTab === "probabilities" && (
         <div className="space-y-4">
-          <div className="text-xs text-ink-3">
-            Exact Born-rule probability distribution P(|j⟩) = ⟨j|ρ|j⟩ calculated from diagonal density-matrix elements.
+          <div className="flex items-center justify-between text-xs text-ink-3">
+            <span>Theoretical Born-rule state populations vs Sample counts ({samples ? Object.values(samples).reduce((a, b) => a + b, 0) : 0} shots)</span>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {basis_labels.map((label) => {
-              const prob = probabilities[label] ?? 0.0;
-              const sampleCount = samples ? samples[label] ?? 0 : null;
-              const pct = (prob * 100).toFixed(2);
-
+          <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-2.5">
+            {basis_labels.map((label, idx) => {
+              const prob = probabilities ? (probabilities[label] ?? (probabilities as any)[idx] ?? 0.0) : 0.0;
+              const count = samples ? samples[label] ?? 0 : 0;
               return (
                 <div
-                  key={`prob-${label}`}
-                  className="p-3 rounded-lg border border-line/80 bg-subtle/30 space-y-2"
+                  key={label}
+                  className="p-2.5 rounded-lg bg-[#0c1220] border border-line/50 flex flex-col items-center justify-center text-center space-y-1"
                 >
-                  <div className="flex items-center justify-between font-mono text-xs">
-                    <span className="font-bold text-accent">{label}</span>
-                    <span className="text-ink font-semibold">{pct}%</span>
-                  </div>
-
-                  {/* Probability Bar */}
-                  <div className="h-2 w-full rounded-full bg-subtle overflow-hidden">
-                    <div
-                      className="h-full bg-gradient-to-r from-accent to-accent-2 transition-all duration-300 rounded-full"
-                      style={{ width: `${Math.min(100, prob * 100)}%` }}
-                    />
-                  </div>
-
-                  {samples && (
-                    <div className="flex items-center justify-between text-[11px] text-ink-3">
-                      <span>Shots sample:</span>
-                      <span className="font-mono font-medium text-ink">
-                        {sampleCount} shots
-                      </span>
-                    </div>
-                  )}
+                  <div className="font-mono text-xs font-bold text-accent">{label}</div>
+                  <div className="text-sm font-mono font-semibold text-white">{(prob * 100).toFixed(1)}%</div>
+                  <div className="text-[10px] text-ink-3 font-mono">{count} shots</div>
                 </div>
               );
             })}
@@ -475,27 +632,22 @@ export const DensityMatrixInspector: React.FC<DensityMatrixInspectorProps> = ({
         </div>
       )}
 
-      {/* Reduced Subsystem Tab */}
+      {/* Reduced Subsystems Tab */}
       {activeTab === "reduced" && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-ink-3">
-              Partial trace Tr_{"{rest}"}(ρ) yields the exact local reduced density matrix for a selected qudit subsystem:
-            </span>
-
-            {/* Wire Selector */}
-            <div className="flex items-center gap-1.5">
-              <span className="text-xs text-ink-3">Subsystem:</span>
-              <div className="flex items-center gap-1 bg-subtle p-0.5 rounded border border-line">
-                {Object.keys(reduced_states).map((wireId) => (
+          <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
+            <div className="flex items-center gap-2">
+              <span className="text-ink-3 font-mono">Select Subsystem Wire:</span>
+              <div className="flex items-center gap-1">
+                {Object.keys(reduced_states || {}).map((wireId) => (
                   <button
                     key={wireId}
                     type="button"
                     onClick={() => setSelectedReducedWire(wireId)}
-                    className={`px-2 py-0.5 rounded text-xs font-mono font-bold transition-colors ${
+                    className={`px-2.5 py-1 rounded text-xs font-mono transition-colors ${
                       selectedReducedWire === wireId
-                        ? "bg-accent text-accent-ink"
-                        : "text-ink-3 hover:text-ink"
+                        ? "bg-accent text-accent-ink font-bold shadow-sm"
+                        : "bg-subtle text-ink-3 hover:text-ink"
                     }`}
                   >
                     {wireId}
@@ -503,174 +655,53 @@ export const DensityMatrixInspector: React.FC<DensityMatrixInspectorProps> = ({
                 ))}
               </div>
             </div>
+
+            {reduced_states && reduced_states[selectedReducedWire] && (
+              <div className="flex items-center gap-3 text-ink-3 font-mono">
+                <span>Purity: <strong className="text-white">{reduced_states[selectedReducedWire].purity.toFixed(4)}</strong></span>
+                <span>Entropy: <strong className="text-white">{reduced_states[selectedReducedWire].entropy != null ? `${reduced_states[selectedReducedWire].entropy!.toFixed(4)} bits` : "—"}</strong></span>
+              </div>
+            )}
           </div>
 
-          {/* Subsystem State Card */}
-          {reduced_states[selectedReducedWire] && (
-            <div className="p-4 rounded-xl border border-line bg-subtle/40 space-y-4">
-              {(() => {
-                const red = reduced_states[selectedReducedWire];
-                const dim = red.dimension;
-                const isSubPure = red.purity >= 0.999;
-
-                return (
-                  <>
-                    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line/60 pb-3">
-                      <div className="flex items-center gap-2">
-                        <Badge tone="accent">
-                          Wire {selectedReducedWire}
-                        </Badge>
-                        <span className="text-xs font-semibold text-ink">
-                          Reduced State ρ_{selectedReducedWire} (Dimension {dim})
-                        </span>
-                      </div>
-
-                      <div className="flex items-center gap-4 text-xs font-mono">
-                        <div>
-                          <span className="text-ink-3 mr-1">Subsystem Purity γ:</span>
-                          <b className={isSubPure ? "text-emerald-400" : "text-amber-400"}>
-                            {red.purity.toFixed(4)}
-                          </b>
+          {reduced_states && reduced_states[selectedReducedWire] ? (
+            <div className="flex flex-col items-center justify-center p-6 bg-[#090d18] rounded-xl border border-line/40">
+              <div className="text-xs font-mono text-slate-400 mb-3">
+                Reduced Density Matrix ρ_{selectedReducedWire} (Dimension d={reduced_states[selectedReducedWire].dimension})
+              </div>
+              <div className="flex flex-col gap-1">
+                {reduced_states[selectedReducedWire].density_matrix.map((row, r) => (
+                  <div key={r} className="flex gap-1">
+                    {row.map((cell, c) => {
+                      const isHighLuminance = cell.mag > 0.55;
+                      return (
+                        <div
+                          key={c}
+                          style={{
+                            width: 52,
+                            height: 52,
+                            backgroundColor: viridisColor(cell.mag),
+                            color: isHighLuminance ? "#070b14" : "#ffffff",
+                          }}
+                          className={cn(
+                            "border border-[#0d1527] rounded-sm flex items-center justify-center font-mono text-[11px] shadow-sm transition-transform hover:scale-105",
+                            isHighLuminance ? "font-extrabold" : "font-semibold text-white/95"
+                          )}
+                          title={`|ρ| = ${cell.mag.toFixed(4)} (Re: ${cell.real.toFixed(4)}, Im: ${cell.imag.toFixed(4)})`}
+                        >
+                          {cell.mag.toFixed(2)}
                         </div>
-                        <div>
-                          <span className="text-ink-3 mr-1">Subsystem Entropy S:</span>
-                          <b className="text-ink">
-                            {red.entropy !== null && red.entropy !== undefined
-                              ? `${red.entropy.toFixed(4)} bits`
-                              : "—"}
-                          </b>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Small Reduced Matrix Heatmap.
-
-                        This grid used a single static `bg-card` for every
-                        entry, so ρ_q0 was rendered as a colourless table while
-                        the full matrix beside it was a heatmap — the same
-                        defect that was fixed for the main grid, left behind
-                        here. Reuse the magnitude ramp and label its scale, so
-                        a student comparing ρ with ρ_q0 reads one visual
-                        language rather than two. */}
-                    <div className="flex flex-col items-center justify-center gap-2 p-2">
-                      <div className="grid gap-1.5" style={{ gridTemplateColumns: `repeat(${dim}, minmax(0, 1fr))` }}>
-                        {red.density_matrix.map((row, r) =>
-                          row.map((cell, c) => (
-                            <div
-                              key={`red-${r}-${c}`}
-                              style={magStyle(cell, r === c)}
-                              title={`${braket(String(r), String(c))} = ${cell.real >= 0 ? "+" : ""}${cell.real.toFixed(3)} ${cell.imag >= 0 ? "+" : ""}${cell.imag.toFixed(3)}i`}
-                              className="w-16 h-12 flex flex-col items-center justify-center rounded border p-1 text-center font-mono text-[11px]"
-                            >
-                              <span className="font-bold">
-                                {cell.mag.toFixed(3)}
-                              </span>
-                              <span className="text-[9px] opacity-70">
-                                |{r}⟩⟨{c}|
-                              </span>
-                            </div>
-                          ))
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2 text-[10px] text-ink-3 font-mono">
-                        <span>|ρ_ij| 0.0</span>
-                        <span className="inline-flex overflow-hidden rounded border border-white/10">
-                          {[0, 0.25, 0.5, 0.75, 1].map((a) => (
-                            <span
-                              key={a}
-                              className="h-2.5 w-4"
-                              style={{ backgroundColor: `rgba(99, 102, 241, ${(0.1 + 0.78 * a).toFixed(3)})` }}
-                            />
-                          ))}
-                        </span>
-                        <span>1.0 · diagonal entries in blue</span>
-                      </div>
-                    </div>
-
-                    {/* Pedagogical Callout */}
-                    {!isSubPure && isPure && (
-                      <div className="p-3 rounded-lg bg-indigo-500/10 border border-indigo-500/30 text-xs text-indigo-300 space-y-1">
-                        <div className="font-semibold flex items-center gap-1.5">
-                          <Sparkles className="h-3.5 w-3.5" />
-                          Signature of Quantum Entanglement Detected!
-                        </div>
-                        <p className="text-[11px] leading-relaxed">
-                          The global circuit density matrix is pure (γ = 1.000), but tracing out the other subsystems leaves wire {selectedReducedWire} in a mixed state (purity γ = {red.purity.toFixed(4)} &lt; 1). This loss of local purity while preserving global purity is the hallmark of genuine quantum entanglement!
-                        </p>
-                      </div>
-                    )}
-                  </>
-                );
-              })()}
+                      );
+                    })}
+                  </div>
+                ))}
+              </div>
             </div>
+          ) : (
+            <div className="p-6 text-center text-xs text-ink-3">No reduced subsystem data available.</div>
           )}
         </div>
       )}
     </div>
   );
 };
-
-/**
- * Colour key for the density-matrix heatmap.
- *
- * The grid encodes a continuous value in cell colour; without a key the
- * reader cannot tell a large entry from a small one, or a positive real part
- * from a negative one. Swatches are generated from the same inline-style
- * scale the cells use, so the legend cannot drift from the grid.
- */
-function MatrixLegend({ viewMode }: { viewMode: ViewMode }) {
-  const ramp = (rgb: string) =>
-    [0, 0.25, 0.5, 0.75, 1].map((a) => `rgba(${rgb}, ${(0.1 + 0.78 * a).toFixed(3)})`);
-
-  const Swatches = ({ colors }: { colors: string[] }) => (
-    <span className="inline-flex overflow-hidden rounded border border-white/10">
-      {colors.map((c) => (
-        <span key={c} className="h-3 w-5" style={{ backgroundColor: c }} />
-      ))}
-    </span>
-  );
-
-  return (
-    <div className="flex flex-wrap items-center gap-x-5 gap-y-2 rounded-lg border border-line/60 bg-subtle/30 px-3 py-2 text-[11px] text-ink-3">
-      <span className="font-semibold text-ink-2">Colour scale:</span>
-
-      {viewMode === "mag" && (
-        <>
-          <span className="flex items-center gap-1.5">
-            diagonal (populations) 0.0 <Swatches colors={ramp("59, 130, 246")} /> 1.0
-          </span>
-          <span className="flex items-center gap-1.5">
-            off-diagonal (coherences) 0.0 <Swatches colors={ramp("99, 102, 241")} /> 1.0
-          </span>
-        </>
-      )}
-
-      {viewMode === "real" && (
-        <span className="flex items-center gap-1.5">
-          −1.0 <Swatches colors={[...ramp("244, 63, 94")].reverse()} /> 0
-          <Swatches colors={ramp("16, 185, 129")} /> +1.0
-        </span>
-      )}
-
-      {viewMode === "imag" && (
-        <span className="flex items-center gap-1.5">
-          −1.0 <Swatches colors={[...ramp("168, 85, 247")].reverse()} /> 0
-          <Swatches colors={ramp("245, 158, 11")} /> +1.0
-        </span>
-      )}
-
-      {viewMode === "phase" && (
-        <span className="flex items-center gap-1.5">
-          −π
-          <span className="inline-flex overflow-hidden rounded border border-white/10">
-            {[0, 60, 120, 180, 240, 300, 359].map((d) => (
-              <span key={d} className="h-3 w-5" style={{ backgroundColor: `hsla(${d}, 70%, 50%, 0.7)` }} />
-            ))}
-          </span>
-          +π
-          <span className="ml-1 text-ink-4">(cells with |ρ| ≈ 0 are greyed: their phase is undefined)</span>
-        </span>
-      )}
-    </div>
-  );
-}

@@ -104,7 +104,7 @@ export const useCircuit = create<CircuitState>()((set) => ({
   circuitId: undefined,
   circuitName: "Bell State",
   challengeContext: undefined,
-  setIr: (ir) => set({ ir }),
+  setIr: (ir) => set((state) => ({ ir, epoch: state.epoch + 1 })),
   reset: (ir) =>
     set((state) => ({
       ir: ir ?? emptyCircuit(state.ir.n_qubits),

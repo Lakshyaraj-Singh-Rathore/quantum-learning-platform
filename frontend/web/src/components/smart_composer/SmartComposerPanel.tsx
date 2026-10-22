@@ -325,7 +325,6 @@ export function SmartComposerPanel({
                     size="md"
                     onClick={() => {
                       onAdoptCircuit(simplificationResult.simplified_circuit);
-                      if (onClose) onClose();
                     }}
                     className="flex items-center justify-center gap-2"
                   >
@@ -425,7 +424,6 @@ export function SmartComposerPanel({
                 size="md"
                 onClick={() => {
                   onAdoptCircuit(generationResult.circuit);
-                  if (onClose) onClose();
                 }}
                 className="flex items-center justify-center gap-2 mt-1"
               >

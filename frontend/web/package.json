@@ -32,7 +32,10 @@
     "fixtures:games": "python3 scripts/game-fixtures.py",
     "fixtures:game-results": "python3 scripts/game-results.py",
     "curriculum": "tsx scripts/curriculum-check.mts && tsx scripts/curriculum-check.mts --auth",
-    "push:overlay": "tsx scripts/push-overlay-check.mts"
+    "push:overlay": "tsx scripts/push-overlay-check.mts",
+    "render:new-features": "tsx scripts/render-new-features.mts",
+    "test:new-features:browser": "node scripts/browser-verify-new-features.mjs",
+    "test:vision-qa": "node scripts/vision-qa-master-suite.mjs"
   },
   "dependencies": {
     "@codemirror/lang-python": "^6.2.1",

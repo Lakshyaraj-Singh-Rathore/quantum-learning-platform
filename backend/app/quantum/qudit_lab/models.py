@@ -21,7 +21,7 @@ class QuditOp(BaseModel):
     gate: str = Field(description="Gate type, e.g. 'x', 'z', 'f', 'sum', 'cp', 'swap', 'r_jk', 'measure'")
     targets: list[int] = Field(description="Target qudit indices")
     controls: list[int] = Field(default_factory=list, description="Control qudit indices")
-    params: dict[str, float] = Field(default_factory=dict, description="Gate parameters, e.g. theta, phi, j, k")
+    params: dict[str, Any] = Field(default_factory=dict, description="Gate parameters, e.g. theta, phi, j, k, power, levels")
     dimension: int = Field(ge=2, le=5, description="Local dimension the gate is acting on")
 
 

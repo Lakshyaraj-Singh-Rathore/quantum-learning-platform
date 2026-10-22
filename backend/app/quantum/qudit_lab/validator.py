@@ -9,6 +9,48 @@ from app.quantum.qudit_lab.models import (
     ResourceEstimate,
 )
 
+# Gate names recognized by create_cirq_qudit_gate() in gates.py
+SUPPORTED_GATE_NAMES: frozenset[str] = frozenset({
+    "x",        # Generalized Shift (X_d)
+    "z",        # Generalized Phase (Z_d)
+    "f",        # Generalized Fourier (F_d)
+    "f_dag",    # Inverse Fourier (F_d^dagger)
+    "fdg",      # Alias
+    "id",       # Identity (I_d)
+    "i",        # Identity alias
+    "p_j",      # Level-selective Phase (P_j)
+    "pj",       # Alias
+    "phase_j",  # Alias
+    "r_jk",     # Subspace Rotation
+    "rot",      # Alias
+    "r",        # Alias
+    "diag",     # Diagonal Unitary (D_d)
+    "d_d",      # Alias
+    "u_d",      # Arbitrary Unitary (U_d)
+    "u",        # Alias
+    "perm",     # Basis Permutation
+    "sum",      # Generalized Controlled-Addition (SUM_d)
+    "sum_dag",  # Inverse Addition (SUM_d^dagger)
+    "csx",      # Controlled Modular Shift (CSX_d)
+    "cp",       # Controlled-Phase (GCP_d)
+    "gcp",      # Alias
+    "scp",      # Selective Controlled-Phase (SCP_d)
+    "swap",     # Generalized SWAP (SWAP_d)
+    "cu",       # Controlled Unitary (CU_d)
+    "ccx",      # Double-controlled Shift (CCX_d)
+    "ccx_d",    # Alias
+    "ccshift",  # Alias
+    "mcx",      # Multi-controlled Shift (MCX_d)
+    "mcx_d",    # Alias
+    "mcp",      # Multi-controlled Phase (MCP_d)
+    "mcp_d",    # Alias
+    "cswap",    # Controlled SWAP (Fredkin_d)
+    "cswap_d",  # Alias
+    "measure",  # Measurement (skipped during simulation)
+    "reset",    # Reset state
+    "barrier",  # Visual barrier
+})
+
 # Initial conservative caps for 16 GB development environment
 DIMENSION_MAX_QUDITS: dict[int, int] = {
     2: 10,  # 2^10 = 1024, raw rho ~ 16 MiB
@@ -155,23 +197,52 @@ def validate_qudit_circuit(
         if overlap:
             errors.append(f"Operation {op.id} ({op.gate}) has overlapping target and control wires: {overlap}.")
 
-        # Gate-specific validation
         g = op.gate.lower().strip()
-        if g in ("sum", "cp", "swap"):
-            all_wires = op.controls + op.targets
+        if g not in SUPPORTED_GATE_NAMES:
+            errors.append(
+                f"Operation {op.id} uses unrecognized gate '{op.gate}'. "
+                f"Supported gates: {sorted(SUPPORTED_GATE_NAMES - {'measure', 'reset', 'barrier'})}."
+            )
+            continue  # skip further gate-specific checks for unknown gates
+
+        # Skip circuit directives
+        if g in ("measure", "reset", "barrier"):
+            continue
+
+        all_wires = op.controls + op.targets
+
+        two_qudit_gates = ("sum", "sum_dag", "csx", "cp", "gcp", "scp", "swap", "cu")
+        three_qudit_gates = ("ccx", "ccx_d", "ccshift", "cswap", "cswap_d")
+        single_qudit_gates = (
+            "x", "z", "f", "f_dag", "fdg", "id", "i", "p_j", "pj", "phase_j",
+            "r_jk", "rot", "r", "diag", "d_d", "u_d", "u", "perm",
+        )
+
+        if g in two_qudit_gates:
             if len(all_wires) != 2:
                 errors.append(f"2-qudit gate {op.gate} requires exactly 2 operands, got {len(all_wires)}.")
-            elif len(all_wires) == 2 and wire_dims.get(all_wires[0]) != wire_dims.get(all_wires[1]):
+            elif wire_dims.get(all_wires[0]) != wire_dims.get(all_wires[1]):
                 errors.append(
                     f"2-qudit gate {op.gate} requires matching dimensions on both wires, got {wire_dims.get(all_wires[0])} and {wire_dims.get(all_wires[1])}."
                 )
-        elif g in ("r_jk", "rot", "r"):
+        elif g in three_qudit_gates:
+            if len(all_wires) != 3:
+                errors.append(f"3-qudit gate {op.gate} requires exactly 3 operands, got {len(all_wires)}.")
+        elif g in single_qudit_gates:
+            if len(op.targets) != 1 or len(op.controls) != 0:
+                errors.append(f"Single-qudit gate {op.gate} requires exactly 1 target and no controls.")
+
+        if g in ("r_jk", "rot", "r"):
             j = int(op.params.get("j", 0))
             k = int(op.params.get("k", 1))
             dim = op.dimension
-            if not (0 <= j < k < dim):
+            if not (0 <= j < dim and 0 <= k < dim):
                 errors.append(
-                    f"Rotation gate {op.id} has invalid levels j={j}, k={k} for dimension {dim}. Must satisfy 0 <= j < k < {dim}."
+                    f"Rotation gate {op.id} has invalid levels j={j}, k={k} for dimension {dim}. Must satisfy 0 <= j, k < {dim}."
+                )
+            elif j == k:
+                errors.append(
+                    f"Rotation gate {op.id} requires distinct levels j != k, got j=k={j}."
                 )
 
     return CircuitValidationReport(
