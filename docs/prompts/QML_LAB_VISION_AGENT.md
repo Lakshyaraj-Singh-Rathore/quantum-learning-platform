@@ -470,21 +470,100 @@ not 500) and must reject a terminal experiment with a clear **409**. Ownership m
 
 Phase 1 was purely additive. Phase 2 cannot be: it must register things. So §2.1's
 `git diff --diff-filter=MD --name-only origin/main HEAD` **will** be non-empty, and that is correct.
-From Phase 2 the gate becomes: *exactly these five existing files, and nothing else* —
+
+**Correction — the earlier "exactly these five" was wrong, and Phase 2 was right not to stop on
+it.** §2A.2 directs a `deadline_seconds` parameter on `train()` and §2A.3 directs renaming a
+constant in `limits.py`; both files were added in Phase 1 and now live on `main`. A five-file
+allowlist that contradicts two other clauses in the same section is a drafting error, not a
+constraint. The real rule is:
+
+> Every modification must trace to an explicit clause in §2. Anything you cannot trace, stop on.
+
+For Phase 2 that resolves to **eight** modified files, and this is the expected set:
 
 ```
-backend/app/api/router.py            flag-gated include_router
-backend/app/config.py                add qml_* settings only
-backend/app/workers/celery_app.py    extend include=[...] and add task_routes
-backend/app/models/__init__.py       register the two new models
-backend/alembic/versions/<new>.py    the additive migration
+backend/app/api/router.py            §2A.4  flag-gated include_router
+backend/app/config.py                §2A.4  add qml_* settings only
+backend/app/workers/celery_app.py    §2A.4  extend include=[...] and add task_routes
+backend/app/models/__init__.py       §2A.4  register the two new models
+backend/app/quantum/qml_lab/trainer.py     §2A.2  deadline_seconds
+backend/app/quantum/qml_lab/limits.py      §2A.3  rename MAX_CONCURRENT_JOBS
+backend/tests/test_qml_config.py           §2A.3  follows the rename
+docs/qml/DECISIONS.md                      §2A.4  fold in D-013…D-016
 ```
 
-Plus new files: `backend/app/api/qml_lab.py`, `backend/app/models/qml.py`,
-`backend/app/workers/qml_tasks.py`, and tests. Any modification beyond those five is a §5.2 stop.
+The alembic migration is a **new** file, not a modification — it belongs in the added list.
 
-You may now also append **D-013…D-016** to `docs/qml/DECISIONS.md`, which the additive rule
-correctly blocked in Phase 1.
+New files: `backend/app/api/qml_lab.py`, `backend/app/models/qml.py`,
+`backend/app/services/qml_lab.py`, `backend/app/workers/qml_tasks.py`,
+`backend/alembic/versions/<new>.py`, and tests.
+
+**Verify the two things that must NOT change:** in `config.py`, `celery_soft_time_limit = 8` and
+`celery_hard_time_limit = 15` stay exactly as they are (your additions are new lines, not edits to
+those); in `celery_app.py`, the existing `conf.update(...)` entries are untouched and `task_routes`
+is added alongside them. Paste both diffs — they are small and they are the proof that §1.1 held.
+
+### 2A.5 The `qml` queue needs a worker that consumes it — and do NOT reuse the existing one
+
+`docker-compose.yml:81` starts the worker as:
+
+```
+celery -A app.workers.celery_app.celery_app worker --loglevel=info --concurrency=2
+```
+
+There is **no `-Q`**, so it consumes only the default `celery` queue. Once `task_routes` sends QML
+tasks to `qml`, **the shipped worker will never execute them** — every experiment sits `queued`
+forever with no error anywhere. That is a silent failure at exactly the moment someone turns the
+flag on, which is the worst time to discover it.
+
+⚠ **Do not "fix" this by adding `-Q celery,qml --concurrency=1` to the existing worker.** That
+would drop simulation concurrency from 2 to 1 and halve the throughput of a shipped feature — the
+collateral damage the master prompt's §3 forbids. The QML guarantee must not be bought with an
+existing feature's performance.
+
+**Required: a second, dedicated worker service**, additive, with the existing one untouched:
+
+```yaml
+  qml-worker:
+    profiles: ["qml"]          # does not start unless explicitly enabled
+    build:
+      context: ./backend
+    env_file:
+      - path: .env
+        required: false
+    environment:               # mirror the worker service's variables
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://quantum:quantum@postgres:5432/quantum_learn}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+    volumes:
+      - ./backend:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: celery -A app.workers.celery_app.celery_app worker --loglevel=info -Q qml --concurrency=1
+```
+
+`profiles: ["qml"]` is what keeps today's behaviour byte-identical: `make up`
+(`docker compose -f docker-compose.yml -f docker-compose.gpu.yml up`) does not start it, so nothing
+changes while the flag is off. Enabling QML then becomes a two-part, documented action —
+`QML_ENABLED=true` **and** `--profile qml` — which belongs in `docs/qml/08-release.md` as the
+enablement procedure, with the rollback being the reverse.
+
+No GPU is needed: QML is CPU statevector by decision, so `docker-compose.gpu.yml` should not have
+to mention this service at all. Confirm the overlay does not accidentally apply `gpus: all` or
+`INSTALL_CUDAQ` to it.
+
+Two follow-ups this creates, both for Phase 2's report rather than new code:
+
+- `qml_artifact_dir` defaults to the **relative** `"artifacts/qml"`. The API and the worker must
+  resolve it to the same absolute path or `load_model` will fail on a path the other process wrote.
+  In Docker both build from `./backend` with the same workdir, so it holds — but **verify it** and
+  say so, and prefer storing the resolved absolute path (or just the experiment id, re-resolved on
+  load) in `model_path` so the record cannot go stale if a workdir ever differs.
+- `artifacts/` is gitignored (`.gitignore:29`), which is correct for trained models. Confirm no
+  artifact is committed.
+
 
 ---
 

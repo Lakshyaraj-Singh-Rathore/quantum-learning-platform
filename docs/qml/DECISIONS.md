@@ -203,3 +203,129 @@ with the amendment doc itself being the +1 — arithmetic consistency, not proof
 curves, accuracy curves, confusion matrices and probability bars are hand-written SVG using
 `var(--accent)`, `--ok`, `--warn`, `--danger`, `--line`, with data-driven colour applied via inline `style`
 per QL-001 (D-013 territory — see `ui-audit.md` §2).
+
+---
+
+## D-011b — The 531-vs-530 question is closed (shallow-clone artifact)
+
+**Decision.** Withdrawn. D-011 rested on a false premise.
+
+**Evidence.** `12d33df` was never a root commit; the clone was depth-1, so its parent was simply
+absent. After `git fetch --deepen=300`, `git rev-parse --is-shallow-repository` returns `false`,
+`origin/main` has a full history and the merge-base with this branch is `a805f30`. Counts are now
+taken against a complete history and reconcile exactly.
+
+**Rule.** Check `git rev-parse --is-shallow-repository` before drawing any conclusion from
+`git log`, `git ls-tree` or a missing parent.
+
+---
+
+## D-013 — Loss function: squared loss on ±1 targets, not log-loss on probabilities
+
+**Decision.** The VQC trains against `square_loss(decision_values, y_pm1)`, with labels mapped to
+±1, rather than binary cross-entropy over `p = (1 + <Z> + bias) / 2`.
+
+**Why — measured, not assumed.** The log-loss version produced a gradient norm of **199.96**
+concentrated in a single parameter, and the loss *rose* across training (0.6601 → 0.6612) with a
+degenerate confusion matrix `[[9, 0], [9, 0]]`. Root cause: `<Z>` saturates at exactly ±1, which is
+precisely where `dL/dp ≈ 1/ε` for cross-entropy, so the gradient explodes at the boundary the
+circuit naturally reaches. Squared loss on ±1 targets is bounded there. After the change all four
+verification configs learn (see D-014).
+
+---
+
+## D-014 — Ansatz, and the single source of truth for parameter count
+
+**Decision.** RY+RZ per wire per layer, then a CNOT entangler, giving
+`n_params = n_layers * n_qubits * 2 + 1` (the `+1` is the bias, kept last in the flat vector).
+`limits.n_parameters()` is the only place that formula is written; the circuit builder, the
+persistence layer and the tests all call it.
+
+**Supporting detail.** The ring entangler skips the wrap-around CNOT at `n_qubits == 2`, where it
+would duplicate the first one. Z-encoding applies **H before RZ**, because `RZ` on `|0>` only
+changes a global phase (see D-016). Verified learning (backprop, seed 7, 120 samples, batch 16,
+lr 0.1, 15 epochs): moons/2q 0.250 → 0.905 train / 0.833 test; moons/4q → 0.893 / 0.833;
+circles/2q → **1.000 / 1.000**; iris_binary/4q → 0.986 / **1.000**.
+
+---
+
+## D-015 — Vendored iris.csv (accepted by the senior; conditions already met)
+
+**Decision.** `backend/app/quantum/qml_lab/data/iris.csv` is vendored: 2,734 bytes, 151 lines,
+sha256 `f13ffa8f…d1449`, extracted from the official scikit-learn wheel and verified by hash.
+scikit-learn itself is **never installed** (§1A).
+
+**Status.** Accepted. The senior imposed two conditions and then withdrew them on inspection,
+because Phase 1 already satisfied both: provenance (Fisher 1936, public domain, wheel path,
+sha256) is recorded at `datasets.py:30-34`, and `_IRIS_CSV` is the only runtime path — nothing
+reads the wheel. The pinned hash in `test_qml_datasets.py:207` was independently recomputed by the
+senior and matched.
+
+---
+
+## D-016 — Compare density matrices, not states, when testing encodings
+
+**Decision.** Encoding tests assert on `qml.density_matrix(wires=...)`, not `qml.state()` and not
+`qml.probs()`.
+
+**Why — found by mutation testing, not by reasoning.** Deleting the Hadamard from the Z-encoding
+path left the test **passing**. `probs` is blind to a Z-rotation entirely; `state` *is* sensitive,
+but only through a global phase, which is unobservable and therefore not a legitimate thing to
+assert on — the test was green for a reason that had nothing to do with correctness. The density
+matrix quotients out the global phase, so it distinguishes exactly what is physically
+distinguishable. This is the backend twin of the QL-001 lesson: a green test is not evidence until
+you have seen it fail.
+
+---
+
+## D-017 — Two tables: normalise the time series, blob the document
+
+**Decision.** `qml_experiments` (config and result as JSON) **plus** `qml_epoch_metrics`
+(append-only rows, `UniqueConstraint(experiment_id, epoch)`).
+
+**Supersedes** my Phase 2 proposal of a single table with a JSON `history` column, which the senior
+rejected on a stronger argument than the one I had: **SQLAlchemy does not detect in-place mutation
+of a JSON column**, so appending an epoch and committing would silently persist nothing unless
+every write called `flag_modified()`. The symptom — a progress bar that never advances — looks like
+a frontend bug and would have cost a day. Rows have no such failure mode, make polling incremental
+(`WHERE epoch > :seen`), and because `task_acks_late=True` makes Celery at-least-once, the unique
+constraint turns a redelivered task into a no-op instead of a duplicated point on the loss curve.
+
+**Verified:** removing the constraint from the model makes both redelivery tests fail (MUT-F).
+
+---
+
+## D-018 — Two timeout layers; the cooperative one is primary
+
+**Decision.** `train(deadline_seconds=...)` checked in the same two places as `should_cancel`
+(before every batch, and at each epoch boundary), **plus** `soft_time_limit`/`time_limit` on the
+QML task decorator only. The engine deadline is `qml_task_soft_time_limit - 30`, so the cooperative
+path always wins and the user sees `timed_out` with partial history rather than a
+`SoftTimeLimitExceeded` traceback.
+
+**Why both.** Celery's soft limit is implemented with **SIGALRM, which does not exist on Windows**,
+and its hard limit kills a prefork child that `--pool=solo` does not have. On the stated target
+platform *neither* Celery limit is reliable, and no Linux test can show otherwise. The cooperative
+deadline is pure Python and works everywhere. §5.7 is discharged by documenting this, not by
+testing it.
+
+**`timed_out` is its own status**, distinct from `failed`: it is a resource outcome the user can
+act on by shrinking the config, and collapsing it into `failed` would throw away the only
+actionable advice available. Verified: `deadline_seconds=1.0` on a 50-epoch run yields
+`status=timed_out`, 3 epochs completed, 1.13 s elapsed, 3 history records retained.
+
+---
+
+## D-019 — Concurrency is capped globally, and epoch columns keep the engine's names
+
+**Decision (a).** `MAX_CONCURRENT_JOBS` (renamed from `MAX_CONCURRENT_JOBS_PER_USER`), counted
+across **all** users. The protected resource is the single worker slot on one machine, not a
+per-user quota. Per-user scoping would let a second user pass the check, enqueue, and then wait
+silently behind the first job instead of being told immediately. Verified: scoping the guard to the
+current user makes the cross-user test fail (MUT-B).
+
+**Decision (b).** `qml_epoch_metrics` uses `test_loss` / `test_accuracy`, not `val_*`. This is a
+deliberate, reported deviation from the column names sketched in §2A.1: the engine evaluates on the
+held-out split it calls `test` (`Dataset.x_test`), `EpochRecord` already uses those names, and
+there is no third split in Phase 1. Naming the columns `val_*` would require a translation layer
+between the ORM and the engine whose only purpose is to rename two floats.

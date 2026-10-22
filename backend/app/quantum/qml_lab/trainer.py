@@ -41,7 +41,7 @@ CancelCallback = Callable[[], bool]
 class TrainingOutcome:
     """Everything a caller needs after training, successful or cancelled."""
 
-    status: str  # "completed" | "cancelled"
+    status: str  # "completed" | "cancelled" | "timed_out"
     params: Parameters
     history: list[EpochRecord] = field(default_factory=list)
     epochs_completed: int = 0
@@ -52,6 +52,15 @@ class TrainingOutcome:
     @property
     def cancelled(self) -> bool:
         return self.status == "cancelled"
+
+    @property
+    def timed_out(self) -> bool:
+        return self.status == "timed_out"
+
+    @property
+    def interrupted(self) -> bool:
+        """Stopped early for any reason -- no final model should be saved."""
+        return self.status in ("cancelled", "timed_out")
 
     def final_record(self) -> EpochRecord | None:
         return self.history[-1] if self.history else None
@@ -102,12 +111,21 @@ def train(
     *,
     on_progress: ProgressCallback | None = None,
     should_cancel: CancelCallback | None = None,
+    deadline_seconds: float | None = None,
 ) -> TrainingOutcome:
     """Train ``model`` on ``dataset`` and return the outcome.
 
     ``initial`` is not mutated; the returned parameters are a separate object,
     so a caller holding the starting point can compare against it (which is
     exactly how the "parameters actually updated" acceptance test works).
+
+    ``deadline_seconds`` is a cooperative wall-clock budget, checked in exactly
+    the same two places as ``should_cancel``. It is the platform-independent
+    half of the timeout story: Celery's ``soft_time_limit`` is implemented with
+    SIGALRM, which does not exist on Windows, and its hard limit kills a
+    prefork child that ``--pool=solo`` does not have. Pure Python checked
+    between batches works everywhere. Expiry is a normal return with status
+    ``"timed_out"`` and the partial history intact — never an exception.
     """
     started = time.perf_counter()
     theta = pnp.array(np.array(initial.theta, dtype=float), requires_grad=True)
@@ -128,8 +146,23 @@ def train(
     cancelled_at_epoch: int | None = None
     cancelled_at_batch: int | None = None
 
+    # Which condition ended the run early. Held in a cell rather than a
+    # `nonlocal` so the closure stays a plain function.
+    stop_reason: dict[str, str | None] = {"value": None}
+
     def _cancelled() -> bool:
-        return bool(should_cancel()) if should_cancel is not None else False
+        """True when the run must stop, recording *why*.
+
+        The deadline is tested first: if both fire on the same poll, running
+        out of time is the more informative diagnosis.
+        """
+        if deadline_seconds is not None and (time.perf_counter() - started) >= deadline_seconds:
+            stop_reason["value"] = "timed_out"
+            return True
+        if should_cancel is not None and bool(should_cancel()):
+            stop_reason["value"] = "cancelled"
+            return True
+        return False
 
     def _emit(event: ProgressEvent) -> None:
         if on_progress is not None:
@@ -219,8 +252,10 @@ def train(
         status = "completed"
     except QmlCancelledError:
         # Expected control flow, not a failure. The exception is caught here
-        # and never reaches the caller.
-        status = "cancelled"
+        # and never reaches the caller. A user cancelling and a run exhausting
+        # its budget travel the same path but are different outcomes, so the
+        # reason recorded by _cancelled decides the status.
+        status = stop_reason["value"] or "cancelled"
 
     final = Parameters(
         theta=np.asarray(theta, dtype=float),

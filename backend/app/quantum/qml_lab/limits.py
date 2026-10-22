@@ -40,7 +40,15 @@ DEFAULT_BATCH_SIZE = 16
 MAX_BATCH_SIZE = 32
 
 # --- scheduling -------------------------------------------------------------
-MAX_CONCURRENT_JOBS_PER_USER = 1
+# Scoped GLOBALLY, not per user. The resource being protected is the machine —
+# one worker on a laptop — not a per-user quota, and the master prompt's limit
+# table says "concurrent training jobs: 1" without qualification. Counting per
+# user would let two users each pass the pre-dispatch check and both enqueue;
+# the queue would still serialise them, so the second user would get a silent
+# multi-hour wait instead of an immediate, honest 409. If per-user fairness is
+# ever wanted it goes on top of this as a second, tighter cap — the global cap
+# is the binding constraint and must exist regardless.
+MAX_CONCURRENT_JOBS = 1
 
 # Stricter than MAX_QUBITS because a density matrix costs 4**n complex numbers
 # against a state vector's 2**n. Provisional (DECISIONS.md D-009): Phase 4
@@ -57,7 +65,7 @@ LIMITS: dict[str, dict[str, Any]] = {
     "n_samples": {"default": DEFAULT_SAMPLES, "min": MIN_SAMPLES, "max": MAX_SAMPLES},
     "epochs": {"default": DEFAULT_EPOCHS, "min": 1, "max": MAX_EPOCHS},
     "batch_size": {"default": DEFAULT_BATCH_SIZE, "min": 1, "max": MAX_BATCH_SIZE},
-    "concurrent_jobs": {"default": 1, "min": 1, "max": MAX_CONCURRENT_JOBS_PER_USER},
+    "concurrent_jobs": {"default": 1, "min": 1, "max": MAX_CONCURRENT_JOBS},
     "density_matrix_qubits": {"default": 4, "min": 1, "max": DENSITY_MATRIX_MAX_QUBITS},
 }
 

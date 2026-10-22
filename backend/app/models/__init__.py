@@ -10,6 +10,7 @@ from app.models.assessment import (
 from app.models.circuit import SavedCircuit
 from app.models.content import ContentChunk, Lesson
 from app.models.job import SimulationJob
+from app.models.qml import QmlEpochMetric, QmlExperiment
 from app.models.curriculum import (
     CurriculumSection,
     CurriculumTopic,
@@ -42,4 +43,6 @@ __all__ = [
     "UserMastery",
     "Recommendation",
     "AnalyticsEvent",
+    "QmlExperiment",
+    "QmlEpochMetric",
 ]

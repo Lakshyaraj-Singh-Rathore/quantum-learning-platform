@@ -34,7 +34,7 @@ def test_defaults_match_the_documented_limit_table():
 def test_maxima_match_the_documented_limit_table():
     assert (limits.MAX_QUBITS, limits.MAX_LAYERS) == (8, 4)
     assert (limits.MAX_SAMPLES, limits.MAX_EPOCHS, limits.MAX_BATCH_SIZE) == (1000, 100, 32)
-    assert limits.MAX_CONCURRENT_JOBS_PER_USER == 1
+    assert limits.MAX_CONCURRENT_JOBS == 1
     assert limits.DENSITY_MATRIX_MAX_QUBITS < limits.MAX_QUBITS
 
 
