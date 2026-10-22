@@ -471,9 +471,19 @@ export const DensityMatrixInspector: React.FC<DensityMatrixInspectorProps> = ({
                             } else {
                               const pInfo = phaseColor(cell.phase, cell.mag);
                               bg = pInfo.bg;
-                              cellTitle = pInfo.undefinedPhase
-                                ? "Phase undefined (|ρ| ≈ 0)"
-                                : `∠ρ = ${formatPhasePi(cell.phase)}π rad`;
+                              // QL-017. A diagonal element is a POPULATION: real,
+                              // non-negative, and with no phase to speak of. The
+                              // arithmetic still yields 0 or pi, so a phase readout
+                              // appears and teaches that populations carry one.
+                              // Suppressed on the diagonal; off-diagonals, where the
+                              // phase is the physically meaningful coherence angle,
+                              // keep theirs.
+                              cellTitle =
+                                r === c
+                                  ? `Population ρ = ${cell.mag.toFixed(4)} — phase is not defined for a diagonal element`
+                                  : pInfo.undefinedPhase
+                                  ? "Phase undefined (|ρ| ≈ 0)"
+                                  : `∠ρ = ${formatPhasePi(cell.phase)}π rad`;
                             }
 
                             return (
@@ -584,7 +594,14 @@ export const DensityMatrixInspector: React.FC<DensityMatrixInspectorProps> = ({
                 <span>
                   Phase:{" "}
                   <strong className="text-cyan-300">
-                    {activeInspected.val.mag < 0.005 ? "undefined" : `${formatPhasePi(activeInspected.val.phase)}π rad`}
+                    {/* QL-017: the inspector reads the same cell, so it makes the
+                        same claim. A population has no phase; say so instead of
+                        printing the 0 or pi the arithmetic happens to give. */}
+                    {activeInspected.r === activeInspected.c
+                      ? "not defined for a population"
+                      : activeInspected.val.mag < 0.005
+                      ? "undefined"
+                      : `${formatPhasePi(activeInspected.val.phase)}π rad`}
                   </strong>
                 </span>
                 <Badge tone={activeInspected.r === activeInspected.c ? "accent" : "warn"}>
