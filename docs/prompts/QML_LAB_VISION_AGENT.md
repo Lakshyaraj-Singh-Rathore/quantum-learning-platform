@@ -1508,6 +1508,12 @@ The *why it survived* note still belongs in `08-release.md`.
   omits this is the thing §8 exists to prevent.
 - **Behavioural identity, worded as Phase 7 resolved it** — not byte-identity, which is unsatisfiable
   by the architecture §2A.6 mandates.
+- **The state of the pre-existing harness suite, exactly.** State the red count and the per-script
+  decomposition, how many were fixed and on what grounds, and link
+  **`docs/qml/08-assertion-proposals.md`** for the rows awaiting the owner (§2I.3). **This document
+  must not assert "all gates green" or any equivalent** — not "green apart from known pre-existing
+  issues", not "all QML gates green" without the count beside it. The sentence that makes the release
+  honest is the one that names the number.
 
 ### 2H.5 Gates
 
@@ -1658,6 +1664,33 @@ all, it goes in K with "uncategorised" and the evidence you gathered — an unex
 useful than a fabricated green.
 
 One commit per category, with the count before and after in the message.
+
+#### Shrink K legitimately, never by eroding an assertion
+
+The proposal column is the **residual**. Before anything lands in it, the product-side explanation
+must have been tried: ask "is the product actually wrong here?" and fix it if so. A meaningful part
+of the 57 is likely real defects that no one investigated because the suite has been red long enough
+to be background noise. Finding those is the valuable half of this stage.
+
+**Time-box the triage.** If a single failure resists categorisation after a genuine investigation,
+record it "uncategorised" with what you learned and move on. Do not spend the phase on one assertion.
+An incomplete triage that covers 56 of 57 is worth more than a complete one that never reaches
+Stage 4.
+
+#### The table is durable, and it does not block the rest of the phase
+
+Write K to **`docs/qml/08-assertion-proposals.md`** and commit it. A proposal table that exists only
+in chat dies with the session, and git is this project's durable store. Cross-reference it from
+`DECISIONS.md` under a new decision ID so it cannot be silently forgotten.
+
+**Once Pass 1's triage commit and Pass 2's allowed-column fixes are in, Stages 4 and 5 proceed.** K
+does not gate them. The 57 are pre-existing and entirely outside QML; holding the project's release
+document hostage to a backlog unrelated to the thing being released is a bad trade, and adjudicating
+dozens of rows is not a good use of the owner before the rest of the work exists to look at.
+
+What K *does* gate is the release document's **claims**: `08-release.md` must state the red count and
+the per-script decomposition, link the proposals file, and is **forbidden from asserting "all gates
+green" or any equivalent**. See §2H.4.
 
 ### 2I.4 Explicitly out of scope
 
