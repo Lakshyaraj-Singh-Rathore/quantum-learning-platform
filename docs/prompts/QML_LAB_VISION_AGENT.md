@@ -670,23 +670,51 @@ matrix at n=6 is `4^6 × 16 B = 64 KB`. **Both are negligible.** Raw state size 
 these qubit counts, and a benchmark report that leads with memory numbers has measured the wrong
 thing.
 
-The real cost driver is **gradient method**. Parameter-shift evaluates the circuit **twice per
-trainable parameter**. A `StronglyEntanglingLayers`-style ansatz carries roughly 3 parameters per
-qubit per layer, so at the current maxima (8 qubits × 4 layers) that is ~96 parameters → **~192
-circuit executions per gradient step**. With 1,000 samples at batch 32 that is ~32 batches, × 100
-epochs = ~3,200 steps → **~600,000 circuit executions**. Backprop differentiates through the state
-once and is orders of magnitude cheaper.
+The real cost driver is **gradient method**. Parameter-shift evaluates the circuit twice per
+trainable parameter; backprop differentiates through the state once and is far cheaper.
 
-Predict that, then measure it, then report whether the measurement matched. The likely conclusion —
-and the one the limits should encode — is:
+⚠ **This section's original arithmetic was wrong twice, and Phase 4 corrected it from the code.
+The corrected figures are below — do not re-derive the old ones.**
+
+1. **The ansatz carries 2 parameters per qubit per layer, not 3.** `circuit.py:70` is
+   `n_parameters = n_layers * n_qubits * 2` — `RY(θ)` and `RZ(φ)` on every wire, then a CNOT
+   pattern (`circuit.py:46-55`). Three-per-qubit is the `StronglyEntanglingLayers` convention,
+   which this repo deliberately does not use; its own docstring explains that a single axis plus
+   CNOTs is a common reason a QNN plateaus at chance. At 8 qubits × 4 layers, **P = 64**, not 96.
+2. **`vqc.py:101` loops per sample** — `values = [self.expectation(row, theta) + theta[-1] for row in x]`,
+   with no batching or broadcasting. **Batch size therefore multiplies every execution count.**
+   Costing a step as one gradient evaluation understates a maximal run by more than an order of
+   magnitude: the real figure is **~9,130,000** executions, not ~600,000.
+
+The repo's own `limits.estimate_cost` already had the per-sample loop right; it was this prose that
+was wrong. **Read the code before estimating.**
+
+⚠ **And execution count is not a timing model.** The measured execution ratio between the two
+gradient methods is **129×**, but the wall-clock ratio is only **12.6×** — a backprop step does a
+forward *and* a backward pass per sample, so its executions are individually more expensive.
+Converting an execution ratio into a seconds ratio would have been wrong by an order of magnitude
+and would have set the timeout dangerously. Report both numbers, separately, and never substitute
+one for the other.
+
+The portable laws Phase 4 established, to be reused rather than re-derived: **backprop cost is
+linear in circuit size; parameter-shift is quadratic.** Predicted execution counts matched
+`qml.Tracker` exactly in all 45 full-grid cells, which is what makes the laws trustworthy.
+
+The conclusion the limits should encode:
 
 - **backprop is the default** and must complete the max config inside the timeout;
-- **parameter-shift is offered but budgeted**: either a smaller max-qubit/max-layer ceiling when it
-  is selected, or an explicit up-front estimate shown to the user before dispatch, or a clean
-  rejection above a measured threshold. Pick one and justify it from your numbers.
-- Validate this **per gradient method**, not once for the config as a whole. `limits.py` currently
-  has one flat ceiling; if the ceiling must depend on `gradient_method`, that is a real design
-  change and belongs in `DECISIONS.md`.
+- **parameter-shift is structurally infeasible at the current maxima** — not merely slow. Phase 4
+  projected ~25.7 h in a 2-core container and ~6.3 h even on `lightning.qubit`. So it needs a lower
+  ceiling when selected, an up-front estimate before dispatch, or a clean rejection above a measured
+  threshold. Validate **per gradient method**, not once for the config.
+- ⚠ **`limits.estimate_cost` is known-wrong and must be fixed before anything consumes it.** It
+  charges one evaluation pass (`limits.py:138`, *"one forward pass over everything at the end"*) but
+  `trainer.py:220-221` evaluates **both** splits **every epoch**. It therefore undercounts by
+  `(epochs − 1) · n_samples` — proven by running the shipped trainer under `qml.Tracker`: 306
+  measured vs 186 claimed, short by exactly `(3−1)·60`. At max config it understates backprop
+  **2.39×**, and per-epoch evaluation is **59% of backprop's executions** (though only ~27% of its
+  time — again, executions are not seconds). It has no call sites in app code today, so nothing is
+  broken yet; the exact patch is recorded as **D-028**. **Wire nothing to it until D-028 lands.**
 
 ### 2B.4 How to derive the timeout, and what must not change
 
@@ -1077,6 +1105,69 @@ All under `docs/qml/` — tracked, never under `artifacts/`.
 
 ---
 
+## 8A. Testing split — automate it, or register it. Never silently skip.
+
+**Standing instruction from the project owner:** *manual testing is done by me explicitly, after all
+phases are complete. Until then, automate every test you can; anything you cannot automate, skip it
+and mark it as mine to do later.*
+
+So every check you cannot run splits into exactly two outcomes, and there is no third:
+
+1. **Automate it.** This is the default and the preferred answer. The repo's whole testing
+   philosophy is that a hand-found defect gets a script so it is caught next time (§1.5, §8). SSR
+   harnesses cover far more than you'd expect without a browser — `a11y-check.mts` is
+   `renderToString` plus fake localStorage, not Playwright, and Phase 3 verified all four flag
+   states that way.
+2. **Register it.** If it genuinely cannot be automated in this sandbox, it goes in
+   **`docs/qml/MANUAL_TEST_REGISTER.md`** — one running file for the whole project, not per-phase
+   notes scattered across reports.
+
+**A check that is neither automated nor registered does not exist**, and claiming a gate passed
+without one of the two is the failure mode this section exists to prevent.
+
+### The register's required shape
+
+One row per deferred check, with enough detail that the owner can execute it cold, weeks later,
+without reading the phase report:
+
+| Field | What goes in it |
+|---|---|
+| ID | `MT-001`, `MT-002`, … stable, never reused or renumbered |
+| Deferred by | phase and commit that could not automate it |
+| What to do | exact clicks / commands, starting from a clean checkout |
+| Expected | the observable result that means PASS, stated concretely |
+| Why not automated | the specific missing capability, not "hard to test" |
+| Blocks release? | yes/no — and if yes, which phase cannot close without it |
+
+Keep it sorted and append-only. When a later phase *does* automate a registered item, do not delete
+the row — mark it `AUTOMATED by <phase/commit>` and name the script, so the register stays a
+complete history of what was ever deferred.
+
+### Known register entries as of Phase 4
+
+These are already deferred and must be carried forward, not rediscovered:
+
+- **No Redis or Celery worker in the sandbox** → no browser-driven submit → train → monitor →
+  cancel → results → inference round trip. A real POST returned 201 then `failed` on the Redis
+  connection, which exercises the error path only.
+- **No Docker binary** → the `qml-worker` service (§2A.5) is inspection-verified only. Its
+  `profiles: ["qml"]` gating, `-Q qml --concurrency=1`, and the untouched `--concurrency=2` on the
+  existing worker all need a real `docker compose --profile qml up`.
+- **Per-task Celery limits under Windows `--pool=solo`** (§2A.2) — provable on Linux, not on the
+  target OS.
+- **`bench_qml.py --full` on the i5-13450HX** (§2B.1) — the only source of the numbers that set the
+  shipped timeout. **This one blocks Phase 8.**
+- **GPU path** — skipped by decision (§2B.5), not by failure; register it as a deliberate non-goal so
+  nobody later mistakes the absence for an oversight.
+
+### What this means for how you write phase reports
+
+State the split explicitly in every report: *N checks automated (list the scripts), M deferred to
+`MANUAL_TEST_REGISTER.md` (list the IDs).* A report that says "manual smoke test passed" without
+either is a report that has not been done.
+
+---
+
 ## 9. Phase-order amendment
 
 Keep the master prompt's eight phases and their exit gates. Three adjustments:
@@ -1085,17 +1176,24 @@ Keep the master prompt's eight phases and their exit gates. Three adjustments:
   confirmation that `HEAD == origin/main` and the tree is clean; and the §1.3 dependency dry-run
   result. If any §0 number does not match, stop (§5.5).
 - **Phase 2** additionally proves the §1.1 per-task time-limit isolation in both directions.
-- **Phase 8** is amended: since you are already on `main`, "prepare the merge" becomes
-  **"confirm `main` is deployable with the flag off, and document how to turn it on"**. There is
-  no merge step. There is still a rollback procedure, and it must include the alembic
-  `downgrade()` you proved in §1.6.
+- **Phase 8** is amended. There is no merge step to prepare: the work is ported to `main` at each
+  phase boundary, so Phase 8 becomes **"confirm `main` is deployable with the flag off, and document
+  how to turn it on."** The release doc must cover the two-part enablement — `QML_ENABLED=true`
+  **and** `docker compose --profile qml` for the `qml-worker` (§2A.5) — and the rollback must include
+  the alembic `downgrade()` you proved in §1.6, the profile removal, and D-028's status.
+  **`MT` register items marked "blocks release" must be listed in the release doc as pre-enablement
+  checks**, not left buried in phase reports.
 
 ---
 
 ## 10. Definition of done
 
-- `main` is green: 818/5, tsc 0, build PASS, harnesses 284/57 (or better), goldens 4,300 @ 1e-9,
-  a11y 0 criticals — all re-run by you, all pasted.
+- `main` is green at the **current** baseline, not the Phase 0 one — §0's table is the starting
+  point and each phase moves it. As of Phase 4: **1034 passed / 5 skipped**, typecheck 0, build
+  PASS, harness FAILs **57 = 9+20+20+8**, goldens **190+804+3306 @ 1e-9**, a11y **0 criticals** —
+  all re-run by you, all pasted.
+- `docs/qml/MANUAL_TEST_REGISTER.md` exists, is complete, and every row marked "blocks release" is
+  reproduced in `docs/qml/08-release.md` as a pre-enablement check (§8A).
 - With `qml_enabled=False`, the app is **behaviourally identical to today**: same nav, same
   routes, QML routes 404. Proven, not asserted.
 - With `qml_enabled=True`, all nine QNN acceptance criteria in the master prompt hold,

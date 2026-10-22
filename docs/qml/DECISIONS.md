@@ -435,3 +435,100 @@ publishes `batch_size, concurrent_jobs, density_matrix_qubits, epochs, n_layers,
 n_samples`. The harness was therefore testing a contract that does not exist. Those four form
 fields now read "validated on submit" instead of a bound, which is the truth: the server still
 rejects an out-of-range value, but it does not advertise the range.
+
+## D-026 — The benchmark measures the engine directly, and is not wired into the Makefile
+
+**Decision.** `backend/scripts/bench_qml.py`, run by hand from a documented invocation
+(`docs/qml/04-benchmarks.md` §1), not `make bench`.
+
+**Why not the Makefile.** Every existing target in it shells into Docker Compose
+(`$(COMPOSE) exec api …`). A `make bench` would therefore time the *container*, which is
+exactly the machine §2B.1 says must not be used to set limits. `Makefile` is also absent from
+§4's allowed-touch-points table, and the target OS is Windows, where `make` is usually not
+installed. §2B.2 accepts "wired into the Makefile **or** with the exact invocation documented";
+the second branch is the one that measures the right machine, and it keeps Phase 4 additive.
+
+**Why engine-direct.** The script builds a `VQC` and differentiates the trainer's own
+`square_loss ∘ decision_values`. Measuring through the API with `celery_task_always_eager`
+would fold in FastAPI validation, session handling and DB writes, and would have attributed
+them to the simulator.
+
+## D-027 — Parameter-shift at the maximum configuration is structurally infeasible; the ceiling should depend on the gradient method
+
+**Measured** (`--full`, 2-core sandbox, median of 5 projections at 8q/4L/1000 samples/100 epochs):
+backprop 121.8 min, parameter-shift on `lightning.qubit` 377.9 min, parameter-shift on
+`default.qubit` 1,539.3 min (25.7 h). Against the provisional 900 s soft limit that is 8.1×,
+25.2× and 102.6×.
+
+**Decision.** Record the design, do **not** implement it in Phase 4.
+
+The recommended shape is (1) an up-front estimate before dispatch using the *corrected* cost
+formula, rejecting cleanly with the estimate included in the error, plus (2) a
+gradient-method-dependent ceiling as the backstop. §2B.3 names this a real `limits.py` design
+change and requires it to be recorded here, which is what this entry is.
+
+**Why not implement now.** The constant that makes a ceiling correct is a wall-clock
+measurement on the target machine (i5-13450HX / 16 GB / Windows). Deriving it from a 2-core
+container would be a limit tuned "wrong in the dangerous direction" in §2B.1's exact words.
+`limits.check()` today validates a configuration once, not per gradient method; that is the
+structural gap, and it is the senior's call plus one measurement away from being closable.
+
+**Corollary, measured.** Increasing `batch_size` buys no speed: `vqc.py:99-102` loops per
+sample with no broadcasting, and parameter-shift cost per sample is flat to 2.3% across an 8×
+batch change. Batch size is a statistics knob here, not a throughput knob.
+
+## D-028 — `limits.estimate_cost` undercounts by `(epochs − 1) · n_samples`; proposed fix, not applied
+
+**Found by measurement.** `estimate_cost` (`limits.py:116-146`) charges one evaluation pass
+(`eval_execs = config.dataset.n_samples`, line 137). `trainer.train` evaluates **both splits at
+the end of every epoch** (`trainer.py:220-221`). Counting a real training run with
+`qml.Tracker` (2q/1L/B16, 3 epochs, 60 samples): measured 306 backprop / 1,314 parameter-shift
+against the estimator's 186 / 1,194 — short by exactly 120 = `(3−1)·60` in both cases. The
+corrected form `epochs·n_train·per_sample + epochs·n_samples` reproduces the Tracker count
+exactly.
+
+At the maximum configuration the estimator says 71,000 backprop executions; the truth is
+170,000 — **understated 2.39×**, because the per-epoch evaluation is 59% of all backprop
+executions.
+
+**Decision.** Report and propose; do not apply in Phase 4. The additive gate requires
+`git diff --diff-filter=MD` against `origin/main` to be empty, and Phase 4's scope is a script
+and a document. The change is one line (`eval_execs = config.training.epochs *
+config.dataset.n_samples`).
+
+**Risk if left.** None today — `grep -rn "estimate_cost" --include=*.py app/` finds no call
+sites. But its own docstring says it is "used by the UI to warn before submission", and D-027
+proposes building a dispatch-time rejection on it. It must be corrected **before** either of
+those lands, or both will be wrong by 2.4× for the default gradient method.
+
+## D-029 — `lightning.qubit` is already available and was measured; nothing was installed
+
+**Finding.** `pennylane-lightning 0.45.0` is importable without any change to
+`requirements.txt` — it arrives **transitively** with PennyLane 0.44.1. §2B.5's conditional
+("if not installed, do NOT add it") therefore never triggered: no `pip install` was run, no
+`--dry-run` was needed, and no pin moved.
+
+**Measured.** Agrees with `default.qubit` to 15 dp (`<Z₀> = 0.955336489125606`). Speeds up
+parameter-shift by 2.3× at 2 qubits rising to **4.1× at 8 qubits / 4 layers**. **Cannot do
+`backprop`** — `QuantumFunctionError` — so any device × method grid must skip that pair rather
+than record it as a failure. Since backprop is the default, lightning only helps the expensive
+path, but that is where it is needed.
+
+**Unresolved, flagged deliberately.** `pennylane-lightning` is an **unpinned transitive
+dependency** at a *higher minor version* (0.45.0) than PennyLane itself (0.44.1). It is not in
+`requirements.txt`, so a future clean install could resolve a different version and silently
+change benchmark numbers or device behaviour. Not pinned unilaterally — adding a line to
+`requirements.txt` is a §1.3 dependency decision and needs the dry-run discipline plus
+sign-off.
+
+**`adjoint` is the larger opportunity.** On `lightning.qubit` it returned a gradient identical
+to backprop's (`-0.479425539`) at `O(1)` executions rather than `O(P)`. Unmeasured at scale,
+and not adopted here; raised as a Phase 5 design question.
+
+## D-030 — GPU was skipped entirely, as instructed
+
+No GPU work was attempted. `lightning.gpu` requires CUDA on Linux and the target is Windows
+(⇒ WSL2); this repo's GPU support is CUDA-Q via `docker-compose.gpu.yml`, a separate stack that
+does not compose with a PennyLane device. The sandbox has no GPU and no `docker` binary, so
+even an exploratory check was impossible. Recorded so no later phase reads the silence as an
+oversight.
