@@ -135,10 +135,14 @@ async function main() {
         "MT-009: the samples field's max tracks the selected dataset's cap",
         `max=${maxAttr} while the hint says 100 — native validation cannot enforce the real cap`,
       );
+      // The recorded contract (D-059) is stay-and-error, NOT clamp: switching
+      // dataset changes the cap underneath a number the learner chose, and
+      // silently rewriting it hides that a choice was overridden. So the value
+      // is expected to stay, and the obligation moves to the error below.
       check(
-        Number(value) <= 100,
-        "MT-009: switching to a lower-capped dataset brings the value within the new cap",
-        `value stayed ${value} against a cap of 100`,
+        Number(value) > 100,
+        "MT-009: the over-cap value is preserved rather than silently rewritten",
+        `value stayed ${value} against a cap of 100, as decided`,
       );
 
       await samples?.fill("400");
@@ -152,14 +156,17 @@ async function main() {
       await page.screenshot({ path: `${DIR}/07_sample_cap.png`, fullPage: true });
 
       // MT-009 asks for a legible error naming the cap. A disabled control is
-      // not one: it prevents the mistake without explaining it.
-      const explained = /exceeds|too many|reduce|over the limit|not allowed/i.test(body);
+      // not one: it prevents the mistake without explaining it. The assertion
+      // demands the actual numbers -- the cap AND the rejected value -- so it
+      // cannot pass on generic copy, and scopes the read to the error region
+      // so it cannot pass on the form's static range hint.
+      const errorRegion = (await page.textContent('[role="alert"], .error-note')) ?? body;
+      const namesCap = /\b100\b/.test(errorRegion) && /\b400\b|\b200\b/.test(errorRegion);
+      const explains = /cap|exceed|lower|too many|reduce/i.test(errorRegion);
       check(
-        explained,
-        "MT-009: the UI says WHY training is unavailable, not merely disables the control",
-        explained
-          ? "explained"
-          : 'only the hint "20-1000 · max 100 for this set"; Train is disabled with no stated reason',
+        namesCap && explains,
+        "MT-009: the UI says WHY training is unavailable and names the actual cap",
+        errorRegion.slice(0, 120).trim() || "no error region rendered",
       );
     }
   } catch (err) {
