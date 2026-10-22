@@ -20,7 +20,7 @@ Any deviation is a failure you caused, not a pre-existing condition.
 | Backend tests | `cd backend; PYTHONPATH=. pytest -q` | **818 passed, 5 skipped** |
 | Typecheck | `cd frontend/web; npm run typecheck` | **0 errors** |
 | Production build | `cd frontend/web; npm run build` | **PASS**, ~2090 modules, ~639 kB main chunk |
-| Render harnesses | `frontend/web/scripts/*.mts` loop | **284 PASS / 57 FAIL** |
+| Render harnesses | `frontend/web/scripts/*.mts` loop | **284 PASS / 57 FAIL** without `API_TARGET`; **307 PASS / 57 FAIL** with it |
 | Golden values | `golden-quantum`, `golden-demos`, `golden-grover` | **190 + 804 + 3306 @ 1e-9, all PASS** |
 | Accessibility | `npx tsx scripts/a11y-check.mts` | **0 criticals** |
 | API routes | `python -c "..."` on `app.main:app` | **58 APIRoute objects** |
@@ -43,6 +43,11 @@ do not treat them as your regressions. They resolve to exactly four SSR render s
 `render-codelab` 9, `render-games` 20, `render-p5` 20, `render-results` 8 (9+20+20+8 = 57).
 Hold that per-script breakdown, not just the total: a harness that moves from FAIL to PASS, or a
 new script that fails, is a change you must explain. Your gate is **the same 57 and no new ones**.
+
+**PASS is 284 or 307 depending on `API_TARGET`, and both are correct.** Without it,
+`smoke-auth` (13 assertions) and `smoke-composer` (10) crash on `ECONNREFUSED` *before printing any
+assertion*, so they **deflate PASS** rather than adding to FAIL. 284 + 23 = 307. FAIL is **57
+either way**, which is the number that actually gates you. State which mode you ran in.
 
 Two further environment notes: piping `tsx` output into `tail` truncates it, so redirect the
 golden suites to files and then read them. And `scripts/push-overlay-check.mts` is
@@ -173,8 +178,8 @@ add one, under these conditions:
   **8 existing migrations** in `backend/alembic/versions/`
   (`b5f10b499a50_initial_schema.py` … `a2b3c4d5e6f7_stable_topic_identifiers.py`).
 - Register the new model in **`backend/app/models/__init__.py`** or autogenerate will not see it.
-- Additive only: `CREATE TABLE qml_experiments`. **Never** alter, drop or rename an existing
-  table or column.
+- Additive only. **Never** alter, drop or rename an existing table or column.
+- **Two tables are authorised**, not one — see §2A for the shape and the reason.
 - Write `downgrade()` and **actually run it** to prove the rollback works. Paste the output.
 - Use the existing revision-id style and `Revises:` chain correctly — head must stay linear.
 
@@ -335,10 +340,134 @@ Commit in small verified steps (§10 of the master prompt) and keep the flag off
 - **Do not resurrect deleted code.** The Streamlit app was removed on purpose. These paths must
   stay absent: `frontend/pages/`, `frontend/lib/`, `frontend/live_bloch/`, `frontend/tests/`,
   `.streamlit/`, `frontend/Home.py`. If you find any of them in your working tree, they are
-  leftovers — delete them, do not commit them. Tracked file count at baseline is **531**; if it
-  jumps by dozens, something is wrong.
+  leftovers — delete them, do not commit them. Tracked-file count: **531** at the Phase 0
+  baseline, **558** on `main` after the Phase 1 port (`main @ 6169f0b`). Compare against
+  `origin/main` as it is when you start, and account for every file you add.
 - Also gitignored and never to be committed: `*.db`, `*.db-wal`, `dev.db`, `dist/`, `.venv/`,
   `node_modules/`.
+
+---
+
+## 2A. Phase 2 decisions, settled in advance
+
+These were the two open questions Phase 2 would otherwise have stopped on. Both are decided;
+build to them.
+
+### 2A.1 Migration shape — two tables: normalise the time series, blob the document
+
+```
+qml_experiments                      qml_epoch_metrics
+  id                PK                 id                PK
+  user_id           FK users.id, idx   experiment_id     FK qml_experiments.id, idx
+  run_hash          String(64), idx    epoch             Integer
+  status            String(32), idx    train_loss        Float
+  config            JSONType           val_loss          Float, nullable
+  result            JSONType, nullable train_accuracy    Float
+  error             Text, nullable     val_accuracy      Float, nullable
+  celery_task_id    String(128), null  elapsed_seconds   Float
+  cancel_requested  Boolean, dflt F    UniqueConstraint(experiment_id, epoch)
+  model_path        String(512), null
+  created_at / started_at / finished_at   (server_default=func.now(), as SimulationJob)
+```
+
+`status` is the state machine from the master prompt: `queued | running | completed | failed |
+cancelled | timed_out`.
+
+**Why not a single row with the epoch history in a JSON blob** — this is the expensive-to-reverse
+choice, so the reasoning matters:
+
+1. **SQLAlchemy does not detect in-place mutation of a JSON column.** Unless you wrap it in
+   `MutableDict` or call `flag_modified()` every time, an appended epoch silently never persists.
+   The symptom is a progress bar that never moves, and it looks like a frontend bug. The trainer
+   would be doing a read-modify-write of a growing column up to 100 times per job to publish
+   progress. Appending a row has no such failure mode.
+2. **Polling becomes incremental.** `WHERE experiment_id = ? AND epoch > ?` returns only what the
+   dashboard hasn't seen, instead of re-downloading the whole history every poll.
+3. **`UniqueConstraint(experiment_id, epoch)` buys idempotency for free.** `celery_app.py` sets
+   `task_acks_late=True`, so **task redelivery is real** — Celery is at-least-once. A redelivered
+   epoch must not duplicate, and must not crash the job.
+4. **`cancel_requested` as its own column** means cancelling is a single-column `UPDATE`, not a
+   read-modify-write of the whole row — which matters because the worker polls it every batch.
+
+Config and final result stay JSON blobs: they are write-once/read-many documents, and this matches
+the house pattern (`SimulationJob.circuit_ir`, `.noise`, `.result`).
+
+`run_hash` is the duplicate-submission guard the master prompt asks for — copy
+`SimulationJob.run_hash` (`models/job.py:22`) and the cache lookup at `api/jobs.py:154-170`.
+
+Model artifacts (`persistence.py`'s JSON + `.npz`) go to a **file** path recorded in `model_path`,
+resolved from a new `qml_artifact_dir` setting and joined **only** with the integer experiment id.
+Never with a user-supplied string. That directory must be gitignored — never commit a trained
+model.
+
+### 2A.2 Timeouts — the cooperative deadline is primary; Celery's limits are the backstop
+
+**§5.7 is discharged. Do not stop on the Windows question.** The answer is a platform fact, not
+something to discover by experiment:
+
+- Celery implements `soft_time_limit` with **SIGALRM**, which does not exist on Windows. Soft
+  limits are unenforceable there.
+- `time_limit` (hard) works by killing the worker's **child process** under prefork. With
+  `--pool=solo` the task runs in the worker's own main thread, so there is no child to kill — the
+  hard limit cannot fire without killing the worker.
+
+So on Windows + `solo`, **neither** limit is reliable, and no amount of Linux-sandbox testing will
+tell you otherwise. Build both layers:
+
+- **Celery per-task limits** — `soft_time_limit` / `time_limit` on the QML decorator only, from new
+  `qml_task_soft_time_limit` / `qml_task_hard_time_limit` settings. Never the globals (§1.1). This
+  layer works in Docker, WSL2 and any Linux worker — which is how the app actually ships, since
+  `docker-compose.yml` has a `worker` service.
+- **A cooperative `deadline_seconds` on `train()`** — checked in the *same place* `should_cancel()`
+  is already checked (before every batch and at end of every epoch), using the `time.perf_counter()`
+  the trainer already imports for elapsed reporting. On expiry: return `timed_out`, clean partial
+  artifacts, leak no exception. Pure Python, so it works on every platform. This is the layer that
+  actually protects the user's machine.
+
+**Set the in-trainer deadline strictly below the Celery soft limit** (soft 900 → deadline ~870),
+derived from the same settings rather than hardcoded. Then the cooperative path always wins and the
+user gets a clean `timed_out` with a readable message, instead of a `SoftTimeLimitExceeded`
+traceback. Celery's limit is left to catch a genuinely hung, non-cooperative task.
+
+Prove on Linux: (a) the deadline fires and yields `timed_out` — set it to ~1 s with a config slow
+enough to exceed it; (b) the §1.1 both-directions test — an existing simulation task still dies at
+~8 s while the QML task survives past 15 s. **Document, do not test,** the Windows/`solo`
+limitation, and say plainly that the cooperative deadline is the platform-independent mechanism.
+
+### 2A.3 Two more Phase 2 decisions, so you don't have to ask
+
+**Concurrency = 1 needs two mechanisms, not one.** `run_hash` covers *duplicate submission* (same
+config), not *concurrency* (two different configs). A DB count alone is racy. So: route QML tasks to
+a **dedicated `qml` queue** via `task_routes`, which makes worker concurrency structurally 1 — that
+is the guarantee — **and** check for non-terminal experiments before dispatch, returning a clean
+**409** with a readable message. The queue guarantees it; the DB check explains it to the user.
+Note `worker_prefetch_multiplier=1` is already set, which helps but is not the guarantee.
+
+**The cancel endpoint has no precedent here** — you found that in Phase 0. So:
+`POST /qml/experiments/{id}/cancel` sets `cancel_requested = True`; the worker observes it through
+the `should_cancel()` hook you already built. It must be **idempotent** (cancelling twice is 200,
+not 500) and must reject a terminal experiment with a clear **409**. Ownership mirrors
+`api/jobs.py:200-206` — `404` first, then `403 "Not your job"`.
+
+### 2A.4 Phase 2 changes the additive check — this is expected, not a violation
+
+Phase 1 was purely additive. Phase 2 cannot be: it must register things. So §2.1's
+`git diff --diff-filter=MD --name-only origin/main HEAD` **will** be non-empty, and that is correct.
+From Phase 2 the gate becomes: *exactly these five existing files, and nothing else* —
+
+```
+backend/app/api/router.py            flag-gated include_router
+backend/app/config.py                add qml_* settings only
+backend/app/workers/celery_app.py    extend include=[...] and add task_routes
+backend/app/models/__init__.py       register the two new models
+backend/alembic/versions/<new>.py    the additive migration
+```
+
+Plus new files: `backend/app/api/qml_lab.py`, `backend/app/models/qml.py`,
+`backend/app/workers/qml_tasks.py`, and tests. Any modification beyond those five is a §5.2 stop.
+
+You may now also append **D-013…D-016** to `docs/qml/DECISIONS.md`, which the additive rule
+correctly blocked in Phase 1.
 
 ---
 
