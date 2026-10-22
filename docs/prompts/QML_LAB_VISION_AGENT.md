@@ -1456,6 +1456,13 @@ the per-script decomposition, that they are pre-existing and outside QML, and wh
 to do about them. **Do not repair them as a side quest** — that is a separate effort with its own
 risk, and it is the owner's call, not a phase's.
 
+**SUPERSEDED as to the repair, in force as to the disclosure.** The owner has since made the call:
+these are to be worked in Phase 8A, under the tightened rules of **§2I.3**, which take precedence
+over the sentence above. What §2I.3 adds is the distinction this section lacked — most of the 57 may
+be fixable, but **any change to an assertion's meaning is the owner's to approve, not the phase's.**
+That is why the stage is expected to end partly red. The release-document duty below is unchanged and
+must now also report the proposal table's outcome.
+
 ### 2H.3 `bg-card` — record, and hand it to the owner
 
 **Updated after the owner's qudit merge: now 7 uses across 5 files, down from 10 across 6.** Their
@@ -1470,6 +1477,14 @@ Do not fix this in Phase 8 without asking — it is the owner's active surface a
 defining the token and replacing the class is a design decision. Record it in `08-release.md` with
 the exact measurement, and note *why* it survived: `bg-card` is a plausible token name that fails
 silently, Tailwind emits nothing for an undefined colour, and no tool complains.
+
+**SUPERSEDED as to the fix, in force as to the caution.** The owner has asked: this is to be fixed in
+Phase 8A under **§2I.1**, which rules *prefer reusing an existing token over defining `--color-card`*
+and requires the choice to be justified and proven in the **compiled** CSS. The caveat above is not
+withdrawn — these are the owner's actively developed components, and **other agents work this repo in
+parallel on separate branches.** So the change must be **minimal and surgical**: alter only the
+offending class or the token block, never restructure, reformat or "tidy" the surrounding component.
+The *why it survived* note still belongs in `08-release.md`.
 
 ### 2H.4 What `08-release.md` must contain
 
@@ -1581,24 +1596,66 @@ Sites: `DensityMatrixInspector.tsx:134,143`, `QuditGatePalette.tsx:20`, `QuditLe
   Each needs a reproduction before a fix, and now that 2I.0 makes browsers runnable, each
   reproduction should be a harness assertion rather than a screenshot someone looked at once.
 
-### 2I.3 The 57 pre-existing harness failures — triage before touching anything
+### 2I.3 The 57 pre-existing harness failures — triage, fix what is safe, *propose* the rest
 
 Phase 7 decomposed them as `render:codelab` 9 + `render:p5` 20 + `render:games` 20 +
 `render:results` 8. **Re-measure first** — the tree has since gained 29 files and five harnesses, so
 the number may have moved.
 
-Then **categorise every failure before fixing any**, because the three causes need opposite
-treatments:
+**It is correct and expected for this stage to end with failures still red.** A red number plus a
+proposal table is the success condition here, not a failure of the stage. Reaching green is *not* the
+objective; reaching green *honestly* is, and the honest answer for part of this backlog is "the owner
+has to decide."
 
-| Category | Correct action |
-|---|---|
-| Real product defect | Fix the product. The assertion was right. |
-| Stale assertion — the UI was redesigned and the test was not updated | Update the assertion to the *current intended* behaviour, and cite the commit that changed the UI. |
-| Harness bug — the test is wrong, vacuous, or order-dependent | Fix the harness. |
+#### The line is not product-versus-test — it is whether the assertion's meaning changes
 
-**Never delete or weaken an assertion to make a number go green.** That is the standing rule, and 57
-failures is exactly the situation where it is most tempting. If a failure cannot be categorised,
-leave it failing and report it — an unexplained red is more useful than a fabricated green.
+Categorising by "is the product wrong or is the test wrong" is the wrong cut, because "the test is
+wrong" is the same shape of claim as "the test is stale" and invites the same rationalisation. Cut on
+semantics instead:
+
+| | Allowed — commit it | Forbidden — propose it and stop |
+|---|---|---|
+| **Definition** | The assertion still verifies the same behaviour against the same expectation. Only the plumbing changed. | Anything that alters **what is expected** or **what is observed**. |
+| **Examples** | Replacing a hardcoded browser path; fixing a port or a base URL; removing a race or order-dependence; re-pointing a selector after an attribute rename **while still targeting the same element**; making a vacuous test actually assert. | Changing an expected value, number or string; weakening `.toBe` to `.toContain` or `.toBeTruthy`; narrowing the cases checked; changing which element or region is inspected **such that a different thing is verified**; deleting a test. |
+| **Also forbidden, explicitly** | | `.skip` / `xit` / `todo` / commenting a test out / `if (false)` / an early `return` — **a skip is a deletion wearing a costume.** So is "this test is redundant." So is wrapping the assertion in a `try/catch` that swallows. |
+
+#### Two passes, in this order
+
+**Pass 1 — triage, read-only.** Categorise **all** of them before changing **any** code. Every
+category assignment needs evidence; none may be assigned by assertion alone. The triage table is its
+own commit, containing no product or harness change.
+
+**Pass 2 — fix only the allowed column.** Real product defects: fix the product, the assertion was
+right. Semantic-preserving harness fixes: fix the harness.
+
+Two traps in Pass 2:
+
+- **When a failure is a stale assertion, do not "fix" the product to satisfy it.** That is a
+  regression dressed as a green tick. Revert any such change.
+- **A fix that makes one harness green while another goes red is not progress.** Re-run the whole
+  sweep after every fix commit.
+
+#### The proposal table — for the owner to approve line by line
+
+Anything in the forbidden column becomes a row here and **stays red**. Each row must carry:
+
+1. harness and line
+2. the current assertion, **verbatim**
+3. the proposed assertion, **verbatim**
+4. what behaviour it protects today
+5. why it is stale — **the commit that changed the UI, with the before/after pasted**
+6. **what regression would go undetected if this were approved**
+7. your recommendation
+
+Field 6 is the one that matters. It forces the accounting that "this is just stale" skips, and it is
+how the owner decides rather than ratifies. A row without field 6 is not a proposal.
+
+#### Reporting
+
+Report the count as **fixed = N product defects + M semantic-preserving harness fixes; awaiting
+owner approval = K**, and never fold K into a green figure. If a failure cannot be categorised at
+all, it goes in K with "uncategorised" and the evidence you gathered — an unexplained red is more
+useful than a fabricated green.
 
 One commit per category, with the count before and after in the message.
 
