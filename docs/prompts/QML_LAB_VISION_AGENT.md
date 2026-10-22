@@ -1,0 +1,532 @@
+# QML Lab — Repo Truth Sheet & Binding Amendments
+
+**Paste this AFTER `QML_Lab_Master_Prompt.md`, in the same message.** It does not replace that
+prompt — it corrects it. Where the two disagree, **this document wins**, because it was written
+by reading the repository at `main @ 9cdd3a1` rather than by assumption.
+
+The master prompt was written generically. Several of its instructions are false for this repo,
+and two of them would break working features if followed literally. Read §1 and §2 before you
+write any code.
+
+---
+
+## 0. Baseline: the numbers you must not move
+
+Recorded at `main @ 9cdd3a1`, re-verified in this sandbox. These are **your regression baseline**.
+Any deviation is a failure you caused, not a pre-existing condition.
+
+| Gate | Command | Baseline |
+|---|---|---|
+| Backend tests | `cd backend; PYTHONPATH=. pytest -q` | **818 passed, 5 skipped** |
+| Typecheck | `cd frontend/web; npx tsc --noEmit` | **0 errors** |
+| Production build | `cd frontend/web; npx vite build` | **PASS**, ~2090 modules, ~638 kB main chunk |
+| Render harnesses | `frontend/web/scripts/*.mts` loop | **284 PASS / 57 FAIL** |
+| Golden values | `golden-quantum`, `golden-demos`, `golden-grover` | **190 + 804 + 3306 @ 1e-9, all PASS** |
+| Accessibility | `npx tsx scripts/a11y-check.mts` | **0 criticals** |
+| API routes | `python -c "..."` on `app.main:app` | **58 paths** |
+
+**The 57 harness FAILs are pre-existing and expected.** Do not "fix" them, do not delete them,
+do not treat them as your regressions. They are counted so that a *change* in the number is
+detectable. Your gate is **284/57 or better**, i.e. the same 57 and no new ones.
+
+There is **no CI**. Nothing runs these for you. Every gate is your responsibility, and every
+claim needs pasted command output.
+
+---
+
+## 1. Corrections to the master prompt — these assumptions are FALSE here
+
+### 1.1 The Celery time limit will kill every training job *(highest-risk item)*
+
+`backend/app/config.py:24-25`:
+
+```python
+celery_soft_time_limit: int = 8
+celery_hard_time_limit: int = 15
+```
+
+These are **global** and are set deliberately low, because every existing task is a short
+circuit simulation. `celery_app.py` applies them to all tasks via `conf.update(...)`, and
+`backend/app/workers/tasks.py:96` computes a wait budget *from* `celery_soft_time_limit`.
+
+A QML training run takes minutes. Under the global limit it would be `SoftTimeLimitExceeded`
+at 8 s and hard-killed at 15 s — every single time.
+
+**Do NOT raise the globals.** That silently changes the failure semantics of `run_simulation`
+and `autograde_attempt`, which is exactly the kind of collateral damage §3 of the master prompt
+forbids, and it would be invisible until a simulation job started hanging for minutes.
+
+**Required approach:** give the QML task its own limits and its own settings, leaving the
+existing ones untouched:
+
+```python
+# config.py — additive, do not edit the two existing lines
+qml_task_soft_time_limit: int = 900
+qml_task_hard_time_limit: int = 1200
+
+# the QML task decorator
+@celery_app.task(bind=True, name="app.workers.tasks.run_qml_training",
+                 soft_time_limit=get_settings().qml_task_soft_time_limit,
+                 time_limit=get_settings().qml_task_hard_time_limit)
+```
+
+Then prove it: a test that an existing simulation task still dies at ~8 s, and a QML task
+survives past 15 s.
+
+### 1.2 PennyLane is already installed and already used
+
+`backend/requirements.txt:41-42`: `pennylane==0.44.1`, `pennylane-qiskit==0.42.0`.
+Already imported in **7 files**: `backend/app/quantum/backends/pennylane_sim.py`,
+`quantum/codegen_pennylane.py`, `quantum/inspect.py`, `api/jobs.py`, `services/codelab.py`,
+`services/codelab_ai.py`, `workers/tasks.py`.
+
+So Phase 1's "add PennyLane" is not a dependency task — it is a **reuse** task. Read
+`pennylane_sim.py` first and match its device/qnode idioms. Do not introduce a second,
+competing way of constructing PennyLane circuits.
+
+### 1.3 `numpy` is deliberately pinned below 2.0 — do not let torch break it
+
+`backend/requirements.txt:2-3` says so explicitly:
+
+> *cirq-core 1.4.x requires numpy<2 while newer PennyLane requires numpy>=2, so numpy is held
+> below 2.0 and PennyLane/pennylane-qiskit are pinned to match.*
+
+Current: `numpy==1.26.4`, `scipy==1.17.1`. This pin is load-bearing for cirq.
+
+If you need PyTorch, **resolve before installing**:
+
+```bash
+cd backend
+python -m pip install --dry-run "torch==<candidate>" 2>&1 | grep -iE "numpy|would install"
+```
+
+If the resolver wants `numpy>=2`, **STOP** per §5. Do not upgrade numpy to accommodate torch,
+and do not add torch with `--no-deps`. Note that PennyLane's `default.qubit` supports
+`interface="autograd"` and `diff_method="parameter-shift"` with **no torch at all** — for
+Phase 1 that is likely sufficient and avoids the entire conflict. Reach for torch only in
+Phase 5 (Hybrid QNN), and only after the dry-run passes.
+
+### 1.4 There is no charting library — and you may not add one
+
+The master prompt says "reuse the existing chart library" for loss/accuracy curves.
+**There is none.** `frontend/web/package.json` contains no recharts, chart.js, d3, victory,
+nivo or visx.
+
+The repo's actual pattern is **hand-rolled SVG using design tokens**. Follow it:
+
+- `src/components/results/CircuitDiagram.tsx` — SVG circuit rendering
+- `src/components/grover/GroverLab.tsx` — SVG bar/amplitude plots
+- `src/components/results/InteractiveBlochSphere.tsx` — SVG sphere
+- `src/components/illustrations/*.tsx` — SVG empty states
+
+Build `LossCurve` / `AccuracyCurve` / `ConfusionMatrix` as small SVG components from those
+primitives, coloured with `var(--accent)`, `var(--ok)`, `var(--warn)`, `var(--danger)`,
+`var(--line)`. Adding a chart library would violate "no new UI library", inflate the 638 kB
+bundle, and look foreign next to every existing plot.
+
+### 1.5 There is no frontend component/unit test stack — use the `.mts` harness pattern
+
+The master prompt says "component/unit tests per the repo's frontend test stack".
+**There is none**: no vitest, no jest, no `@testing-library`, no jsdom.
+
+The real frontend test stack is **20 TypeScript harness scripts** in
+`frontend/web/scripts/*.mts`, run with `npx tsx`, driven by Playwright where a browser is
+needed, and registered as npm scripts in `package.json` (`golden:quantum`, `render:composer`,
+`a11y`, `smoke:composer`, …).
+
+So Phase 3's tests are `.mts` scripts. Wire every new one into `package.json` scripts — an
+unwired check is an unrun check. Prove each one can fail (break the thing it asserts, watch it
+go red, restore it). This is the repo's standing rule, and the previous QA campaign was judged
+on it.
+
+**Do not cite `scripts/verify-all-demos.mts` as evidence.** Its assertions at lines 119-123 are
+tautological — it passes regardless of correctness. Use the 4,300 golden values instead.
+
+### 1.6 A database migration IS required — you are pre-authorised
+
+The master prompt says stop and ask if a migration seems necessary. For this feature it is
+unavoidable: an experiment record needs a table. **Do not stall on it.** You are authorised to
+add one, under these conditions:
+
+- Alembic is already set up: `backend/alembic.ini`, `backend/alembic/env.py`, and
+  **8 existing migrations** in `backend/alembic/versions/`
+  (`b5f10b499a50_initial_schema.py` … `a2b3c4d5e6f7_stable_topic_identifiers.py`).
+- Register the new model in **`backend/app/models/__init__.py`** or autogenerate will not see it.
+- Additive only: `CREATE TABLE qml_experiments`. **Never** alter, drop or rename an existing
+  table or column.
+- Write `downgrade()` and **actually run it** to prove the rollback works. Paste the output.
+- Use the existing revision-id style and `Revises:` chain correctly — head must stay linear.
+
+⚠ **Gotcha that will waste you an hour:** pytest must run from `backend/` with `PYTHONPATH=.`.
+Run it from the repo root and `test_curriculum.py::test_downgrade_places_every_lesson_and_preserves_secondary_placements`
+fails with `alembic.util.exc.CommandError: Path doesn't exist: '.../alembic'`. That is an
+invocation bug, **not** a defect — never report it as one, and never "fix" it by editing the test.
+
+### 1.7 There is no feature-flag convention — you are creating the first one
+
+The master prompt requires a flag, off by default, and says to follow existing conventions.
+**There are none**: no `feature_flag`, no `/config` endpoint, no frontend gating mechanism.
+
+Build it in the repo's existing idiom — `pydantic_settings.BaseSettings` fields in
+`backend/app/config.py`, snake_case, env-overridable, defaults in code:
+
+```python
+#: Quantum ML Lab. Off by default; the app must behave exactly as before when disabled.
+qml_enabled: bool = False
+```
+
+Then: gate the router in `backend/app/api/router.py` (flag off ⇒ routes absent, so 404),
+gate the nav item in `frontend/web/src/components/shell/nav.ts`, gate the route in
+`frontend/web/src/App.tsx`. Expose the flag to the browser through a small authenticated
+endpoint rather than a build-time constant, so one image can be flipped by env. Prove both
+states with pasted output — flag off must be byte-identical in behaviour to today.
+
+Note there is no precedent for a flag-gated nav item; **Noise Lab and Smart Composer are not
+separate routes at all** — they are embedded inside `ComposerPage.tsx` (imports at `:60-61`,
+mounted at `:584` and `:824`). QML Lab is big enough to warrant its own route; that is a
+deliberate, documented departure, not an inconsistency.
+
+---
+
+## 2. Binding branch rules — the master prompt's §1 is overridden
+
+The master prompt says *"work only on `feature/quantum-ml`, never modify `main`"*. **That is
+overridden.** This repo works on `main` only. A previous agent built on a stale base on a side
+branch, and the result was a 47-file resurrection of a deleted app plus 43 MB of force-added
+artifacts, none of which reached `main`. Do not repeat that.
+
+### 2.1 Work on main
+
+```bash
+cd /path/to/quantum-learning-platform
+git fetch --all --prune
+git checkout main
+git reset --mixed origin/main      # sync the local ref — it goes stale otherwise
+git status                          # must be clean; if not, STOP (§5)
+git rev-parse --short HEAD          # record this — it is your baseline SHA
+```
+
+**`git push origin HEAD:main`** is the only push target. Never `--force`. Never `--force-with-lease`.
+
+⚠ **The stale-local-`main` trap.** Pushing with `HEAD:main` while your local `main` ref lags
+behind produces nonsense comparisons — `git diff main <sha>` will claim files are missing that
+are plainly present. Always compare against **`origin/main`**, never bare `main`.
+
+⚠ **Never run `git checkout origin/main -- .`** to "sync". It overwrites files but **never
+deletes** them, so anything removed from `main` reappears in your working tree as untracked
+cruft and can be committed by a later `git add -A`. Sync by fetching and resetting, not by
+checking paths out over your tree.
+
+### 2.2 The flag replaces branch isolation
+
+The master prompt wanted a side branch so `main` stayed safe. Here, **`qml_enabled = False` is
+the safety mechanism**, and it has to be stronger than a branch would have been: `main` must be
+deployable after *every* commit, not just at the end. Commit in small verified steps (§10 of the
+master prompt) and keep the flag off until Phase 8.
+
+### 2.3 Commit hygiene — the two things that got the last agent in trouble
+
+- **`artifacts/` is gitignored** (`.gitignore:29`). Do **not** `git add -f` anything under it.
+  Your evidence — reports, benchmarks, screenshots — goes in **`docs/qml/`**, which is tracked.
+  Never commit screenshots you do not cite; the last campaign shipped 43 MB / 392 files and only
+  91 were referenced.
+- **Do not resurrect deleted code.** The Streamlit app was removed on purpose. These paths must
+  stay absent: `frontend/pages/`, `frontend/lib/`, `frontend/live_bloch/`, `frontend/tests/`,
+  `.streamlit/`, `frontend/Home.py`. If you find any of them in your working tree, they are
+  leftovers — delete them, do not commit them. Tracked file count at baseline is **530**; if it
+  jumps by dozens, something is wrong.
+- Also gitignored and never to be committed: `*.db`, `*.db-wal`, `dev.db`, `dist/`, `.venv/`,
+  `node_modules/`.
+
+---
+
+## 3. The UI/UX contract — match this exactly
+
+This is the part most likely to look wrong, so it is specified concretely rather than as
+"be consistent".
+
+### 3.1 The design system
+
+- **Tailwind CSS v4**, configured **CSS-first** via `@tailwindcss/vite` (`vite.config.ts:3,33`).
+  There is **no `tailwind.config.js`** and you must not add one. Theme lives in CSS.
+- **All tokens are CSS custom properties in `frontend/web/src/globals.css`.** Use them; never
+  hardcode a hex value, font or spacing scale that duplicates one.
+
+  **There are two token layers, and only one of them produces Tailwind utilities.** Getting this
+  wrong is the most likely way your UI silently renders unstyled.
+
+  **Layer 1 — the `@theme` block (`globals.css:4-42`).** These are `--color-*` and `--font-*`,
+  and Tailwind v4 turns each into utilities. This is what you use in `className`:
+
+  | Purpose | Utilities that exist |
+  |---|---|
+  | Surfaces | `bg-bg`, `bg-raised`, `bg-subtle`, `bg-hover`, `bg-active`, `bg-bg-raised`, `bg-bg-subtle` |
+  | Text | `text-ink`, `text-ink-2`, `text-ink-3` |
+  | Lines | `border-line`, `border-line-soft`, `border-line-focus` |
+  | Brand | `bg-accent`, `border-accent`, `text-accent`, `text-accent-ink`, `bg-accent-soft` |
+  | Status | `text-ok`, `bg-ok`, `text-warn`, `bg-warn`, `border-warn`, `text-danger`, `bg-danger` |
+  | Gate colours | `text-gate-h`, `bg-gate-pauli`, `text-gate-phase`, `bg-gate-param`, `text-gate-multi`, `text-gate-meas` |
+  | Type | `font-sans`, `font-mono`, `font-display` |
+
+  Actual usage counts in the existing source, so you can see the house idiom:
+  `text-ink-3` 431 · `text-ink` 280 · `border-line` 250 · `text-accent` 168 · `text-ink-2` 143 ·
+  `bg-raised` 104 · `bg-subtle` 103 · `border-line-soft` 93 · `bg-accent` 86 · `border-accent` 68 ·
+  `bg-hover` 63 · `bg-bg` 45. **Match this distribution** — `text-ink-3` for tertiary labels,
+  `text-ink-2` for secondary, `text-ink` for primary, `border-line` for panels,
+  `bg-raised`/`bg-subtle` for surfaces.
+
+  **Layer 2 — the `:root, html, body` block (`globals.css:44-92`).** These are bare vars with no
+  `--color-` prefix: `--bg`, `--panel`, `--muted`, `--fg`, `--wire`, `--divider`, `--editor-bg`,
+  `--endpoint-border`, `--raised`, plus duplicates of the layer-1 names. **These do NOT generate
+  Tailwind utilities.** They are only reachable as `var(--panel)` inside a `style` attribute or a
+  CSS rule. `--panel`, `--muted`, `--fg`, `--wire` and `--divider` have no `--color-*` twin, so
+  `bg-panel` / `text-muted` / `text-fg` **do not exist** — writing them produces nothing.
+
+- ⚠ **`bg-card` is a live trap — do not copy it.** It appears in **10 places across all six Qudit
+  Lab files** (`QuditGatePalette.tsx`, `QuditCircuitEditor.tsx`, `DensityMatrixInspector.tsx`,
+  `QuditLearnPanel.tsx`, `QuditNoisePanel.tsx`, `QuditLabPage.tsx`), typically as
+  `bg-card/60 backdrop-blur-md`. But **`--color-card` is defined nowhere** — not in `@theme`, not
+  in the imported composer stylesheet. Tailwind therefore emits no `bg-card` rule and those panels
+  get **no background colour at all**; they appear to work only because `border-line` and
+  `backdrop-blur-md` are doing the visual work. If you imitate Qudit Lab's markup you will inherit
+  this. Use `bg-raised` or `bg-subtle` for card surfaces. **Do not "fix" the existing ten** —
+  that is out of scope (§4) and would change how a shipped page looks; just don't propagate it.
+
+- **Verify a utility before you rely on it.** `dist/` is gitignored and ephemeral, so rebuild
+  first, then grep the emitted CSS:
+
+  ```bash
+  cd frontend/web
+  npx vite build
+  grep -o "\.bg-raised[^a-z0-9-]" dist/assets/*.css | head -3    # emitted => safe to use
+  ```
+
+  The previous campaign's worst defect (QL-001) was a heatmap rendered invisible because
+  template-literal class names like `` `bg-[rgba(0,0,0,${a})]` `` are not statically extractable,
+  so Tailwind emitted **zero** matching rules and every cell was transparent.
+
+- **Dark is the only theme. Do not build a light mode.** `globals.css` sets
+  `color-scheme: dark` and hardcodes `html, body { background-color: #07090e }`, and contains
+  **no light-theme selector at all** — there is no `html.light` or `body.light` rule anywhere in
+  the file. `src/state/theme.ts` defaults to `theme: "dark"` and toggles `html.dark`/`html.light`
+  classes, but nothing in the CSS responds to `.light`. That is pre-existing and **out of scope**:
+  do not add light-theme tokens, do not add `dark:` variants, do not wire up or "fix" the toggle.
+  Design every QML view against the dark palette only, and screenshot it in the state the app
+  actually ships in.
+
+### 3.2 The QL-001 rule — never interpolate a Tailwind class
+
+```tsx
+// FORBIDDEN — Tailwind cannot see this, the rule is never emitted, the cell renders transparent
+<div className={`bg-[rgba(56,189,248,${mag})]`} />
+
+// REQUIRED — computed value in an inline style
+<div style={magStyle(mag)} />          // e.g. { backgroundColor: `rgba(56,189,248,${mag})` }
+
+// ALSO FINE — literal strings in a ternary; both branches are statically extractable
+className={active ? "border-accent bg-accent-soft" : "border-line bg-bg-raised"}
+```
+
+If you need a data-driven colour, compute it in JS and use `style`. If you need a fixed variant,
+write both class strings literally. This is a hard rule, and there is a regression harness for it.
+
+### 3.3 Reuse, in priority order
+
+1. **Existing components.** `src/components/shell/` (`AppShell`, `TopBar`, `Sidebar`,
+   `BackendBadge`, `ErrorBoundary`, `NarrowViewportNotice`, `CommandPalette`, `nav.ts`),
+   `src/components/results/CircuitDiagram.tsx` (for Phase 3 view B — the master prompt requires
+   reusing the circuit visualisation; this is it), `src/components/qudit/*` (panels, inspector,
+   editor — the closest structural analogue to what you are building), `src/components/noise/NoiseLabView.tsx`
+   and `src/components/smart_composer/SmartComposerPanel.tsx` (a large panel with tabs, forms and
+   results — read these two before designing your layout).
+2. **Existing primitives.** Radix UI is installed: `@radix-ui/react-dialog`, `react-select`,
+   `react-tooltip`. Icons: **`lucide-react`**. Class merging: **`clsx`**. Use these; do not add
+   `@radix-ui/*` packages beyond the three, and do not add another icon set.
+3. **Existing data layer.** `@tanstack/react-query` for fetching/caching, **`zustand`** for
+   client state (see `src/state/theme.ts`, `src/state/session.ts`). Polling for job status
+   already exists for simulation jobs — find it and copy the shape, including its cleanup.
+4. **The API client.** `src/api/client.ts` is *"one thin fetch wrapper for the whole app"*; it
+   throws `ApiError{status,detail}` and formats FastAPI's three `detail` shapes (string /
+   pydantic list / `{errors:[...]}`) through `readableError()`. Add `src/api/qml.ts` on top of
+   it. **Never** write a raw `fetch` with your own token handling — the token comes from the
+   session store so that a 401 always means the same thing.
+
+There is **no `src/components/ui/` directory.** Primitives are written inline per feature. If you
+create shared QML primitives, put them under `src/components/qml/`, built from the same tokens.
+
+### 3.4 Responsiveness and accessibility
+
+- Target **1280–1920 px** first, degrade to 390 px. The app has a **900 px declared minimum**
+  surfaced by `NarrowViewportNotice` — respect it rather than fighting it.
+- Follow the fixes the last campaign made, because they are now the house standard: containers
+  that can shrink get `min-w-0` + `shrink-0` on the things that must not (`TopBar.tsx`), long
+  labels wrap rather than overflow (`QuditGatePalette.tsx`), interactive tiles are
+  keyboard-reachable (`QuditCircuitEditor.tsx`), and overlays are ordered so nothing paints over
+  a control (`AppShell.tsx` drawer: close button **above** the sidebar, `z-30` over `z-10`).
+- Gate: `npx tsx scripts/a11y-check.mts` must stay at **0 criticals**. Labels, focus rings,
+  contrast against the dark palette, and no control hidden beneath another (hit-test it, do not
+  eyeball it —
+  QL-008 and QL-014 were invisible in every screenshot and only showed up under hit-testing).
+
+---
+
+## 4. Allowed touch points in existing files
+
+Everything else is **new files in new directories**. An edit outside this list needs a written
+justification in the phase report, and anything structural is a §5 stop.
+
+| File | Permitted edit |
+|---|---|
+| `backend/app/config.py` | **Add** `qml_*` settings. Do not modify existing fields — especially not `celery_soft_time_limit` / `celery_hard_time_limit` (§1.1). |
+| `backend/app/api/router.py` | Add `qml_lab` to the import tuple and one `include_router` call, flag-gated. |
+| `backend/app/workers/celery_app.py` | Extend `include=[...]` with the new task module. Do not change `conf.update(...)`. |
+| `backend/app/workers/tasks.py` | Add the QML task, **or** put it in a new module listed in `include` (preferred — keeps the diff off a hot file). |
+| `backend/app/models/__init__.py` | Add one import line for the new model (§1.6). |
+| `backend/alembic/versions/<new>.py` | New additive migration only. |
+| `backend/requirements.txt` | Only if §1.3's dry-run passes. Never touch the numpy/scipy pins. |
+| `frontend/web/src/components/shell/nav.ts` | One `NavItem` in the `"build"` section, flag-gated. Do not reorder existing items. |
+| `frontend/web/src/App.tsx` | One lazy import + one `<Route path="/qml-lab">` inside `RequireAuth` › `AppShell`, before the `*` catch-all. |
+| `frontend/web/package.json` | `scripts` entries for new harnesses only. No new dependencies without §5. |
+| `frontend/web/scripts/link-shared.mjs` | Only if you add a shared package that needs linking. |
+
+**Do not touch:** `frontend/web/src/pages/ComposerPage.tsx`, `QuditLabPage.tsx`,
+`src/components/qudit/*`, `src/components/noise/*`, `src/components/smart_composer/*`,
+`src/lib/circuitSimulator.ts`, `backend/app/quantum/**` (read freely, edit not at all),
+`backend/app/curriculum.py`, `backend/app/seed.py`, existing tests, existing migrations,
+`src/globals.css` (add tokens only if genuinely missing, and justify each).
+
+The qubit caps are settled and are not yours to change: **static 20 / dynamic 15 / GPU 28**,
+with the Composer **preview** capped at `PREVIEW_MAX_QUBITS = 12` in `src/lib/circuitSimulator.ts`.
+
+---
+
+## 5. Stop conditions specific to this repo
+
+Stop and ask — do not guess, do not work around it:
+
+1. The working tree is dirty at start, or `git rev-parse HEAD != git rev-parse origin/main`.
+2. Any §4 "do not touch" file appears to need editing.
+3. The torch/numpy resolution (§1.3) wants `numpy>=2`, or any dependency wants to move
+   `numpy`, `scipy`, `pennylane`, `cirq-core` or `qiskit` pins.
+4. Alembic head is not linear, or your migration would touch an existing table.
+5. A baseline gate is already red in a way §0 does not predict (e.g. pytest ≠ 818/5, or harness
+   FAILs ≠ 57). Report the actual numbers and ask whether to proceed — do not silently adopt a
+   new baseline.
+6. Making a gate pass seems to require weakening, skipping, mocking-out or deleting an existing
+   test. **Never do this.** It is the single most common way an agent manufactures a green build.
+7. Per-task Celery limits (§1.1) turn out not to work on the target OS, and the only remaining
+   option is changing the global limits.
+8. Anything about the GPU path: CUDA-Q is built via `docker-compose.gpu.yml` and is easy to
+   destroy by rebuilding without it. Treat GPU as **optional and out of scope unless asked**.
+
+---
+
+## 6. Environment facts
+
+- **OS:** Windows (Intel i5-13450HX, RTX 4050 Laptop, 16 GB RAM). Real path
+  `C:\Users\laksh\quantum-learning-platform`.
+- **PowerShell is v5 — `&&` is a parser error.** Use `;`, one command per line, and repeat `cd`
+  on every step. Use `cd X; command`, never `cd Xcommand`.
+- **Git in PowerShell, not WSL.** WSL `git status` under `/mnt/c/…` false-positives ~360 modified
+  files. WSL is only for `docker`, `nvidia-smi`, `curl`.
+- **`docker compose` must run from PowerShell**, with Docker Desktop fully started first, and
+  **always pass `-f docker-compose.gpu.yml`** — omitting it rebuilds with `INSTALL_CUDAQ="false"`
+  and deletes CUDA-Q. Services: `postgres`, `redis`, `api`, `worker`, `web` (+ `pgdata` volume).
+  Overlays: `docker-compose.gpu.yml`, `docker-compose.webdev.yml`.
+- **Celery on Windows:** `prefork` is unsupported. Use `--pool=solo` (or `threads`), or run the
+  worker under WSL2. Verify before building Phase 2.
+- **Local API without Docker:** `DATABASE_URL="sqlite:///./local.db"`. The default is Postgres.
+  `celery_task_always_eager=True` runs tasks inline without a broker — useful for tests, and it
+  is the reason the eager path must be tested too.
+- **`GEMINI_API_KEY`** may be absent; `backend/app/ai/gemini_client.py:90-101` already degrades
+  gracefully, and `ai/chat.py:114-118` shows the house style for the user-facing message. Copy
+  that pattern for Phase 6 — never crash, never leak the key, never log a full payload.
+- **`vite preview` 403s** the sandbox/proxy host unless `VITE_ALLOWED_HOSTS=` is set.
+
+---
+
+## 7. Reuse map — read these before designing anything
+
+| You need | Read this |
+|---|---|
+| Job lifecycle, statuses, idempotency | `backend/app/models/job.py` (`SimulationJob`), `backend/app/api/jobs.py`, `backend/app/workers/tasks.py:57-127` |
+| The duplicate-submission guard the master prompt asks for | **Already exists as a pattern**: `SimulationJob.run_hash` (`models/job.py:22`) + the cache lookup at `api/jobs.py:154-170`. Copy it; don't invent an idempotency-key system. |
+| Auth | `backend/app/deps.py` → `get_current_user`, `require_roles`. Every new route that writes needs it. Ownership checks: `api/jobs.py:200-206` (`404` then `403 "Not your job"`). |
+| Error shape | `HTTPException(422, {"errors": [...]})` for validation (`api/jobs.py:120`), mirrored client-side by `readableError()` in `src/api/client.ts`. |
+| Settings | `backend/app/config.py`, `pydantic_settings.BaseSettings`, `@lru_cache get_settings()`. |
+| Quantum engine | `backend/app/quantum/backends/` (`pennylane_sim.py`, `cudaq_sim.py`), `quantum/inspect.py`, `qudit_lab/`, `noise_lab/`, `smart_composer/`. |
+| Validator style | `backend/app/quantum/qudit_lab/validator.py`, `noise_lab/validator.py` — allow-lists, ranges, typed errors. |
+| Panel layout with tabs/forms/results | `components/noise/NoiseLabView.tsx` (883 lines), `components/smart_composer/SmartComposerPanel.tsx` (431) |
+| Circuit view for Phase 3-B | `components/results/CircuitDiagram.tsx` |
+| SVG plotting without a library | `components/grover/GroverLab.tsx`, `components/results/InteractiveBlochSphere.tsx` |
+| Polling + cleanup | the simulation-job status polling in `src/pages/ComposerPage.tsx` / `src/api/jobs.ts` |
+| Backend tests to imitate | `backend/tests/test_qudit_lab_comprehensive.py` (21), `test_noise_lab_comprehensive.py` (20), `test_smart_composer_comprehensive.py` (20) |
+
+⚠ **Nested-config trap.** `noise_lab/models.py` `NoiseConfig` nests every group
+(`decoherence`, `stochastic`, `coherent`, `readout`, `correlated`) and **each defaults to
+`enabled: False`**, so a flat payload is silently ignored and returns a plausible wrong answer.
+Design the QML schema so that a wrong shape is **rejected loudly**, never silently defaulted.
+Malformed payloads returning sensible-looking numbers is a known failure mode here.
+
+---
+
+## 8. Evidence standards — how you will be judged
+
+The last campaign was audited line by line against the repo. Expect the same.
+
+- **Every gate needs pasted command output**, not a claim. "Tests pass" is not evidence;
+  `818 passed, 5 skipped in 109.21s` is.
+- **Every defect needs a measured root cause.** The good ones cited grep counts (`0 occurrences
+  of the utility in dist/`), coordinates (`sign-out button painted at x=471 on a 390 px
+  viewport`), and computed values (`rgba(0,0,0,0)`). "Looks wrong" is not a finding.
+- **Prove the fix survives the production bundle.** Grep `dist/` for the emitted CSS/JS, not just
+  the source. Source-level fixes have been lost to Tailwind extraction before.
+- **Say when you cannot verify something.** "0.8480 was not reproducible; I did not find its
+  origin" earned more credit than an invented explanation. Never fabricate a number, a
+  benchmark, a test result or a file's contents.
+- **Distinguish fidelity from purity.** Depolarising `E(ρ) = (1-p)ρ + (p/d)I` gives fidelity
+  `(1-p) + p/d` but purity `(1-p)² + 2p(1-p)/d + p²/d`. For d=3, p=0.35 those are 0.7667 and
+  0.6150. Label which one you mean. An auditor will recompute it.
+- **Report internal consistency.** Contradictory counts (44 runs vs 46; 517 vs 53 assertions)
+  were noticed and cost credibility. Count once, from the artifacts.
+- **Automate what you find by hand.** Standing rule: every manually-discovered defect gets a
+  script that catches it next time, wired into `package.json`, and proven able to fail.
+
+Write `docs/qml/phase-N-report.md` per phase, `docs/qml/DECISIONS.md` running,
+`docs/qml/00-audit.md` and `docs/qml/ui-audit.md` in Phase 0, `docs/qml/04-benchmarks.md` in
+Phase 4, `docs/qml/07-verification.md` in Phase 7, `docs/qml/08-release.md` in Phase 8.
+All under `docs/qml/` — tracked, never under `artifacts/`.
+
+---
+
+## 9. Phase-order amendment
+
+Keep the master prompt's eight phases and their exit gates. Three adjustments:
+
+- **Phase 0** additionally produces: the baseline table from §0 reproduced from your own runs;
+  confirmation that `HEAD == origin/main` and the tree is clean; and the §1.3 dependency dry-run
+  result. If any §0 number does not match, stop (§5.5).
+- **Phase 2** additionally proves the §1.1 per-task time-limit isolation in both directions.
+- **Phase 8** is amended: since you are already on `main`, "prepare the merge" becomes
+  **"confirm `main` is deployable with the flag off, and document how to turn it on"**. There is
+  no merge step. There is still a rollback procedure, and it must include the alembic
+  `downgrade()` you proved in §1.6.
+
+---
+
+## 10. Definition of done
+
+- `main` is green: 818/5, tsc 0, build PASS, harnesses 284/57 (or better), goldens 4,300 @ 1e-9,
+  a11y 0 criticals — all re-run by you, all pasted.
+- With `qml_enabled=False`, the app is **behaviourally identical to today**: same nav, same
+  routes, QML routes 404. Proven, not asserted.
+- With `qml_enabled=True`, all nine QNN acceptance criteria in the master prompt hold,
+  demonstrated by tests that run **real circuits and real gradients** — no mocked qnode, no
+  stubbed gradient, no fixture standing in for the thing under test.
+- Tracked file count grew only by files you added deliberately; none of the §2.3 forbidden paths
+  exist; nothing under `artifacts/` is committed; no stray `.db`, `dist/`, debug prints or
+  unrelated diffs.
+- Every existing file you modified is in §4's table, or justified in writing.
+- Every claim in your final report is traceable to a command you ran in this session.
+
+Begin with Phase 0. Stop at the first §5 condition instead of guessing.
