@@ -21,6 +21,25 @@ import { QuditNoisePanel } from "../components/qudit/QuditNoisePanel";
 import { QuditLearnPanel } from "../components/qudit/QuditLearnPanel";
 import { Badge, Button, toast } from "../components/ui";
 
+/**
+ * QL-015. The shared toast anchor is bottom-right and is NOT moved: every page
+ * uses it, and repositioning it globally to fix one page is how a P4 becomes a
+ * P1. The Qudit Lab is the page where that anchor collides with live content --
+ * measured at 1920 the default position lands on the "Run Simulation" button
+ * itself, and at 1366 on the circuit grid. Candidate positions were measured
+ * against every interactive control on the page:
+ *
+ *     1920   bottom-right  covers 1 (Run Simulation)   top-right  covers 2
+ *            bottom-center covers 3                    top-center covers 0
+ *     1366   bottom-right  covers 0                    top-right  covers 2
+ *            bottom-center covers 4                    top-center covers 0
+ *
+ * so this page -- and only this page -- raises its toasts top-center. Sonner
+ * takes `position` per toast (ToastT.position), so nothing about the shared
+ * <Toaster> changes and every other page keeps bottom-right.
+ */
+const QUDIT_TOAST = { position: "top-center" } as const;
+
 const DEFAULT_DIMENSION = 3;
 
 export const QuditLabPage: React.FC = () => {
@@ -117,7 +136,7 @@ export const QuditLabPage: React.FC = () => {
       setResultSnapshot(snapshot);
     } catch (err: any) {
       console.error("Simulation error:", err);
-      toast.error(err.message || "Failed to execute qudit density-matrix simulation");
+      toast.error(err.message || "Failed to execute qudit density-matrix simulation", QUDIT_TOAST);
       // A failed run must not leave the previous result looking current.
       setResultSnapshot(null);
     } finally {
@@ -150,7 +169,7 @@ export const QuditLabPage: React.FC = () => {
     };
     setCircuit(newCircuit);
     handleRunSimulation(newCircuit);
-    toast.success(`Dimension switched to d = ${newDim}`);
+    toast.success(`Dimension switched to d = ${newDim}`, QUDIT_TOAST);
   };
 
   // Apply Preset
@@ -161,7 +180,7 @@ export const QuditLabPage: React.FC = () => {
       setNoiseConfig(preset.noise);
     }
     handleRunSimulation(preset.circuit, preset.noise || undefined);
-    toast.success(`Loaded preset: ${preset.title}`);
+    toast.success(`Loaded preset: ${preset.title}`, QUDIT_TOAST);
   };
 
   // Reset Circuit
@@ -175,7 +194,7 @@ export const QuditLabPage: React.FC = () => {
     };
     setCircuit(blankCircuit);
     handleRunSimulation(blankCircuit);
-    toast.info("Circuit reset to single idle qudit");
+    toast.info("Circuit reset to single idle qudit", QUDIT_TOAST);
   };
 
   const maxQuditsAllowed = limits?.safe_limits[String(dimension)] ?? 4;
@@ -278,7 +297,12 @@ export const QuditLabPage: React.FC = () => {
                 </Badge>
                 <span className="text-[10px] text-ink-3 font-mono">d={preset.dimension}</span>
               </div>
-              <div className="text-xs font-semibold text-ink group-hover:text-accent truncate">
+              {/* QL-016. These are teaching labels, so `truncate` hid the thing
+                  being taught: at 1366px "Fourier Superposition (F_3)" became
+                  "Fourier Superposition (F_..." and "Two-Qudit Bell State
+                  (|phi+>)" lost which Bell state it prepares. Wrapping costs a
+                  line of height and keeps the title readable at every width. */}
+              <div className="text-xs font-semibold text-ink group-hover:text-accent break-words">
                 {preset.title}
               </div>
               <p className="text-[11px] text-ink-3 line-clamp-2 mt-1 leading-relaxed">
