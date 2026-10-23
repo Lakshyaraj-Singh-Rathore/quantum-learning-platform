@@ -125,6 +125,117 @@ async function train(page: Page, label: string) {
   return status;
 }
 
+
+/* ================= the four flag states, RENDERED ===================== */
+/**
+ * §2A.6's four states, each driven by intercepting GET /api/features and then
+ * looking at what the page actually renders -- not by grepping source for the
+ * flag name.
+ *
+ * The contract (useFeatures.ts): features default to FEATURES_CLOSED, and an
+ * error is a RESOLVED answer meaning "off", while pending is not resolved at
+ * all so the guard shows nothing rather than 404ing a legitimate user mid
+ * refresh. `refetchOnMount: false` is already set, which is what stops the
+ * error state collapsing back into pending when the observer remounts.
+ */
+async function flagStates(browser: any) {
+  const CASES = [
+    // The "error" case needs longer than the others: the app retries failed
+    // queries twice (main.tsx:15, `count < 2`), so for the first ~6s the query
+    // is still pending and the guard correctly shows neither the Lab nor a
+    // 404. Reading at 2.5s caught it mid-retry and looked like a product bug.
+    // Measured: 3 requests, 404 body from ~6s, stable to 30s -- which is also
+    // the evidence that refetchOnMount:false keeps it from collapsing back.
+    { name: "on", nav: true, lab: true, handler: (r: any) => r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ qml_enabled: true }) }) },
+    { name: "off", nav: false, lab: false, handler: (r: any) => r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ qml_enabled: false }) }) },
+    { name: "error", nav: false, lab: false, settle: 9000, handler: (r: any) => r.fulfill({ status: 500, contentType: "application/json", body: JSON.stringify({ detail: "boom" }) }) },
+    { name: "unresolved", nav: false, lab: false, pending: true, handler: async (r: any) => { await new Promise((res) => setTimeout(res, 60000)); r.abort(); } },
+  ];
+
+  for (const c of CASES) {
+    const ctx = await browser.newContext({ viewport: { width: 1920, height: 1080 } });
+    const page = await ctx.newPage();
+    await login(page);
+    await page.route("**/api/features", c.handler);
+
+    await page.goto(`${APP}/learn`, { waitUntil: "domcontentloaded" });
+    await page.waitForTimeout(c.settle ?? (c.pending ? 4000 : 2500));
+
+    const navCount = await page.locator('nav a[href="/qml-lab"], a[href="/qml-lab"]').count();
+    check(
+      c.nav ? navCount > 0 : navCount === 0,
+      `flag "${c.name}": nav entry ${c.nav ? "is shown" : "is hidden"}`,
+      `${navCount} link(s)`,
+    );
+
+    await page.goto(`${APP}/qml-lab`, { waitUntil: "domcontentloaded" });
+    await page.waitForTimeout(c.settle ?? (c.pending ? 4000 : 2500));
+    const body = (await page.textContent("body")) ?? "";
+    const isLab = /Train a variational quantum classifier/i.test(body);
+    const is404 = /not found|404|doesn.t exist/i.test(body);
+
+    if (c.lab) {
+      check(isLab, `flag "${c.name}": the Lab renders`);
+    } else if (c.pending) {
+      // Pending must NOT 404 -- that is the whole point of exposing `resolved`
+      // separately. It shows neither the Lab nor a 404.
+      check(
+        !is404 && !isLab,
+        `flag "${c.name}": shows neither the Lab nor a 404 while the answer is still pending`,
+        `lab=${isLab} 404=${is404}`,
+      );
+    } else {
+      check(is404 && !isLab, `flag "${c.name}": the Lab is hidden and the 404 body is shown`, `lab=${isLab} 404=${is404}`);
+    }
+
+    await page.screenshot({ path: `${DIR}/qml-flag-${c.name}-1920x1080.png` });
+    await ctx.close();
+  }
+}
+
+/* ================= three viewports, captured and read ================== */
+async function viewportSweep(browser: any) {
+  for (const [label, viewport] of Object.entries({
+    "1920x1080": { width: 1920, height: 1080 },
+    "1366x768": { width: 1366, height: 768 },
+    "390x844": { width: 390, height: 844 },
+  })) {
+    const page = await browser.newPage({ viewport });
+    await login(page);
+    await page.goto(`${APP}/qml-lab`, { waitUntil: "networkidle" });
+    await page.waitForTimeout(2500);
+    await page.screenshot({ path: `${DIR}/qml-lab-${label}.png`, fullPage: true });
+
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    );
+    check(overflow <= 1, `/qml-lab @ ${label}: no unwanted horizontal scroll`, `${overflow}px`);
+
+    const clipped = await clippedText(page, "label, h1, h2, h3, button");
+    check(clipped.length === 0, `/qml-lab @ ${label}: no clipped label or heading`, clipped.slice(0, 3).join(" | ") || "none");
+
+    // Below its own stated minimum the Lab must say so rather than silently
+    // rendering a cramped, unusable form.
+    if (viewport.width < 900) {
+      const body = (await page.textContent("body")) ?? "";
+      check(
+        /designed for screens at least 900px wide/i.test(body),
+        `/qml-lab @ ${label}: states its own minimum width rather than pretending`,
+      );
+    }
+    await page.close();
+  }
+}
+
+async function clippedText(page: Page, selector: string) {
+  return page.$$eval(selector, (els) =>
+    els
+      .map((e) => ({ text: (e.textContent ?? "").trim(), clipped: e.scrollWidth > e.clientWidth + 1 }))
+      .filter((x) => x.clipped && x.text.length > 6)
+      .map((x) => x.text),
+  );
+}
+
 async function main() {
   let browser;
   try {
@@ -314,6 +425,10 @@ async function main() {
   }
 
   await page.close();
+
+  await flagStates(browser);
+  await viewportSweep(browser);
+
   await browser.close();
   console.log(`\nArtifacts: ${DIR}\n`);
   console.log(failures === 0 ? "All QML vision checks passed." : `${failures} QML vision check(s) FAILED.`);
