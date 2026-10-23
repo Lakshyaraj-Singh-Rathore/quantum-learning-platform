@@ -1,11 +1,6 @@
-import { Navigate } from "react-router-dom";
-import { useSession } from "../state/session";
+import { LoginPage } from "./LoginPage";
 
-/** Thin route redirect wrapper: logged-in -> /learn; logged-out -> /login */
+/** Landing page: directly serves the LoginPage so visitors can authenticate first. */
 export function HomePage() {
-  const token = useSession((s) => s.token);
-  if (token) {
-    return <Navigate to="/learn" replace />;
-  }
-  return <Navigate to="/login" replace />;
+  return <LoginPage mode="login" />;
 }

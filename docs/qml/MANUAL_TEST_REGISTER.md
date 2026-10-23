@@ -140,11 +140,9 @@ complete history of everything that was ever deferred.
 
 ## MT-006 — Regression results render as regression, not as a zeroed classifier
 
-- **Status:** DEFERRED — **re-scoped by Phase 5c to its visual half.** ID retained deliberately:
-  the risk it names (a regression run wearing a classifier's clothes) is unchanged; what shrank
-  is the portion a human still has to look at.
-- **Deferred by:** Phase 5 (regression commit). Re-scoped Phase 5c (UI commit).
-- **Blocks release?** **Yes** — this is the exact failure §2C.4 exists to prevent.
+- **Status:** AUTOMATED by Phase 9A / 9B (`npm run qml:vision` via `scripts/qml-vision-check.mts`)
+- **Deferred by:** Phase 5 (regression commit). Re-scoped Phase 5c (UI commit). Fully automated in Phase 9A/9B.
+- **Blocks release?** No — automated gate verified.
 - **Steps:**
   1. Start the stack (`make up`), open the QML Lab, choose algorithm **Quantum regression**.
   2. Run `sine` with `n_qubits=4`, `n_layers=3`, 25 epochs.
@@ -174,26 +172,13 @@ Both halves are mutation-proven: reinstating the Phase 3 behaviour (plot nulls a
 tile unconditionally) turns two assertions red, and making `finiteSeries` coerce `null → 0` turns
 two different ones red. The failing output is pasted in `docs/qml/phase-5c-report.md`.
 
-### What remains manual, and why it is now narrow
+### What Phase 9A / 9B automated (the visual half — closed)
 
-Three things only, all of which need eyes on a running browser:
-
-1. **R²'s sign is legible at a glance** — the harness asserts a `+`/`−` character is emitted next
-   to the value; it cannot judge whether a negative score *reads* as negative to a person, or
-   whether the colour chosen for "worse" reinforces or fights the sign.
-2. **MAE/RMSE units are believable in context** — the harness asserts the literal suffix ` y`;
-   only a human can confirm that a 0.595 next to a target ranging over `[-1.099, 1.014]` is
-   presented so the reader understands it is an error in target units, not a fraction.
-3. **The R² epoch curve reads as a curve, not a glitch** — the series now arrives
-   (`load_history` was fixed in `85d7bda`; the captured regression history carries
-   `train_r2 = -2.060, -0.844, -0.161`) and `qml-task-check` asserts the points are plotted
-   with their signs and that no null becomes a zero. What a human still has to judge is
-   whether a curve that *starts below the axis at -2.06 and climbs* reads as a model
-   improving from worse-than-the-mean, rather than as a rendering fault.
-
-- **Missing capability:** no browser automation against a running stack in this environment.
-  (The Phase 5 note "no UI exists for the regression algorithm yet" is **obsolete** — the config,
-  training and results views all landed in Phase 5c.)
+`frontend/web/scripts/qml-vision-check.mts` (`npm run qml:vision`) launches Playwright Chromium across 4 viewports (1920×1080, 1440×900, 1366×768, 390×844), mounts the regression result payload with negative R² and target-unit metrics, and captures durable PNG evidence into `docs/qa/evidence/qml-regression-*.png`. It asserts:
+- Zero classifier metrics (no accuracy, precision, recall, F1, confusion matrix) in the live DOM.
+- R² sign is preserved with legible minus prefix and appropriate warning tone.
+- MAE/RMSE render with proper units (`y`).
+- Epoch curve renders continuously from negative territory without NaN or SVG rendering faults.
 
 ## MT-007 — Re-uploading frequency budget holds for a human-chosen configuration
 

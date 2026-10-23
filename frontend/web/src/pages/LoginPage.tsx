@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Atom, Sparkles, Shield, Cpu, ChevronRight } from "lucide-react";
+import { Atom, Sparkles, Shield, Cpu, ChevronRight, User } from "lucide-react";
 import { login, register } from "../api/auth";
 import { ApiError } from "../api/client";
 import { useSession } from "../state/session";
@@ -16,10 +16,12 @@ export function LoginPage({ mode: initialMode }: { mode: Mode }) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [demoBusy, setDemoBusy] = useState<string | null>(null);
+  const user = useSession((s) => s.user);
   const setFromToken = useSession((s) => s.setFromToken);
   const navigate = useNavigate();
   const location = useLocation();
   const from = (location.state as { from?: string } | null)?.from ?? "/learn";
+
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
@@ -231,7 +233,28 @@ export function LoginPage({ mode: initialMode }: { mode: Mode }) {
               </p>
             </div>
 
+            {user && (
+              <div className="mb-6 flex items-center justify-between rounded-xl bg-accent/10 border border-accent/30 p-3.5 text-xs text-accent">
+                <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                  <User className="h-4 w-4 shrink-0" />
+                  <span className="truncate">
+                    Active: <strong className="text-white">{user.email}</strong>
+                  </span>
+                </div>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  className="h-7 px-2.5 text-xs border-accent/40 text-accent hover:bg-accent/20 cursor-pointer shrink-0"
+                  onClick={() => navigate(from, { replace: true })}
+                >
+                  Go to Workspace →
+                </Button>
+              </div>
+            )}
+
             <Tabs
+
               value={mode}
               onValueChange={(val) => {
                 setMode(val as Mode);

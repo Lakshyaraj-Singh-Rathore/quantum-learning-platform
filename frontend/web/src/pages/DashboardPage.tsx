@@ -121,7 +121,7 @@ function MasteryChart({ rows, valueKey = "score" }: { rows: MasteryRow[]; valueK
             </span>
             <div className="h-3 flex-1 overflow-hidden rounded-full bg-subtle border border-line-soft">
               <div
-                className="h-full bg-gradient-to-r from-accent to-accent-2 transition-all duration-300"
+                className="h-full bg-accent bg-gradient-to-r from-accent to-accent-2 transition-all duration-300"
                 style={{ width: `${percent}%` }}
               />
             </div>
@@ -305,7 +305,7 @@ export function ProgressPanel() {
     <div className="space-y-6">
       {/* 4 Overview Metrics */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <MetricCard label="Quizzes Completed" value={p.quizzes_taken} icon={GraduationCap} />
+        <MetricCard label="Quizzes Completed" subtitle="Quizzes taken" value={p.quizzes_taken} icon={GraduationCap} />
         <MetricCard label="Average Quiz Score" value={`${p.average_quiz_percentage}%`} icon={TrendingUp} />
         <MetricCard label="Challenges Attempted" value={p.challenges_attempted} icon={Puzzle} />
         <MetricCard
@@ -430,8 +430,8 @@ export function InstructorPanel() {
     <div className="space-y-6">
       {/* Top Cohort Metrics */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <MetricCard label="Active Students" value={data.total_students} icon={GraduationCap} />
-        <MetricCard label="Total Simulation Runs" value={data.total_jobs} icon={Clock} />
+        <MetricCard label="Active Students" subtitle="Students" value={data.total_students} icon={GraduationCap} />
+        <MetricCard label="Total Simulation Runs" subtitle="Simulation jobs" value={data.total_jobs} icon={Clock} />
       </div>
 
       {/* Cohort Performance Tables */}
@@ -440,59 +440,91 @@ export function InstructorPanel() {
           <h3 className="text-sm font-bold uppercase tracking-wider text-ink mb-3">
             Quiz Completion Across Cohort
           </h3>
-          <DataTable columns={quizCols} rows={data.quiz_completion ?? []} />
+          <DataTable columns={quizCols} rows={data.quiz_completion ?? []} emptyMessage="No quiz attempts yet." />
         </Card>
 
         <Card className="p-6">
           <h3 className="text-sm font-bold uppercase tracking-wider text-ink mb-3">
             Challenge Completion Across Cohort
           </h3>
-          <DataTable columns={challengeCols} rows={data.challenge_completion ?? []} />
+          <DataTable columns={challengeCols} rows={data.challenge_completion ?? []} emptyMessage="No challenge attempts yet." />
         </Card>
       </div>
 
-      {/* Weakest Concepts & Leaderboard */}
+      {/* Common Errors & Weakest Concepts */}
       <div className="grid gap-6 lg:grid-cols-2">
+        <Card className="p-6">
+          <h3 className="text-sm font-bold uppercase tracking-wider text-ink mb-3">
+            Common Errors
+          </h3>
+          <DataTable
+            columns={[
+              { key: "error", label: "Error Description", render: (v) => <span className="font-mono text-xs text-danger">{String(v)}</span> },
+              { key: "count", label: "Occurrences", render: (v) => <span className="font-mono text-xs">{v}</span> },
+            ]}
+            rows={data.common_errors ?? []}
+            emptyMessage="No errors recorded."
+          />
+        </Card>
+
         <Card className="p-6">
           <h3 className="text-sm font-bold uppercase tracking-wider text-ink mb-3">
             Weakest Concepts in Cohort
           </h3>
-          {data.weakest_tags.length > 0 ? (
+          {data.weakest_tags && data.weakest_tags.length > 0 ? (
             <MasteryChart
               rows={data.weakest_tags as unknown as MasteryRow[]}
               valueKey="average_score"
             />
           ) : (
-            <p className="text-xs text-ink-3 py-6 text-center">No concept weaknesses identified.</p>
+            <p className="text-xs text-ink-3 py-6 text-center">Not enough data yet.</p>
           )}
-        </Card>
-
-        <Card className="p-6">
-          <h3 className="text-sm font-bold uppercase tracking-wider text-ink mb-3">
-            Cohort Leaderboard
-          </h3>
-          <DataTable columns={leaderboardCols} rows={data.leaderboard ?? []} />
         </Card>
       </div>
 
-      {/* Inspect Learner Details */}
+      {/* Cohort Leaderboard */}
+      <Card className="p-6">
+        <h3 className="text-sm font-bold uppercase tracking-wider text-ink mb-3">
+          Cohort Leaderboard
+        </h3>
+        <DataTable columns={leaderboardCols} rows={data.leaderboard ?? []} emptyMessage="No completed challenges yet." />
+      </Card>
+
+      {/* Students Directory & Inspection */}
       <Card className="p-6 space-y-4">
-        <h3 className="text-base font-bold text-ink">Inspect Individual Learner</h3>
-        <div className="max-w-md">
-          <Label className="text-xs">Select Learner</Label>
-          <Select
-            value={pickedStudentId ? String(pickedStudentId) : ""}
-            onValueChange={(val) => setPickedStudentId(Number(val))}
-            className="bg-bg text-xs"
-            placeholder="Select a student to inspect..."
-          >
-            {(students.data ?? []).map((student) => (
-              <SelectItem key={student.id} value={String(student.id)}>
-                {student.display_name || student.email} ({student.email})
-              </SelectItem>
-            ))}
-          </Select>
-        </div>
+        <h3 className="text-base font-bold text-ink">Students</h3>
+        <p className="text-xs text-ink-3">Inspect a learner to view their individual progress and mastery profile.</p>
+
+        {(students.data ?? []).length > 0 ? (
+          <div className="space-y-4">
+            <DataTable
+              columns={[
+                { key: "id", label: "ID", render: (v) => <span className="font-mono text-xs">#{v}</span> },
+                { key: "email", label: "Email", render: (v) => <span className="font-mono text-xs text-accent">{v}</span> },
+                { key: "display_name", label: "Name", render: (v) => <span className="text-xs">{v || "—"}</span> },
+              ]}
+              rows={students.data ?? []}
+              emptyMessage="No learner accounts yet."
+            />
+            <div className="max-w-md pt-2">
+              <Label className="text-xs font-semibold">Inspect a learner</Label>
+              <Select
+                value={pickedStudentId ? String(pickedStudentId) : ""}
+                onValueChange={(val) => setPickedStudentId(Number(val))}
+                className="bg-bg text-xs"
+                placeholder="Select a student to inspect..."
+              >
+                {(students.data ?? []).map((student) => (
+                  <SelectItem key={student.id} value={String(student.id)}>
+                    {student.display_name || student.email} ({student.email})
+                  </SelectItem>
+                ))}
+              </Select>
+            </div>
+          </div>
+        ) : (
+          <p className="text-xs text-ink-3">No learner accounts yet.</p>
+        )}
 
         {pickedStudentId !== null && (
           <div className="mt-4 pt-4 border-t border-line-soft">

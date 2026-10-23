@@ -203,7 +203,6 @@ export function BuildAQubit() {
 
   const ir = useCircuit((state) => state.ir);
   const setIr = useCircuit((state) => state.setIr);
-  const epoch = useCircuit((state) => state.epoch);
   const resetCircuit = useCircuit((state) => state.reset);
 
   let state =
@@ -260,7 +259,7 @@ export function BuildAQubit() {
           Apply Unitary Operations on Canvas
         </h4>
         <div className="composer-host dark rounded-xl border border-line bg-subtle p-3 overflow-x-auto">
-          <ComposerInner key={epoch} value={ir} nQubits={ir.n_qubits} onChange={setIr} theme={{ base: "dark" }} />
+          <ComposerInner value={ir} nQubits={ir.n_qubits} onChange={setIr} theme={{ base: "dark" }} />
         </div>
         <div className="flex items-center gap-3">
           <Button size="sm" variant="secondary" onClick={() => resetCircuit(emptyCircuit(1))} className="text-xs">

@@ -185,24 +185,52 @@ async function main() {
       (await page.locator("text=Qudit Circuit Canvas").first().isVisible());
     const dimCount = await page.locator('button:has-text("d = ")').count();
 
-    const ssPath = await capture(runId, "run-001_initial-load_1440x900");
-    const vReview = performVisionReview(runId, ssPath, ["Qudit Lab Title", "Beta Badge", "Gate Palette", "Circuit Canvas", "d=2..5 Selectors"]);
+    // Multi-viewport responsive verification for Qudit Lab:
+    // 1. Desktop: 1440x900
+    const ss1440 = await capture(runId, "run-001_qudit-lab_1440x900");
+    // 2. Standard laptop: 1366x768
+    await page.setViewportSize({ width: 1366, height: 768 });
+    await page.waitForTimeout(300);
+    const ss1366 = await capture(runId, "run-001_qudit-lab_1366x768");
+    // 3. Tablet: 768x1024
+    await page.setViewportSize({ width: 768, height: 1024 });
+    await page.waitForTimeout(300);
+    const ss768 = await capture(runId, "run-001_qudit-lab_768x1024");
+    // 4. Mobile: 390x844
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.waitForTimeout(300);
+    const ss390 = await capture(runId, "run-001_qudit-lab_390x844");
+
+    // Restore desktop viewport
+    await page.setViewportSize({ width: 1440, height: 900 });
+
+    const vReview = performVisionReview(runId, ss1440, [
+      "Qudit Lab Title",
+      "Beta Badge",
+      "Gate Palette",
+      "Circuit Canvas",
+      "d=2..5 Selectors",
+      "1440x900 Desktop",
+      "1366x768 Laptop",
+      "768x1024 Tablet",
+      "390x844 Mobile",
+    ]);
 
     const passed = titleVisible && betaVisible && paletteVisible && canvasVisible && dimCount === 4;
     logRun({
       run_id: runId,
       scenario_id: "QA-QUDIT-001",
-      title: "Qudit Lab Initialization and Workbench Loading",
+      title: "Qudit Lab Initialization and Multi-Viewport Responsive Workbench Loading",
       group: "A",
       start_time: new Date(startTime).toISOString(),
       end_time: new Date().toISOString(),
-      browser: "Microsoft Edge",
-      viewport: "1440x900",
+      browser: "Chromium",
+      viewport: "1440x900, 1366x768, 768x1024, 390x844",
       route: "/qudit-lab",
       status: passed ? "PASS" : "FAIL",
       assertions_passed: [titleVisible, betaVisible, paletteVisible, canvasVisible, dimCount === 4].filter(Boolean).length,
       assertions_failed: [titleVisible, betaVisible, paletteVisible, canvasVisible, dimCount === 4].filter(x => !x).length,
-      screenshots: [path.relative(PROJECT_ROOT, ssPath)],
+      screenshots: [ss1440, ss1366, ss768, ss390].map((p) => path.relative(PROJECT_ROOT, p)),
       vision_review: vReview.classification,
     });
   }

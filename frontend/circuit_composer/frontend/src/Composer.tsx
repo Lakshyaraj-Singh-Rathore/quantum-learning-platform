@@ -228,13 +228,34 @@ export function ComposerInner({ value, nQubits, onChange, onHeight, theme }: Com
     return () => ro.disconnect()
   }, [resize])
 
-  /** Push the circuit back to Python (only when it actually changed). */
+  // Synchronize internal state when an external actor updates value
+  // (e.g. Smart Composer adopting a circuit, Presets like Bell/GHZ, or Import)
+  useEffect(() => {
+    if (!value) return
+    const incomingJson = JSON.stringify(value)
+    if (incomingJson !== lastSent.current) {
+      lastSent.current = incomingJson
+      setIr({
+        ...value,
+        ops: sanitizeOps(value.ops, value.n_qubits),
+      })
+      setPending(null)
+      setSelectedId(null)
+      setError("")
+      setNotice("")
+    }
+  }, [value])
+
+  /** Push the circuit back to host (only when fully formed and actually changed). */
   const commit = useCallback((next: CircuitIR) => {
-    // Floor at n_qubits so "Measure All" always has somewhere to write, but
-    // never carry a stale larger width forward: that is what made a shrunk
-    // circuit keep producing over-wide bitstrings.
+    // Do not commit incomplete operations (e.g. CNOT control placed, target pending)
+    const validOps = next.ops.filter((o) => {
+      if (o.kind === "barrier") return true
+      return o.qubits && o.qubits.length > 0
+    })
     const payload = {
       ...next,
+      ops: validOps,
       n_clbits: Math.max(requiredClbits(next), next.n_qubits, 1),
     }
     const json = JSON.stringify(payload)
@@ -244,16 +265,14 @@ export function ComposerInner({ value, nQubits, onChange, onHeight, theme }: Com
     }
   }, [onChange])
 
-  // Every setComponentValue triggers a full Python rerun of the page, and the
-  // whole Composer (timeline, analysis, export tabs) re-renders. Committing
-  // synchronously on each keystroke/click made the +/- Qubit buttons feel
-  // laggy and unresponsive. The React state is authoritative and updates
-  // instantly; debounce the trip back to Python so a burst of clicks costs one
-  // rerun instead of one per click.
+  // Debounce the trip back to host so bursts of clicks cost one update.
+  // CRITICAL: Do not commit while a multi-qubit placement is pending target selection!
   useEffect(() => {
+    if (pending) return
     const id = window.setTimeout(() => commit(ir), 250)
     return () => window.clearTimeout(id)
-  }, [ir, commit])
+  }, [ir, commit, pending])
+
 
   const nCols = Math.max(maxLayer(ir.ops) + 2, 8) // auto-grow right
 

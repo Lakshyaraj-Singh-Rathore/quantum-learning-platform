@@ -249,7 +249,6 @@ export function LevelPlay({ level, onBack }: { level: GameLevel; onBack: () => v
   const navigate = useNavigate();
   const ir = useCircuit((state) => state.ir);
   const setIr = useCircuit((state) => state.setIr);
-  const epoch = useCircuit((state) => state.epoch);
   const resetCircuit = useCircuit((state) => state.reset);
 
   const [shots, setShots] = useState(1024);
@@ -367,7 +366,6 @@ export function LevelPlay({ level, onBack }: { level: GameLevel; onBack: () => v
 
           <div className="flex-1 composer-host dark bg-[#090d18] p-4 overflow-auto">
             <ComposerInner
-              key={epoch}
               value={ir}
               nQubits={ir.n_qubits}
               onChange={setIr}
@@ -509,7 +507,6 @@ export function LevelPlay({ level, onBack }: { level: GameLevel; onBack: () => v
         {/* Composer Canvas */}
         <div className="composer-host dark bg-[#090d18] p-3 md:p-5 min-h-[440px] overflow-x-auto">
           <ComposerInner
-            key={epoch}
             value={ir}
             nQubits={ir.n_qubits}
             onChange={setIr}

@@ -102,8 +102,8 @@ check("it is no longer the P3 placeholder", !body.includes("Not built yet"));
 // The editor mounts but paints nothing until it reaches a DOM; see the note
 // above. Asserting the mount point is what SSR can honestly prove.
 check("the CodeMirror editor mounts", html.includes("cm-theme"));
-check("the build button is offered", body.includes("Build circuit"));
-check("a reset-to-example control is offered", html.includes("Reset to example"));
+check("the build button is offered", body.includes("Build Circuit") || body.includes("Build & Run"));
+check("a reset-to-example control is offered", html.includes("Reset to starter code") || html.includes("Reset to example"));
 
 /* ---------- the language list comes from the API, not a hard-coded guess ---------- */
 

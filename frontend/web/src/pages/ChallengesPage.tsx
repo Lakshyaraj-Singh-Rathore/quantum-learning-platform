@@ -1040,7 +1040,7 @@ export function CodingTab() {
               onClick={openInComposer}
               className="gap-2 shadow-sm font-semibold"
             >
-              <ExternalLink className="h-4 w-4" /> Open in Composer to Solve
+              <ExternalLink className="h-4 w-4" /> Open in Composer (Build your solution in the Composer)
             </Button>
           )}
         </div>
@@ -1067,6 +1067,17 @@ export function CodingTab() {
 
               {challenge.is_dynamic && <Badge tone="warn">Requires Runtime Feedback</Badge>}
             </div>
+
+            {challenge.constraints && Object.keys(challenge.constraints).length > 0 && (
+              <div className="flex flex-wrap items-center gap-2 text-xs pt-2">
+                <span className="text-ink-3">Constraints:</span>
+                {Object.entries(challenge.constraints).map(([k, v]) => (
+                  <Badge key={k} tone="neutral" className="font-mono text-[11px]">
+                    {k}={String(v)}
+                  </Badge>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </Card>
@@ -1076,7 +1087,9 @@ export function CodingTab() {
         <div className="flex items-center justify-between mb-3">
           <div>
             <h3 className="text-base font-semibold text-ink">Active Session Circuit</h3>
-            <p className="text-xs text-ink-3 mt-0.5">Summary: {gateSummary}</p>
+            <p className="text-xs text-ink-3 mt-0.5">
+              Current circuit: {ir.n_qubits} qubits, depth {ir.ops.length > 0 ? Math.max(...ir.ops.map((op) => op.layer)) + 1 : 0}, {circuitIsDynamic(ir) ? "dynamic" : "static"} · Summary: {gateSummary}
+            </p>
           </div>
           <Button
             variant="secondary"
@@ -1100,7 +1113,7 @@ export function CodingTab() {
           className="gap-2 px-6"
         >
           {submit.isPending ? <Spinner className="h-4 w-4" /> : <Check className="h-4 w-4" />}
-          Submit Circuit for Grading
+          Submit this circuit for grading
         </Button>
 
         {submit.isError && <ErrorNote className="mt-3">{String(submit.error)}</ErrorNote>}
@@ -1251,6 +1264,12 @@ export function QuizTab() {
             </div>
           )}
         </div>
+
+        {quiz && (
+          <div className="mb-4">
+            <h2 className="text-lg font-bold text-ink">{quiz.title}</h2>
+          </div>
+        )}
 
         {/* Progress Bar */}
         <div className="mb-6 flex items-center justify-between text-xs text-ink-3 border-b border-line pb-3">

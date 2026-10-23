@@ -354,6 +354,7 @@ export function TabsTrigger({
   return (
     <button
       role="tab"
+      value={value}
       aria-selected={isActive}
       disabled={disabled}
       onClick={() => ctx?.setActiveTab(value)}

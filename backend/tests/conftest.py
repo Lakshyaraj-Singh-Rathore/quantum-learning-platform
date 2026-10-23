@@ -33,6 +33,8 @@ os.environ["GEMINI_API_KEY"] = ""
 os.environ["QBRAID_API_KEY"] = ""
 os.environ["QBRAID_DEVICE_ID"] = ""
 os.environ["CONTENT_DIR"] = str(ROOT.parent / "content")
+os.environ["QML_ENABLED"] = "false"
+
 
 
 @pytest.fixture(scope="session")

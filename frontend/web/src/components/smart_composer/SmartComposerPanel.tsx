@@ -90,7 +90,7 @@ export function SmartComposerPanel({
         </div>
 
         {/* Mode Switch Tabs */}
-        <div className="flex items-center gap-1.5 p-1 bg-surface rounded-xl border border-white/5">
+        <div className="flex items-center gap-1.5 p-1 bg-raised rounded-xl border border-white/5">
           <button
             onClick={() => setActiveTab("simplify")}
             className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
@@ -130,7 +130,7 @@ export function SmartComposerPanel({
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* Controls Column (5 cols) */}
           <div className="lg:col-span-5 flex flex-col gap-4">
-            <Card className="p-4 bg-surface/50 border border-white/10 rounded-xl flex flex-col gap-4 text-xs">
+            <Card className="p-4 bg-raised/50 border border-white/10 rounded-xl flex flex-col gap-4 text-xs">
               <span className="font-semibold text-white flex items-center gap-1.5">
                 <Cpu className="h-4 w-4 text-accent" />
                 Optimization Parameters
@@ -142,7 +142,7 @@ export function SmartComposerPanel({
                   aria-label="Optimization Objective"
                   value={objective}
                   onChange={(e) => setObjective(e.target.value)}
-                  className="h-8 rounded-lg bg-surface border border-white/10 text-xs px-2.5 text-ink focus:outline-none focus:border-accent"
+                  className="h-8 rounded-lg bg-raised border border-white/10 text-xs px-2.5 text-ink focus:outline-none focus:border-accent"
                 >
                   <option value="min_gates">Minimize Total Gate Count</option>
                   <option value="min_depth">Minimize Circuit Depth</option>
@@ -181,7 +181,7 @@ export function SmartComposerPanel({
             </Card>
 
             {/* Verified Rules Guide */}
-            <Card className="p-3.5 bg-surface/30 border border-white/5 rounded-xl text-xs flex flex-col gap-2 max-h-56 overflow-y-auto">
+            <Card className="p-3.5 bg-raised/30 border border-white/5 rounded-xl text-xs flex flex-col gap-2 max-h-56 overflow-y-auto">
               <span className="font-semibold text-ink-3 flex items-center gap-1.5">
                 <ShieldCheck className="h-3.5 w-3.5 text-accent" />
                 Active Verified Rule Library ({rulesQuery.data?.length || 8})
@@ -241,7 +241,7 @@ export function SmartComposerPanel({
                 </div>
 
                 {/* Before / After Metrics Comparison Table */}
-                <Card className="p-4 bg-surface/50 border border-white/10 rounded-xl flex flex-col gap-3">
+                <Card className="p-4 bg-raised/50 border border-white/10 rounded-xl flex flex-col gap-3">
                   <span className="text-xs font-semibold text-white">Before &amp; After Optimization Gains</span>
                   <div className="grid grid-cols-4 gap-2 text-center">
                     <div className="p-2.5 rounded-lg bg-bg border border-white/5 flex flex-col">
@@ -314,7 +314,7 @@ export function SmartComposerPanel({
                 )}
 
                 {/* Explanation text */}
-                <p className="text-xs text-ink-3 leading-relaxed bg-surface/30 p-3 rounded-lg border border-white/5">
+                <p className="text-xs text-ink-3 leading-relaxed bg-raised/30 p-3 rounded-lg border border-white/5">
                   {simplificationResult.explanation}
                 </p>
 
@@ -380,7 +380,7 @@ export function SmartComposerPanel({
               <button
                 key={chip}
                 onClick={() => setPrompt(chip)}
-                className="px-2.5 py-1 rounded-lg bg-surface border border-white/10 text-ink-3 hover:text-white hover:border-accent text-[11px] transition-colors cursor-pointer"
+                className="px-2.5 py-1 rounded-lg bg-raised border border-white/10 text-ink-3 hover:text-white hover:border-accent text-[11px] transition-colors cursor-pointer"
               >
                 {chip}
               </button>
@@ -389,7 +389,7 @@ export function SmartComposerPanel({
 
           {/* Generator Result */}
           {generationResult && (
-            <Card className="p-4 bg-surface/50 border border-white/10 rounded-xl flex flex-col gap-4 text-xs">
+            <Card className="p-4 bg-raised/50 border border-white/10 rounded-xl flex flex-col gap-4 text-xs">
               <div className="flex items-center justify-between border-b border-white/10 pb-3">
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="h-4 w-4 text-accent" />

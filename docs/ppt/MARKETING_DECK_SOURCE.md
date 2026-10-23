@@ -1,7 +1,7 @@
 # QuantumLearnAI — Marketing Deck Source Data
 
 **Status:** every number below was measured in this repo, not quoted from docs.
-**Verified against:** `main` @ `1180f00`.
+**Verified against:** `main` @ `9bfad8c` (Phase 9B).
 **Two rules this deck obeys:** nothing is claimed that isn't in shipped code, and
 everything not yet built is labelled ROADMAP.
 
@@ -16,11 +16,11 @@ everything not yet built is labelled ROADMAP.
 
 | Claim in old draft | Reality |
 |---|---|
-| 7 Streamlit pages | **11 React SPA pages**; Streamlit deleted |
+| 7 Streamlit pages | **13 React SPA routes / 10 navigation items** across 4 sections; Streamlit deleted |
 | `frontend/lib/viz.py`, phase colour | File deleted; **feature ported** to `ResultsViews.tsx:235` — `hsl(phase × 180/π, 65%, 55%)` |
-| 519 frontend tests | **389 named checks** across 16 harnesses + **4,300 golden values** @1e-9 |
-| 982+ tests total | Backend **707 passed / 5 skipped** (419 test functions) + the above |
-| 41 endpoints | **41** operations across 7 routers |
+| 519 frontend tests | **389 named checks** across 16 harnesses + **4,300 golden values** @1e-9 + **vision test suites** (`vision:embedded`, `qml:vision`, `test:portal`) |
+| 982+ tests total | Backend **1358 passed / 5 skipped** (1304 base + 54 limit sweeps) + the above |
+| 41 endpoints | **66** OpenAPI paths (70 operations) across 10 routers |
 | Code Lab, 6 frameworks | **4**: Qiskit, Cirq, PennyLane, OpenQASM 3 |
 | "Streamlit + FastAPI + Celery" | FastAPI + Celery + **React SPA** |
 
@@ -59,7 +59,7 @@ Learners are forced to choose between two broken halves.
 
 # SLIDE 3 — Solution: Four Pillars
 
-**BUILD** — Drag-and-drop composer. Rows are qubits, columns are layers. Collision handling does a global auto-insert-column (IBM Composer behaviour): dropping on an occupied cell shifts right, never overwrites.
+**BUILD** — Drag-and-drop composer, Qudit Lab ($d \in \{2,3,4,5\}$), Quantum ML Lab (VQC, Quantum Regression, Quantum Kernels, Hybrid PyTorch), and embedded Noise Lab & Smart Composer. Rows are qubits/qudits, columns are layers. Collision handling does a global auto-insert-column (IBM Composer behaviour): dropping on an occupied cell shifts right, never overwrites.
 
 **RUN** — One circuit, six backends. See next slide.
 
@@ -154,11 +154,33 @@ So we colour the bars by relative phase.
 - On CUDA-Q the same `NoiseParams` become `AmplitudeDampingChannel` and `PhaseFlipChannel`, with readout as bit-flip on `mz`, run on the density-matrix engine
 - Statevector shown is **ideal**; only the counts carry noise — the UI states this rather than leaking one into the other
 
+### Noise Lab & Smart Composer (Shipped)
+
+- **Noise Lab (`/composer` bottom panel):** T1/T2/readout noise modeling, Kraus operator channels, side-by-side ideal vs noisy distribution, zero-noise extrapolation (ZNE) and readout error mitigation.
+- **Smart Composer (`/composer` smart panel):** Automated circuit identity optimization (H²=I, adjacent inverse cancellation, SWAP decomposition), matrix equivalence verification, circuit diff vs target reference, and depth/gate resource estimation. Verified across 4 viewports with 48/48 automated vision checks (`vision:embedded`).
+
 ---
 
 # SLIDE 7 — One Integrated Platform
 
-**11 SPA pages:** Learn · Curriculum · Composer · Challenges · Code Lab · Games · Playground · Dashboard · Login · Topic detail.
+**13 SPA routes across 10 navigation items (4 sections):**
+- **Study:** Learn (`/learn`), Curriculum (`/curriculum`, `/curriculum/topic/:topicId`), Playground (`/playground`)
+- **Build & Simulate:** Composer (`/composer` with embedded Noise Lab & Smart Composer), Qudit Lab (Beta) (`/qudit-lab`), Code Lab (`/codelab`), Quantum ML Lab (`/qml-lab`, flag-gated)
+- **Practice:** Challenges (`/challenges`), Games (`/games`)
+- **Insights:** Dashboard (`/dashboard`)
+- **Auth & System:** Home (`/`), Login (`/login`), Register (`/register`)
+
+### Qudit Lab (Shipped)
+- Multilevel quantum simulation across dimensions $d \in \{2, 3, 4, 5\}$ with native qudit statevector backend
+- Generalised Pauli/Gell-Mann gates ($X_d, Z_d, H_d$, embedded single-qudit transitions, entangling gates)
+- Full density matrix inspector: populations & coherences, purity, von Neumann entropy
+- Validated with negative-path limit sweeps and multi-viewport responsive layout
+
+### Quantum ML Lab (Shipped, flag-gated `qml_enabled`)
+- 4 production quantum algorithms: Variational Quantum Classifier (VQC), Quantum Regression, Quantum Kernels (Gram matrix evaluation), and Hybrid PyTorch QNN (jointly differentiated circuit + classical layer)
+- Parameter-shift and adjoint differentiation, live epoch training stream via Celery async dispatch
+- Decision boundary visualization, interactive dataset selectors (moons, circles, spirals, sine, damped cosine), and signed R² display
+- Audited with headless Chromium vision verification (`qml:vision`, 66 PASS / 0 FAIL)
 
 **Curriculum — 67 lessons, 71 topics, 10 sections**
 - Sections span Mathematical Foundations → Core Theory → Intro QC → Qiskit → Algorithms → Advanced Gates → Variational NISQ → Error Correction → Hardware → Communication
@@ -172,7 +194,7 @@ So we colour the bars by relative phase.
 
 **Auth** — JWT, bcrypt, roles student / instructor / admin. Instructor dashboard is role-gated; all AI endpoints require auth.
 
-**Data** — PostgreSQL 16 + pgvector, **14 tables**, 8 Alembic migrations applied automatically on container startup.
+**Data** — PostgreSQL 16 + pgvector, **15 tables**, 10 Alembic migrations applied automatically on container startup.
 
 **Front-end engineering note worth one line:** the sidebar push/overlay contract is enforced by an automated harness (`push:overlay`), not by eyeballing it.
 
@@ -250,6 +272,9 @@ Live diagnostics as you type. Static checks catch typos, blocked imports and a m
 | **Grover Lab: real maths** | 1/64 → 99.66% over 6 iterations, and falls if you over-rotate |
 | **Degrades with an explanation** | Missing GPU or credentials produces a sentence saying why, not a dead button |
 | **Instructor dashboard, live from DB** | Completion rate, pass rate, common errors ranked by frequency, weakest concepts averaged by tag, per-student |
+| **Qudit simulation ($d=2..5$)** | Native qudit statevector simulation, Gell-Mann basis, density matrix inspection |
+| **Quantum Machine Learning Lab** | 4 algorithms (VQC, QNN, Kernel, Regression) with live training stream, parameter-shift/adjoint gradients, decision boundaries |
+| **Smart Composer & Noise Lab** | Circuit equivalence reduction + real T1/T2/readout noise modeling embedded in the composer workflow |
 
 **The debugging loop is the product.** Wrong answer → inspect → understand → modify → rerun, instead of wrong answer → stuck. Validator, Inspector, Autograder and AI tutor are four layers of the same loop.
 
@@ -260,12 +285,12 @@ Live diagnostics as you type. Static checks catch typos, blocked imports and a m
 **Agreement:** Bell 1000 shots seed 3 — Aer 489/511, Cirq 488/512, PennyLane 502/498. Worst divergence 0.025 at 8000 shots. Grover 2-qubit `11` at probability 1.000 on all three. Dynamic native vs Cirq driver within shot noise.
 
 **Scale:**
-- **41 endpoints** across 7 routers · **14 tables** · 8 Alembic migrations
-- 15 base gates / 11 controlled aliases
-- 6 backends (5 static incl. CUDA-Q GPU, + 1 dynamic engine)
+- **66 OpenAPI endpoints (70 operations)** across 10 routers · **15 tables** · 10 Alembic migrations
+- 15 base gates / 11 controlled aliases + qudit gate library ($d \in \{2,3,4,5\}$)
+- 6 backends (5 static incl. CUDA-Q GPU, + 1 dynamic engine) + qudit statevector engine
 - **67 lessons · 71 topics · 10 sections** · **1,008** RAG chunks
-- 6+ visualisation modes · 5 AI tools, zero of them a simulator
-- **Backend 707 passed / 5 skipped** · **frontend 389 named checks across 16 harnesses** · **4,300 golden values agreeing with numpy at 1e-9**
+- 6+ visualisation modes + qudit density matrix inspector + QML decision boundary & loss landscape
+- **Backend 1358 passed / 5 skipped** (1304 base + 54 limit sweeps) · **frontend 41+ harnesses & vision suites** (including `qml:vision`, `test:portal`, `vision:embedded`, `viewport`, `render:*`) · **4,300 golden values agreeing with numpy at 1e-9**
 
 **Deployment:** Docker Compose — Postgres, Redis, Celery worker, FastAPI, React. Migrations applied on startup. End-to-end verified.
 
@@ -288,18 +313,6 @@ Live diagnostics as you type. Static checks catch typos, blocked imports and a m
 > **Label this slide "Roadmap" and grey it out. None of the below is shipped.**
 > Do not merge any of it into the claims above.
 
-### Noise Lab *(next)*
-A dedicated lab for T1/T2/readout, gate durations and Kraus channels — ideal vs noisy histograms side by side, zero-noise extrapolation, probabilistic error cancellation, readout correction matrix.
-
-Builds on what exists: `NoiseParams`, `clamped()` validation, and the Composer's current optional noise on `qiskit_aer` and `cudaq`.
-
-**Two known risks, recorded before work starts:** the plan specifies T1/T2 in **nanoseconds** while the codebase is **microseconds**; and Mode 2 targets a `coupling_map`, which appears **nowhere** in `backend/app` today.
-
-### Smart Composer *(next)*
-Circuit reduction using identities from `adv.circuit_identities` — adjacent-inverse cancellation, H²=I, SWAP as three CNOTs — with verification that the reduced circuit is exactly equal. A twelve-gate circuit reduces to two.
-
-Plus a circuit-diff view comparing a student attempt against the reference, and resource estimation: qubits, gates, depth, and a depth budget translated into feasibility and success probability via error rates.
-
 ### Further out
 
 | Item | Note |
@@ -316,7 +329,7 @@ Plus a circuit-diff view comparing a student attempt against the reference, and 
 
 ### Honest gaps — say these before a judge finds them
 
-1. **No CI.** The 707 backend tests and 16 frontend harnesses run by hand.
+1. **No CI.** The 1358 backend tests and 41+ frontend harnesses run by hand.
 2. **Composer palette keyboard access.** The drag tiles at `Composer.tsx:439-446` have `draggable` and `onClick` but no `role`, `tabIndex` or `onKeyDown`. Tracked, not fixed.
 3. **Registry/DB divergence.** 54 topics are `draft` in `curriculum.py` but published in the DB — deliberate, documented, and two tests depend on it. If asked, this is a design decision, not a bug.
 4. **AI features need a key.** Without `GEMINI_API_KEY`, retrieval falls back to keyword search and code generation returns a clear 503. The app is fully usable; the AI pillar is not.
@@ -327,16 +340,16 @@ Plus a circuit-diff view comparing a student attempt against the reference, and 
 
 | Metric | Value |
 |---|---|
-| Backend tests | **707 passed / 5 skipped** (419 test functions, 32 files) |
-| Frontend harnesses | **16 scripts** → **389 named checks** + **4,300 golden values** @1e-9 |
-| Endpoints | **41** across 7 routers |
-| Tables | **14**, 8 Alembic migrations, one linear head |
-| Backends | **6** adapters |
-| Gates | **15** base + **11** controlled aliases |
+| Backend tests | **1358 passed / 5 skipped** (1304 baseline + 54 negative-path limit sweeps) |
+| Frontend harnesses | **41+ scripts & vision suites** (including `vision:embedded`, `qml:vision`, `test:portal`, `render:*`) + **4,300 golden values** @1e-9 |
+| Endpoints | **66** OpenAPI paths (70 operations) across 10 routers |
+| Tables | **15**, 10 Alembic migrations, one linear head `j5e8f1a4b7c2` |
+| Backends | **6** adapters + qudit statevector engine |
+| Gates | **15** base + **11** controlled aliases + qudit gate library ($d \in \{2,3,4,5\}$) |
 | Lessons / topics / sections | **67 / 71 / 10** |
 | Content volume | **1,003,423 characters**, **344** cross-lesson links |
 | Games | **4** games, **10** levels, + Grover Lab |
-| Qubit limits | static **20**, dynamic **15**, while-cap **32**, shots **4096** |
+| Qubit & dimension limits | static **20q**, dynamic **15q**, QML **8q**, qudit $d \in \{2..5\}$, while-cap **32**, shots **4096** |
 | Code Lab languages | **4**: Qiskit, Cirq, PennyLane, OpenQASM 3 |
-| SPA pages | **11** |
-| Docker services | **5**: Postgres, Redis, Celery worker, FastAPI, React |
+| SPA routes / Nav items | **13 routes / 10 nav items** across 4 sections |
+| Docker services | **5**: Postgres, Redis, Celery worker, FastAPI, React (plus GPU overlay & `--profile qml`) |

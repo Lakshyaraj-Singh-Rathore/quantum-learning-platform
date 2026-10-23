@@ -162,7 +162,7 @@ export function NoiseLabView({ circuitIr, backendId = "qiskit_aer" }: NoiseLabVi
           <Label className="text-xs text-ink-3">Preset:</Label>
           <select
             aria-label="Noise configuration preset"
-            className="h-8 rounded-lg bg-surface border border-white/10 text-xs px-2.5 text-ink focus:outline-none focus:border-accent"
+            className="h-8 rounded-lg bg-raised border border-white/10 text-xs px-2.5 text-ink focus:outline-none focus:border-accent"
             onChange={(e) => handleSelectPreset(e.target.value)}
             defaultValue="superconducting_transmon"
           >
@@ -179,7 +179,7 @@ export function NoiseLabView({ circuitIr, backendId = "qiskit_aer" }: NoiseLabVi
             aria-label="Simulation shots"
             value={shots}
             onChange={(e) => setShots(Number(e.target.value))}
-            className="h-8 rounded-lg bg-surface border border-white/10 text-xs px-2 text-ink focus:outline-none focus:border-accent"
+            className="h-8 rounded-lg bg-raised border border-white/10 text-xs px-2 text-ink focus:outline-none focus:border-accent"
           >
             <option value={512}>512 shots</option>
             <option value={1024}>1024 shots</option>
@@ -227,7 +227,7 @@ export function NoiseLabView({ circuitIr, backendId = "qiskit_aer" }: NoiseLabVi
           </div>
 
           {/* Category Tabs */}
-          <div className="grid grid-cols-5 gap-1 p-1 bg-surface rounded-xl border border-white/5 text-[11px]">
+          <div className="grid grid-cols-5 gap-1 p-1 bg-raised rounded-xl border border-white/5 text-[11px]">
             {(
               [
                 ["decoherence", "Decoherence"],
@@ -252,7 +252,7 @@ export function NoiseLabView({ circuitIr, backendId = "qiskit_aer" }: NoiseLabVi
           </div>
 
           {/* Active Category Controls Card */}
-          <Card className="p-4 bg-surface/50 border border-white/10 rounded-xl flex flex-col gap-4">
+          <Card className="p-4 bg-raised/50 border border-white/10 rounded-xl flex flex-col gap-4">
             {/* 1. Decoherence & Relaxation */}
             {activeCategory === "decoherence" && (
               <div className="flex flex-col gap-3.5 text-xs">
@@ -653,7 +653,7 @@ export function NoiseLabView({ circuitIr, backendId = "qiskit_aer" }: NoiseLabVi
           </Card>
 
           {/* Parameter Sweep Accordion */}
-          <Card className="p-3.5 bg-surface/30 border border-white/5 rounded-xl text-xs flex flex-col gap-3">
+          <Card className="p-3.5 bg-raised/30 border border-white/5 rounded-xl text-xs flex flex-col gap-3">
             <div className="flex items-center justify-between">
               <span className="font-semibold text-white flex items-center gap-1.5">
                 <TrendingDown className="h-3.5 w-3.5 text-accent" />
@@ -668,7 +668,7 @@ export function NoiseLabView({ circuitIr, backendId = "qiskit_aer" }: NoiseLabVi
                   aria-label="Parameter to sweep"
                   value={sweepParam}
                   onChange={(e) => setSweepParam(e.target.value)}
-                  className="w-full h-7 rounded bg-surface border border-white/10 px-1 text-xs"
+                  className="w-full h-7 rounded bg-raised border border-white/10 px-1 text-xs"
                 >
                   <option value="decoherence.t1_us">T1 (µs)</option>
                   <option value="decoherence.t2_us">T2 (µs)</option>
@@ -725,7 +725,7 @@ export function NoiseLabView({ circuitIr, backendId = "qiskit_aer" }: NoiseLabVi
           {/* Metric Cards Row */}
           {simResult?.metrics && (
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <Card className="p-3 bg-surface/50 border border-white/5 rounded-xl flex flex-col">
+              <Card className="p-3 bg-raised/50 border border-white/5 rounded-xl flex flex-col">
                 <span className="text-[11px] text-ink-3">Quantum State Fidelity</span>
                 <span className="text-lg font-mono font-bold text-accent mt-0.5">
                   {simResult.metrics.fidelity !== null && simResult.metrics.fidelity !== undefined
@@ -737,7 +737,7 @@ export function NoiseLabView({ circuitIr, backendId = "qiskit_aer" }: NoiseLabVi
                 </span>
               </Card>
 
-              <Card className="p-3 bg-surface/50 border border-white/5 rounded-xl flex flex-col">
+              <Card className="p-3 bg-raised/50 border border-white/5 rounded-xl flex flex-col">
                 <span className="text-[11px] text-ink-3">Density Matrix Purity</span>
                 <span className="text-lg font-mono font-bold text-white mt-0.5">
                   {simResult.metrics.purity !== null && simResult.metrics.purity !== undefined
@@ -747,7 +747,7 @@ export function NoiseLabView({ circuitIr, backendId = "qiskit_aer" }: NoiseLabVi
                 <span className="text-[9px] text-ink-4 mt-1">Tr(ρ²) (1 = Pure, 0.5 = Mixed)</span>
               </Card>
 
-              <Card className="p-3 bg-surface/50 border border-white/5 rounded-xl flex flex-col">
+              <Card className="p-3 bg-raised/50 border border-white/5 rounded-xl flex flex-col">
                 <span className="text-[11px] text-ink-3">Total Variation Dist</span>
                 <span className="text-lg font-mono font-bold text-emerald-400 mt-0.5">
                   {simResult.metrics.total_variation_distance.toFixed(4)}
@@ -755,7 +755,7 @@ export function NoiseLabView({ circuitIr, backendId = "qiskit_aer" }: NoiseLabVi
                 <span className="text-[9px] text-ink-4 mt-1">½ ∑ |P_ideal - P_noisy|</span>
               </Card>
 
-              <Card className="p-3 bg-surface/50 border border-white/5 rounded-xl flex flex-col">
+              <Card className="p-3 bg-raised/50 border border-white/5 rounded-xl flex flex-col">
                 <span className="text-[11px] text-ink-3">Von Neumann Entropy</span>
                 <span className="text-lg font-mono font-bold text-white mt-0.5">
                   {simResult.metrics.entropy_bits !== null && simResult.metrics.entropy_bits !== undefined
@@ -768,7 +768,7 @@ export function NoiseLabView({ circuitIr, backendId = "qiskit_aer" }: NoiseLabVi
           )}
 
           {/* Dual Bar Histogram: Ideal vs Noisy */}
-          <Card className="p-4 bg-surface/40 border border-white/10 rounded-xl flex flex-col gap-3">
+          <Card className="p-4 bg-raised/40 border border-white/10 rounded-xl flex flex-col gap-3">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-white flex items-center gap-1.5">
                 <BarChart3 className="h-4 w-4 text-accent" />
@@ -833,7 +833,7 @@ export function NoiseLabView({ circuitIr, backendId = "qiskit_aer" }: NoiseLabVi
 
           {/* Parameter Sweep Results Table if present */}
           {sweepResults && (
-            <Card className="p-3 bg-surface/30 border border-white/5 rounded-xl text-xs flex flex-col gap-2">
+            <Card className="p-3 bg-raised/30 border border-white/5 rounded-xl text-xs flex flex-col gap-2">
               <span className="text-xs font-semibold text-white">Parameter Sweep Decay Curve</span>
               <div className="grid grid-cols-5 text-[10px] text-ink-3 border-b border-white/5 pb-1 font-mono">
                 <span>Value</span>

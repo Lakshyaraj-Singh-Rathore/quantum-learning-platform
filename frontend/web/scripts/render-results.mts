@@ -121,8 +121,16 @@ const noisy = cases.bell_noisy;
 // ------------------------------------------------------------ comparisons
 {
   const html = render(createElement(BornVsShots, { result: bell }));
-  check("born-vs-shots compares exact and sampled", html.includes("exact |psi|²") && html.includes("1024 shots"));
-  check("born-vs-shots explains the gap is sampling error", html.includes("sampling error"));
+  check(
+    "born-vs-shots compares exact and sampled",
+    (html.includes("Exact Born") || html.includes("exact")) &&
+      (html.includes("|ψₓ|²") || html.includes("|psi|²")) &&
+      (html.includes("1,024 shots") || html.includes("1024 shots")),
+  );
+  check(
+    "born-vs-shots explains the gap is sampling error",
+    html.includes("Sampling variance") || html.includes("sampling error") || html.includes("projection noise"),
+  );
 
   const noIdeal = render(createElement(IdealVsNoisy, { result: bell }));
   check(

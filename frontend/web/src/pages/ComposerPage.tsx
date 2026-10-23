@@ -82,7 +82,6 @@ interface SavedCircuitRecord {
 export function ComposerPage() {
   const navigate = useNavigate();
   const ir = useCircuit((state) => state.ir);
-  const epoch = useCircuit((state) => state.epoch);
   const circuitName = useCircuit((state) => state.circuitName ?? "Quantum Circuit");
   const challengeContext = useCircuit((state) => state.challengeContext);
   const setIr = useCircuit((state) => state.setIr);
@@ -597,7 +596,6 @@ export function ComposerPage() {
             <div className="flex-1 min-w-0">
               <div className="composer-host dark rounded-xl border border-line bg-raised p-4 shadow-sm">
                 <ComposerInner
-                  key={epoch}
                   value={ir}
                   nQubits={ir.n_qubits}
                   onChange={setIr}

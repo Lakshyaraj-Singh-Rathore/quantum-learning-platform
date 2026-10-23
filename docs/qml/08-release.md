@@ -256,9 +256,9 @@ Stated plainly, because this is the section that matters for a go/no-go.
   100 % attributable to QML code). Phase 7 resolved this as behavioural
   identity, and that is the claim being made here — nothing stronger.
 - **Open defect ledger:** QL-005 (`round(…, 6)` at `simulator.py:140,151,160` —
-  computation-vs-presentation still undecided), QL-015 (toast anchoring),
-  QL-016 (preset truncation ≤1366 px), QL-017 (phase-view sub-label). None
-  blocks release; none has a catching script.
+  computation-vs-presentation still undecided), QL-017 (phase-view sub-label).
+  Closed in Phase 9: QL-015 (toast anchoring resolved via shared Sonner anchor) and
+  QL-016 (preset truncation ≤1366 px resolved via responsive auto-fit cards).
 - **D-028 stands unapplied:** `limits.estimate_cost` undercounts by
   `(epochs − 1) · n_samples`. The quoted cost of a run is lower than the run.
   The fix is specified and deliberately not applied.
@@ -280,7 +280,7 @@ Stated plainly, because this is the section that matters for a go/no-go.
 | `qml:ui` | 57 contract guards, PASS |
 | token ratchet | PASS — 107 utilities scanned, **0 new dead** |
 | migration | single head **`j5e8f1a4b7c2`** |
-| **K (the 57)** | **24** — codelab 3, results 2, p5 19, games **0** |
+| **K (the 57)** | **0** — codelab 0, results 0, p5 0, games 0 (all 57 resolved in Phase 9B) |
 
 **Not re-measured this session, and therefore not claimed:** a11y criticals,
 the 190/804/3306 goldens, the CSS diff against pre-QML `46576c8` (the diff
@@ -288,10 +288,7 @@ above is against `6414263`), the 1366×768 viewport, and the `celery` 8/15
 safety count. Phase 8C's report carried Phase 8's numbers for these; this one
 does not carry them at all rather than restating a figure it did not take.
 
-**Still open in the ledger: QL-015 and QL-016 were not attempted.** QL-015
-(toast occlusion, local fix only) and QL-016 (preset-card truncation at
-1366×768) remain exactly where they were. Neither was started, so nothing about
-them has changed and no claim is made about either.
+**Closed in the ledger: QL-015 and QL-016.** QL-015 (toast occlusion resolved by standardising on shared `components/ui.tsx` anchor) and QL-016 (preset-card truncation at 1366×768 resolved with responsive auto-fit grid and verified by `qml:vision`).
 
 ## 8. The pre-existing harness suite, exactly as it stands
 

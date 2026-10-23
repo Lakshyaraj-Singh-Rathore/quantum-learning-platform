@@ -1,0 +1,3 @@
+* text=auto
+backend/app/quantum/qml_lab/data/iris.csv text eol=lf
+*.csv text eol=lf
