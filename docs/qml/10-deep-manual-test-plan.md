@@ -493,6 +493,117 @@ requires both, so a key with no SDK looks identical to a missing key.
 QL-nnn ID, not in a chat message.** A defect that is only reported verbally does
 not exist six weeks later — this project has a register precisely because it does.
 
+---
+
+## Results recorded 2026-10-23 — first live training of all four algorithms
+
+Run by the owner on the target machine (i5-13450HX / RTX 4050 / 16 GB / Windows).
+**Every figure below was cross-checked for internal consistency against the
+documented contracts before being accepted**, and all of them held:
+
+- hybrid parameter count **26 = 9 classical + 16 circuit + 1 bias**, matching
+  `hybrid.py`'s flat-vector layout exactly (`n_features × n_hidden + n_hidden` =
+  2×3+3 = 9; `2·n_qubits·n_layers` = 2×4×2 = 16)
+- confusion matrix `[[20, 5], [0, 25]]` → total **50**, accuracy **90.00 %**,
+  precision(class 1) **0.8333**, recall **1.0**, **F1 0.9091** — recomputed, not
+  transcribed
+- train accuracies as integer sample counts: **128/150 = 85.33 %** (VQC),
+  **134/150 = 89.33 %** (QNN)
+- DT-15: **RMSE² = 0.1569** against the reported MSE of 0.15, implied
+  `var(y) = 0.5444`, and RMSE 0.3961 > MAE 0.3287 as mathematics requires
+- DT-16: **150 dual α** = `DEFAULT_KERNEL_SAMPLES` (`limits.py:180`)
+
+| ID | Model | Config | Params | Time | Train | Test |
+|---|---|---|---|---|---|---|
+| DT-12 | `vqc` | moons, 4q/2L, 20 epochs, backprop | 16 circuit | 63.5 s | 85.33 %, loss → 0.38 | **92.00 %**, F1 0.9231 |
+| DT-13 | **`hybrid_qnn`** | moons, 4q/2L, `n_hidden` 3, backprop | **26 unified** | 79.0 s | 89.33 %, loss → 0.3488 | **90.00 %**, F1 0.9091 |
+| DT-14 | `hybrid_qnn` | as DT-13, **parameter-shift** | 26 | **541.0 s** | 89.33 % | **90.00 %**, F1 0.9091 |
+| DT-15 | `quantum_regression` | sine, 4q/2L, backprop | 16 | 124.3 s | MSE → 0.15 | **R² +0.7118**, MAE 0.3287, RMSE 0.3961 |
+| DT-16 | `quantum_kernel` | moons, 150 samples, closed form | 150 α | 93.8 s | — | **90.00 %**, F1 0.9057, **0 epoch rows** |
+
+Also passed: **DT-02** (405 QML tests, 19 modules), **DT-03** (backprop ≡
+parameter-shift at 1e-9), **DT-04** (classical gradient vs central finite
+difference through the real circuit), **DT-05** and **DT-07** (all 27 hybrid
+invariants).
+
+Persistence and inference were exercised on the trained QNN: written atomically
+to `backend/artifacts/qml_live_models/101` (`config.json`, `weights.npz`,
+`metrics.json`), reloaded via `persistence.load_model`, and used for live single
+and batch inference with probabilities strictly in `[0, 1]` — `[0.5, −0.2]` →
+class 1 at 0.8753, `[−0.8, 0.4]` → class 0 at 0.1316, `[1.2, −0.4]` → class 1 at
+0.8736, `[−0.2, 0.9]` → class 0 at 0.0708.
+
+### Finding DT-F1 — the classical block buys train fit, not generalisation
+
+This is the check DT-13 existed for, and the answer is **not** the favourable one:
+
+| | train | test |
+|---|---|---|
+| `vqc` (17 trainable) | 85.33 % | **92.00 %** |
+| `hybrid_qnn` (26 trainable) | **89.33 %** | 90.00 % |
+
+The QNN gains **+4.0 pp on train** and loses **−2.0 pp on test**. That is the
+textbook overfitting signature: ten extra classical parameters fitting the
+training split harder without helping the held-out one.
+
+**But the test split is 50 samples, so 2.0 pp is exactly one sample** — 46/50
+versus 45/50. The honest reading is that the two are **statistically
+indistinguishable on this dataset at this size**, with the QNN showing mild
+overfit consistent with its extra capacity. Not a defect, and not a win either.
+
+**Do not present the QNN as outperforming the VQC.** A judge who reads both
+columns will see the test number is lower, and "the classical layer actively
+improved performance" becomes the moment the rest of the deck stops being
+believed. What is defensible, and genuinely interesting, is the correct claim:
+*the hybrid is a real jointly-differentiated model whose classical block
+provably receives true gradients from the circuit — and on a 200-sample toy set
+that extra capacity does not yet pay for itself.* That is a finding, and findings
+are stronger than inflated wins.
+
+To separate mild overfit from noise would need a larger test split or repeated
+seeds — which is a legitimate follow-up, not a release blocker.
+
+### Finding DT-F2 — DT-14 corroborates Phase 4's scaling law live
+
+**541.0 s versus 79.0 s = 6.85×** for the same result. Phase 4 measured
+backprop as linear in circuit size and parameter-shift as quadratic, with ratios
+of 3.35× at q=2 and 8.26× at q=8; at q=4 a ratio in the 5–7× range is what the
+law predicts, and the hybrid's 26 parameters (53 executions per step under
+`1 + 2·n_params`) sit above the pure VQC's 17. **The projection and the live
+measurement agree.** Identical accuracy across both methods also confirms the
+1e-9 gradient equivalence survives 20 epochs of Adam, not just one gradient
+evaluation.
+
+### What these runs did NOT cover — the distinction matters
+
+**These were direct engine runs through a Python runner, not the live stack.**
+They called the algorithms and `persistence` in-process and wrote to
+`backend/artifacts/qml_live_models/`. That is a *stronger* engine proof than
+anything the project has had, and it closes DT-13's central question completely.
+It does **not** exercise the API, the Celery worker, the polling loop or the
+browser form.
+
+**This is exactly the QL-018 lesson.** In Phase 8A the engine was perfect — 405
+tests green — while `QmlConfigForm.tsx` set `step={50}` against `min={20}`, so
+the form's own default of 200 failed `checkValidity()` and **Chromium refused to
+submit at all.** The Lab could not run a single experiment in any browser, and no
+engine-level test could see it. A direct runner proves the engine; only a browser
+proves the product.
+
+Still open, therefore:
+
+| ID | What remains | Why it cannot be inferred from the above |
+|---|---|---|
+| **DT-13 (UI half)** | `n_hidden` appears **only** for `hybrid_qnn`; the form refuses `n_hidden > n_qubits` | Both are form-rendering and client-validation behaviour. The backend halves are pinned by `test_n_hidden_on_a_non_hybrid_algorithm_is_rejected` and `test_n_hidden_above_n_qubits_is_rejected_by_the_schema`, but the UI half has never been looked at. |
+| **DT-15 (negative half)** | A dataset yielding **negative R²**, displayed **as negative** | `sine` gave **+0.7118**. The clamp/hide/`abs()` failure mode is invisible on a positive value, and R² < 0 means *worse than predicting the mean* — a dropped sign tells the reader the opposite of the truth. Try `damped_cosine` and `linear_mix`. Phase 8C asserted a fixture at **−3.804** and history carries **−2.060 / −0.844 / −0.161**, so it is reachable. |
+| **DT-16 (UI half)** | The heatmap renders with **real colours**; the closed-form result shows rather than an empty chart or a spinner | 0 epoch rows is confirmed, but that is precisely the state where a naive UI shows nothing. Phase 8C proved 400/400 cells painted via `getComputedStyle` because the defect class is `bg-card` — a class name that emits no CSS. |
+| **DT-17 … DT-19** | sample cap, cancel mid-run, polling stops | All are live-stack behaviour. |
+| **MT-001** | the full round trip as a user meets it | Unchanged, still blocking. |
+
+**The next run should be the same five configurations through the browser**, with
+`QML_ENABLED=true` and `--profile qml`, rather than another engine pass. The
+engine is now proven; the product is not.
+
 ## Known gaps this plan does not close
 
 - **MT-005** — the GPU/CUDA-Q path. A declared non-goal (D-030).
