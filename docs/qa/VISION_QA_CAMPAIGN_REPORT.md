@@ -576,3 +576,225 @@ cd artifacts/vision-qa/harness
 LD_LIBRARY_PATH=/home/user/uitest/al2023/lib node part3.mjs   # e.g. the noise group
 /home/user/.venv-ql/bin/python oracle.py selftest             # verify the oracle itself
 ```
+
+
+---
+
+# Phase 9A — Qudit Lab + QML Lab, four layers, three viewports
+
+Base: `main @ 5cd8bf8`, 653 tracked. End: **656 tracked**, +3 files.
+Commits: `a1429c5` (QL-015 + QL-016), `7163e08` (QML vision + QL-020),
+`72ed540` (flag states + viewport sweep), plus this documentation commit.
+
+## What the vision pass actually found
+
+Three defects, two of them from the open ledger and one new. All three were
+found by looking at a rendered page, and none of them is visible to a DOM
+assertion.
+
+**QL-016 — preset titles truncated at 1366×768.** `truncate` sets
+`text-overflow: ellipsis`, so the element still *contains* the full string:
+every DOM assertion passed while six of nine titles were unreadable. What the
+ellipsis ate was precisely the teaching payload — `(Z_3)`, `P_1(θ)`,
+`R_01(θ, φ)`, `(|Φ_3⟩)`, `(CSX_3)`, `(3-level)`. A card whose job is to teach
+an operator was hiding the operator's name. Fixed by wrapping.
+→ `qudit-preset-1366x768-titles-truncated-before.png` — **look at the second
+row of preset cards: every title ends in an ellipsis mid-symbol.**
+→ `qudit-preset-1366x768-titles-wrapped-after.png` — the same cards, each
+title now on two lines and complete.
+
+**QL-015 — toasts landing on live content, and worse than filed.** The ledger
+described occlusion of result content. Measured at 1920, the default
+bottom-right position covered the **Run Simulation button itself**. Candidate
+positions were measured against every interactive control rather than chosen
+by eye (table in D-062); `top-center` is the only one clear at both supported
+widths. The shared anchor was not moved — see D-062.
+→ `qudit-toast-1920x1080-clear-of-run-button.png` — **the toast is now above
+the fold and the Run Simulation button is fully visible beneath it.**
+
+**QL-020 — NEW.** The form advertised `n_hidden max=8` (`MAX_HIDDEN_UNITS`, a
+static per-algorithm ceiling) while the binding rule is `n_hidden <= n_qubits`
+(`hybrid.py:143`). `checkValidity()` returned **true** for `n_hidden=6` against
+`n_qubits=2` — a config the backend 422s every time. Same family as QL-018:
+the attribute renders faithfully in SSR, so no source review and no SSR sweep
+could catch it; only a browser calling `checkValidity()` can.
+→ `qml-ql020-1920x1080-nhidden-over-nqubits-422.png` — **the error banner
+under the form, after a round-trip the user should never have been allowed to
+make.**
+
+The error path itself was verified, not assumed: the POST returns 422 and the
+page shows *"circuit.n_hidden=6 exceeds circuit.n_qubits=2; angle encoding
+needs one wire per value emitted by the classical layer"*. The defect is that
+the user is told the value is fine and only learns otherwise after submitting.
+
+This also explains a long-standing puzzle: **`hybrid_qnn` had never completed a
+live run** because the documented recipe pairs `n_hidden 3` with the default
+`n_qubits 2`, which is invalid. With `n_qubits 4` it now completes through the
+browser — polling observed, terminal `completed`, accuracy rendered.
+
+## Per feature, per layer
+
+| | captured | seen | asserted | fixed |
+| --- | --- | --- | --- | --- |
+| Qudit Lab — UI | 3 viewports | truncation, toast occlusion | 15 (`viewport`) | QL-015, QL-016 |
+| Qudit Lab — backend | — | — | covered by existing suites | — |
+| QML Lab — UI | 3 viewports + 4 flag states + 5 runs | narrow-window banner, kernel empty state | 66 (`qml:vision`) | QL-020 |
+| QML Lab — API/worker | 5 live runs | polling start **and** stop | included above | — |
+
+## The four algorithms, each named and driven live
+
+The existing browser harnesses contain **no algorithm name at all** — they post
+the API default, which is `vqc`. Three of four had never been driven through
+the live stack.
+
+| run | outcome |
+| --- | --- |
+| `vqc` / moons | completed; accuracy rendered |
+| `hybrid_qnn` / moons, `n_hidden 3`, `n_qubits 4` | **first live run ever**; completed; accuracy rendered |
+| `quantum_regression` / sine | MAE, RMSE, R² `+0.804`, zero classifier metrics |
+| `quantum_regression` / damped_cosine | **R² forced negative**: API `-0.1639` → rendered `"-0.164"` |
+| `quantum_kernel` / moons | closed form; heatmap **1604 painted cells**; **no epochs control at all** |
+
+The negative R² is checked against the API payload, not merely for "a number":
+a renderer that clamped, hid or `abs()`ed it would pass a looser assertion and
+tell the reader the opposite of the truth. Both signs are covered.
+
+`quantum_kernel` exposing no epochs control is the designed closed-form state,
+asserted as expected **only** for the kernel rather than silently tolerated
+everywhere.
+→ `qml-9a-quantum_kernel-moons-results-1920x1080.png` — **a populated heatmap,
+not an empty chart, with no spinner anywhere.**
+
+## The four flag states, rendered
+
+| state | nav entry | body |
+| --- | --- | --- |
+| on | shown | the Lab |
+| off | hidden | 404 |
+| error | hidden | 404 |
+| unresolved | hidden | **neither** the Lab nor a 404 |
+
+`unresolved` showing neither is the point of exposing `resolved` separately: a
+hard refresh must not 404 a legitimate user for a few hundred milliseconds.
+
+The `error` case nearly produced a false defect report. At 2.5 s it showed
+neither Lab nor 404 and looked broken. It is not — the app retries failed
+queries twice (`main.tsx:15`, `count < 2`), so for ~6 s the query is
+legitimately pending. Measured across 30 s: 3 requests, 404 body from ~6 s,
+stable thereafter — which is also direct evidence that `refetchOnMount: false`
+stops the error collapsing back into pending.
+→ `qml-flag-unresolved-1920x1080-neither-lab-nor-404.png` — **the content area
+is empty; there is no 404 heading, which is the correct pending state.**
+→ `qml-flag-error-1920x1080-resolves-to-404.png` — **the same route after the
+retries exhaust, now showing the 404 body with the nav entry gone.**
+
+## Gates measured this session
+
+| gate | result |
+| --- | --- |
+| pytest | **1304 passed, 5 skipped** (360 s) — identical to the 8D baseline |
+| ruff | **118 HEAD = 118 base `5cd8bf8`**, **0 new** |
+| typecheck | **0 errors** |
+| migration head | **`j5e8f1a4b7c2 (head)`** |
+| tokens | 107 scanned, 2 dead (12 known), **0 new** |
+| goldens | **190 + 804 + 3306 @ 1e-9**, all agree with numpy |
+| a11y | **0 criticals** |
+| `qml-constraint-check` | **134 / 0** |
+| `qml:circuit` | 49 assertions, all pass |
+| `qml:ui` | 57 guards, all pass |
+| K (SSR render harnesses) | **24** — p5 19, codelab 3, results 2, games 0 — **unchanged from base** |
+
+### Per-script decomposition
+
+| script | PASS | FAIL |
+| --- | --- | --- |
+| `viewport` *(new)* | 15 | 0 |
+| `qml:vision` *(new)* | 66 | 0 |
+| `a11y` | 9 | 0 |
+| `states` | 31 | 0 |
+| `render:check` | 65 | 0 |
+| `render:learn` | 37 | 0 |
+| `render:playground` | 20 | 0 |
+| `render:grover` | 27 | 0 |
+| `render:composer` | 36 | 0 |
+| `render:games` | 32 | 0 |
+| `render:results` | 45 | 2 |
+| `render:codelab` | 12 | 3 |
+| `render:p5` | 15 | 19 |
+| `render:new-features` | 25 | 1 |
+| `qml-constraint-check` | 134 | 0 |
+
+`render:content`, `curriculum`, `golden:*`, `test:demos`, `qml:circuit` and
+`qml:ui` report a summary line rather than per-line `PASS`, and all passed —
+counting them by grepping `^PASS` yields **0**, which is a property of my
+counting method and not of the scripts. Recorded explicitly because a zero
+from a command that did not run the way you think is the most dangerous number
+in a report.
+
+**K = 24 is unchanged and remains tabled.** The 19 + 3 are one family: Radix
+portals `renderToString` never produces. The fix is to move those assertions
+into a browser, which is 9B's work, not to relax them.
+
+## Mutation testing
+
+Every fix was reinstated and the harness re-run.
+
+| mutant | result |
+| --- | --- |
+| QL-016 `break-words` → `truncate` | 0 → **6 clipped titles**. KILLED |
+| QL-015 `top-center` → `bottom-right` | 0 → **1 FAIL** (Run Simulation). KILLED |
+| QL-020 `max: qubits` → `max: base.max` | 0 → **2 FAIL**. KILLED |
+| flag `off` served `qml_enabled: true` | 0 → **2 FAIL**. KILLED |
+
+**One survivor, and it changed the fix.** The first QL-015 check read the
+topmost element's own text nodes via `elementsFromPoint`. For a layout
+container that is always `""`, so the check passed with the defect fully
+reinstated — a conditional that could not change its output, mutation family
+(3), in my own harness rather than the product. Rewritten as a geometric
+intersection against interactive controls. The rewritten check immediately
+reported that the toast covered the Run Simulation button, which is what moved
+the fix from bottom padding on the ops rail to a page-scoped position.
+
+**Two mutants that never took, caught before they were believed.** Two attempts
+at the QL-020 mutant deleted the tightening outright; both failed to compile
+(`TS6133`, unused `qubits`), so `npm run build` aborted, `dist/` kept the
+**fixed** bundle, and the harness passed. That looks exactly like a survivor.
+Caught by probing the served bundle for the mutated *behaviour* before trusting
+the result — `max` still tracked `n_qubits`, so the mutant plainly was not
+live. Rewritten to one that compiles, verified live (`max="8"` at every
+`n_qubits`), then killed.
+
+## Harness bugs found before any product claim was made from them
+
+Four, all mine, each of which would have been reported as a product defect:
+
+1. Config inputs carry `id=`, not `name=`. Every `setNumber` matched nothing
+   and returned quietly, so runs silently used full defaults. `setNumber` now
+   reports a missing field instead of no-opping.
+2. The poll URL is `/api/qml/experiments/<id>?after_epoch=N`. A regex anchored
+   on `$` after the id matched nothing, reporting "0 polls observed".
+3. The API says `completed`; it never says `succeeded`. Every run "timed out"
+   while completing fine. The vocabulary now comes from `models.py:39`.
+4. Switching model refetches `/qml/describe`; a fixed 800 ms sleep raced it and
+   reported "n_hidden absent for hybrid_qnn".
+
+Plus the `flag "error"` timing above, and a `/qudit-lab` "spinner still up"
+reading that was my regex matching the **Training tab label** — not a finding,
+and not reported as one.
+
+## What could NOT be verified
+
+- **`vision-qa-master-suite.mjs` viewport rebalancing was not done.** Amendment
+  2 asked for its 37 : 1 : 1 : 1 imbalance to be corrected. The new `/qml-lab`
+  coverage was built instead, and the budget went to the three defects and
+  their mutation proofs. The imbalance is unchanged and still open.
+- **Noise Lab and Smart Composer** — deferred to 9B by scope.
+- **OpenAPI route-count delta per feature (6/8/5/4)** and the flag-off route
+  removal check were not re-measured this session.
+- **Negative paths for every limit constant individually** were not swept; only
+  the `n_hidden` path was driven, because that is where the defect was.
+- **CSS rule-level diff against pre-QML `46576c8`** was not run.
+- **Celery/broker, docker, GPU, OOM, concurrency, live Gemini, `bench_qml.py
+  --full`** — unchanged, still outside this environment.
+- `render:p5`'s 19 and `render:codelab`'s 3 remain **tabled, not fixed**, and
+  are not folded into any green figure.

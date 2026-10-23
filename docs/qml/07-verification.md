@@ -374,10 +374,11 @@ task, concurrency limits under real contention. **MT-002 and MT-003.**
 | ID | Where | Blocks release? | Catching script? |
 | --- | --- | --- | --- |
 | **QL-005** | `qudit_lab/simulator.py` — `round(…, 6)` at **lines 140, 151, 160** (re-measured today; file is 244 lines). d=3 distribution sums to 0.999999 while `trace = 1.0` | No — P3, open as an API-contract decision | **No** |
-| **QL-015** | Toasts anchor bottom-right over live result content | No — P4, shared component | **No** |
-| **QL-016** | Preset card titles truncate at ≤1366 px | No — P4, design call | **No** — needs a browser at a set viewport |
+| **QL-015** | Toasts anchor bottom-right over live result content | **Closed** in Phase 9A (`a1429c5`) — worse than filed: at 1920 the default position covered the **Run Simulation button itself** | **Yes** — `npm run viewport`, 3 viewports |
+| **QL-016** | Preset card titles truncate at ≤1366 px | **Closed** in Phase 9A (`a1429c5`) — 6 of 9 titles clipped at 1366, each losing the operator being taught | **Yes** — `npm run viewport`, asserts at 1366×768 permanently |
 | **QL-017** | Diagonal cells keep the "pop" sub-label in the phase view | No — P4, teaching-design call | **No** |
 | **QL-018** | `QmlConfigForm.tsx` Samples field: `step={50}` with `min={20}` made the default 200 fail HTML constraint validation — the form could not be submitted in any browser | **Did** — fixed in Phase 8 Stage 4.1 (`96b4320`) | **Yes, now** — `qml-browser-check.mts` asserts every numeric default passes `checkValidity()` |
+| **QL-020** | `QmlConfigForm.tsx` n_hidden: the form advertised `max=8` (`MAX_HIDDEN_UNITS`, a static per-algorithm ceiling) while the binding rule is `n_hidden <= n_qubits` (`hybrid.py:143`). `checkValidity()` returned **true** for a config the backend 422s every time | **No** — P3; the error path is legible, but the user is told the value is fine and only finds out after a round-trip | **Yes** — `npm run qml:vision` asserts the ceiling tracks `n_qubits` |
 | **`bg-card`** | 10 uses / 6 files, **all Qudit Lab** | No — cosmetic, but see below | **No** — and `qml:ui` would not catch it |
 
 **QL-005 line numbers re-measured, as §2G.6 asked**, since the owner is editing that file: `round(clamped_pop, 6)` at **140**, `round(normalized_probs[i], 6)` at **151**, `round(mag, 6)` at

@@ -1237,3 +1237,54 @@ Why the inconsistency is being accepted rather than fixed:
 rule.** If so, the authorisation is explicit and covers all four expected values
 at once, and the sweep must be app-wide rather than GamesPage alone — otherwise
 the inconsistency just moves.
+
+
+## D-062 — QL-015 is fixed per-page, not by moving the shared toast anchor
+
+The Qudit Lab's toasts collided with its own content. The tempting fix is to
+move `ToastProvider`'s `position` in `components/ui.tsx`, which would be one
+line. It is not taken: that anchor is shared, and repositioning it globally to
+fix one page is how a P4 becomes a P1.
+
+Sonner accepts `position` per toast (`ToastT.position`), so the four call sites
+in `QuditLabPage.tsx` pass `QUDIT_TOAST` and nothing about the shared
+`<Toaster>` changes. `npm run viewport` asserts the Composer — the only other
+page that raises toasts — still anchors bottom-right, so "the shared anchor did
+not move" is measured rather than argued.
+
+Position was chosen by measurement, not taste. Each candidate was tested
+against every interactive control on the page:
+
+| viewport | bottom-right | top-right | bottom-center | top-center |
+| --- | --- | --- | --- | --- |
+| 1920×1080 | **1** (Run Simulation) | 2 | 3 | **0** |
+| 1366×768 | 0 | 2 | 4 | **0** |
+
+`top-center` is the only position clear at both widths.
+
+Two things this surfaced. First, the defect was worse than filed: at 1920 the
+default position covered the primary action button, not merely result text.
+Second, the first fix attempted — bottom padding on the circuit rail — passed a
+check that could not fail, and the surviving mutant is what forced the rethink.
+
+**Scope, stated rather than hidden:** the occlusion assertion runs at the widths
+the Lab claims to support. Below 900px the page itself renders "editing is not
+supported", and at 390 it is content-dense enough that a bottom-anchored toast
+lands on something regardless. That viewport asserts the banner instead, so it
+still carries a real expectation rather than being skipped.
+
+## D-063 — the n_hidden ceiling is tightened in the form, not the limits table
+
+QL-020's ceiling could be fixed server-side by having `/qml/describe` return
+`n_hidden.max = min(MAX_HIDDEN_UNITS, n_qubits)`. It is not, because the limits
+table is computed per *algorithm* and has no idea what the user currently has
+`n_qubits` set to — it would have to become a function of live form state, and
+the describe response is cached.
+
+The form already knows `n_qubits` and re-renders when it changes, so the
+tightening lives there (`QmlConfigForm.tsx`). `MAX_HIDDEN_UNITS` stays the
+backend's outer bound; the form applies whichever bound binds first. Verified
+in a browser: `max` tracks `n_qubits` at 2→2, 5→5, 7→7.
+
+The backend check at `hybrid.py:143` is untouched and remains the authority —
+this makes the client agree with it, it does not replace it.
