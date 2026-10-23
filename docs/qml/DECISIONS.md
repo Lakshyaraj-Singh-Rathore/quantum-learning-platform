@@ -1199,3 +1199,41 @@ replacing the empty state takes `render:p5` from 19 to 20.
 **The exception covers these two named rows and nothing else.** The moment "it
 is just drift" becomes a category, the forbidden column of the field-5 test is
 empty.
+
+## D-061 — the four `GamesPage.tsx` labels stay as Phase 8D left them
+
+Phase 8D restored four strings to their pre-`effdc6b` bytes: `Clear circuit`
+(:555), `Reset to broken` (:568), `Level complete — score X` (:635) and
+`Measurement outcomes` (:777). `effdc6b` had restyled them to Title Case —
+`Clear Circuit`, `Reset to Starter`, `Level Complete`, `Measurement Histogram` —
+as part of a systematic, app-wide convention that `CodeLabPage` still follows
+(`Build & Run Simulation`, `Build Circuit Only`, `Draft Code into Editor`). So
+GamesPage is now the only page that disagrees with the design system.
+
+**Ruled: leave it, and stop spending attention on it.**
+
+The agent measured what reverting actually costs: `render-games.mts` pins the
+sentence-case bytes at six assertion sites (:147, :148, :162, :187, :221, :224),
+so restoring Title Case takes that harness from **0 FAIL to 4 FAIL** and requires
+editing four *expected values*. That is §2I.3's forbidden column and needs an
+explicit authorisation — it is not the isolated five-minute fix the reviewer
+first called it, and that mischaracterisation is corrected here.
+
+Why the inconsistency is being accepted rather than fixed:
+
+- For three of the four the information content is **identical**; only the casing
+  differs. There is no user-facing wrongness to correct, only a style deviation.
+- The fourth is not a casing case at all. `render-games.mts:162` is named
+  *"Find the Bug offers the broken circuit back"* and asserts
+  `Reset to broken` — the assertion's own name documents that the label is meant
+  to tell the student they are being handed back the **broken** circuit. On that
+  one the restored text carries meaning the restyle had flattened.
+- The cost of the alternative is four expected-value edits on a green harness,
+  which is precisely the manoeuvre §2I.3 exists to make expensive. Spending that
+  on cosmetics, while QL-015 and QL-016 remain open and the QML Lab has never
+  been looked at by a vision pass, is a bad trade.
+
+**Reopen only if the owner wants app-wide Title Case enforced as a design-system
+rule.** If so, the authorisation is explicit and covers all four expected values
+at once, and the sweep must be app-wide rather than GamesPage alone — otherwise
+the inconsistency just moves.
