@@ -192,20 +192,83 @@ handoff; the short version:
 - Rebalance `vision-qa-master-suite.mjs`'s viewports: **37 screenshots at 1440×900 versus 1 each** at 1366×768, 390×844 and 768×1024.
 - The OpenAPI route-count delta, the per-constant negative-path sweep, and the **CSS diff against pre-QML `46576c8`** — all three were deferred by 9A.
 
-### D.5 — `bg-card` is still open, and it grew
+### D.5 — `bg-card` is **fixed**; twelve other dead tokens are not
 
-**10 uses across 6 files, all Qudit Lab, emitting 0 CSS rules.** `@theme` in
-`globals.css:4-42` is the only thing that generates utilities; `:root` and
-`html.dark` at `:44-92` generate nothing, and there is **no `--color-card`** —
-only `--color-raised`. Every DOM test passes because the element exists; the
-panel is simply transparent. `qml:ui` would not catch it. **`token-emit-check.mts`
-is the ratchet that does — run `npm run tokens` and keep it at 0 dead.**
+**Corrected — an earlier revision of this document said `bg-card` was still open
+at 10 uses. That was inherited from `07-verification.md` §7 rather than measured,
+and it is wrong.** `git grep bg-card origin/main -- frontend/web/src` returns
+**0**. It was fixed in **`b3f7435`** (Phase 8A, Stage 2.2) by switching to
+`bg-raised`, and the whole class now has a ratchet guard in
+`token-emit-check.mts`.
+
+What *is* still open is the class, with twelve different members. These emit no
+CSS at all, because `@theme` in `globals.css:4-42` is the only block that
+generates utilities and none of these tokens are defined there:
+
+```
+bg-line-focus   bg-surface        border-slate-400   from-accent-hover
+from-emerald-500  ring-line-focus   stroke-white      text-ink-1
+text-ink-4      text-slate-200    to-sky-500         to-teal-500
+```
+
+They are **recorded rather than fixed because each needs a design decision about
+which existing token replaces it** — that is a deliberate scope call, not an
+oversight. The list is a ratchet exactly like the ruff count: **it may shrink,
+never grow.** Adding one requires an explicit decision; removing one is always
+welcome. Run `npm run tokens` and confirm **0 regressions against BASELINE**.
+
+Note the guard also prints `FIXED <util>` when a baselined token starts emitting
+— if you see that line, remove the token from `BASELINE` in the same commit.
+
+**`07-verification.md:382` and `:391` still claim "10 uses / 6 files".** That is
+the stale source this section originally inherited from, and it should be
+corrected rather than read. See D.6.
 
 ### D.6 — documentation defects to fix
 
 1. **`08-release.md:258-260` and `:291-292` are stale.** They still list QL-015, QL-016 and QL-017 as open. `07-verification.md` §7 correctly records QL-015 and QL-016 as **Closed in Phase 9A (`a1429c5`)**. The release doc is the one a reader trusts — reconcile it.
-2. **`MANUAL_TEST_REGISTER.md` was not updated by 9A.** MT-006's *regression* half is arguably closed by 9A's browser assertion that MAE/RMSE render in target units with a **signed** R². Verify, then record it — do not assume.
-3. **The hackathon deck does not exist.** `docs/ppt/HACKATHON_DECK.md` is absent. `MARKETING_DECK_SOURCE.md` is **74 commits stale** (last touched `1501b12`, 2026-10-12) with **0 QML and 0 qudit mentions**, and claims "11 React SPA pages" against the actual **13 routes / 10 nav items across 4 sections**. Its header rule still binds: nothing claimed that isn't in shipped code; unbuilt = ROADMAP.
+2. **`07-verification.md:382` and `:391` are stale on `bg-card`** — they claim 10 uses across 6 files; the real count on `main` is **0**, fixed in `b3f7435`. This section inherited that error into an earlier revision of *this* document, which is the clearest possible demonstration of why the standing rule is **measure, never inherit.**
+3. **`MANUAL_TEST_REGISTER.md` was not updated by 9A.** MT-006's *regression* half is arguably closed by 9A's browser assertion that MAE/RMSE render in target units with a **signed** R². Verify, then record it — do not assume. Note also that rows MT-006/008/009 carry a `Status:` of `DEFERRED` while `:285-287` says **AUTOMATED**; that internal inconsistency should be resolved rather than left for the next reader to reconcile.
+4. **The hackathon deck does not exist.** `docs/ppt/HACKATHON_DECK.md` is absent. `MARKETING_DECK_SOURCE.md` is **74 commits stale** (last touched `1501b12`, 2026-10-12) with **0 QML and 0 qudit mentions**, and claims "11 React SPA pages" against the actual **13 routes / 10 nav items across 4 sections**. Its header rule still binds: nothing claimed that isn't in shipped code; unbuilt = ROADMAP.
+
+### D.7 — is Phase 9B the end? **No.** What "complete" means here
+
+Phase 9B is the last **planned code phase**. It is not the end of the work, and
+the three things below are not code.
+
+**The model is already complete.** All four QML algorithms train live on target
+hardware with exact gradients — `backprop` and `parameter-shift` agree to 1e-9,
+the QNN's classical block is checked against a central finite difference through
+the real circuit, and all 405 QML tests pass. Nothing in 9B changes that. **If
+the question is "does the QML model work", the answer has been yes since Phase
+5b and was proven live on 2026-10-23.**
+
+What remains after 9B, and who owns it:
+
+| # | Item | Owner | Can it reopen code work? |
+|---|---|---|---|
+| 1 | **MT-004** — `bench_qml.py --full` on target hardware | **owner** | **YES.** Over 1200 s means the limits or `MAX_QUBITS`/`MAX_LAYERS` move |
+| 2 | **MT-001** — the full round trip through a real broker and worker | **owner** | Yes, if cancel lands as `failed` rather than `cancelled` |
+| 3 | **MT-010** — Gemini explanation against a real key | **owner** | Yes, if a number appears in the prose that is not in the Measured table |
+| 4 | **MT-002 / MT-003** | owner | No — they close as side effects of MT-001 steps 2 and 3 |
+| 5 | **MT-007** — data-reuploading frequency budget | owner | Possibly — nothing exercises it today |
+| 6 | **Twelve dead tokens** (§D.5) | agent + owner | No, but each needs a **design decision** about which token replaces it |
+| 7 | **Documentation reconciliation** (§D.6.1–3) | agent | No |
+| 8 | **The hackathon deck** (§D.6.4) — does not exist | agent + owner | No |
+| 9 | **No CI** — `.github/workflows/` is empty | owner decision | No |
+| 10 | **DT-F1 follow-up** — a larger test split or repeated seeds, to separate the QNN's mild overfit from noise | agent | No |
+| 11 | **Deferred features, not defects**: §2C.5 noise experiments for QML, §2C.6 the qudit spike, `GET /codelab/ai-status`, the timeline-strip port, §2F WP6 suggest-a-config | owner decision | They are additions, not repairs |
+| 12 | **MT-005** — the GPU/CUDA-Q path | **nobody** | Declared **NON-GOAL** by D-030, not skipped by failure |
+
+**So the honest sequence is:** 9B closes the last code phase → the owner runs
+MT-004 → MT-001 → MT-010 → **only then is it releasable**, and MT-004 is the one
+step that can send work back to the code. The deck and the token decisions are
+parallel to that, not after it.
+
+**A claim of "all gates green" is forbidden in the release doc** (§2H.4) until
+those three rows are actually run and recorded. The truthful closing statement is
+the one `08-release.md` already makes: what is proven, what is provisional, and
+what only the owner can prove.
 
 ---
 
