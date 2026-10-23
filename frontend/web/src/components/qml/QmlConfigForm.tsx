@@ -118,6 +118,26 @@ export function QmlConfigForm({
   const range = (key: string) =>
     limits?.[key] ? { min: limits[key].min, max: limits[key].max } : undefined;
 
+  // QL-020. The server advertises n_hidden.max as MAX_HIDDEN_UNITS, a static
+  // per-algorithm ceiling that cannot know the user's current n_qubits. But
+  // the binding rule is n_hidden <= n_qubits (hybrid.py:143): the classical
+  // layer emits one value per wire, so angle encoding needs a qubit for each.
+  // Rendering the static 8 let the form report checkValidity() === true for
+  // n_hidden=6 against n_qubits=2 -- a config the backend rejects with a 422
+  // every time. The error was legible, but the user only saw it after a
+  // round-trip, having been told the value was fine.
+  //
+  // The form knows n_qubits live, so the ceiling is tightened here to whichever
+  // bound binds first.
+  const hiddenRange = (() => {
+    const base = range("n_hidden");
+    if (!base) return undefined;
+    const qubits = config.circuit.n_qubits;
+    return typeof qubits === "number" && qubits < base.max
+      ? { ...base, max: qubits }
+      : base;
+  })();
+
   // Datasets are the selected algorithm's, so a classification set is never
   // offered for a regressor (and vice versa). The 12 valid pairs are the
   // server's; the client just renders them.
@@ -375,7 +395,7 @@ export function QmlConfigForm({
             id="qml-n-hidden"
             label="Hidden units"
             value={config.circuit.n_hidden ?? limits?.n_hidden?.default ?? 4}
-            range={range("n_hidden")}
+            range={hiddenRange}
             disabled={disabled}
             hint="classical layer before the circuit"
             onChange={(v) => set("circuit", { ...config.circuit, n_hidden: v })}

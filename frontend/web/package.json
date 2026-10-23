@@ -43,7 +43,8 @@
     "qml:tasks": "tsx scripts/qml-task-check.mts",
     "fixtures:qml-tasks": "python3 scripts/qml-task-fixtures.py",
     "tokens": "tsx scripts/token-emit-check.mts",
-    "viewport": "tsx scripts/viewport-check.mts"
+    "viewport": "tsx scripts/viewport-check.mts",
+    "qml:vision": "tsx scripts/qml-vision-check.mts"
   },
   "dependencies": {
     "@codemirror/lang-python": "^6.2.1",
