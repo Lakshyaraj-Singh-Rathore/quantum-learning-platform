@@ -117,11 +117,13 @@ export default function QmlLabPage() {
     [describe.data, config.algorithm],
   );
 
-  const nFeatures = useMemo(() => {
+  const activeCircuit = experiment?.config?.circuit ?? config.circuit;
+  const activeFeatures = useMemo(() => {
+    const dsName = experiment?.config?.dataset?.name ?? config.dataset.name;
     const pool = algorithmInfo?.datasets ?? describe.data?.datasets ?? [];
-    const ds = pool.find((d) => d.name === config.dataset.name);
+    const ds = pool.find((d) => d.name === dsName);
     return ds?.n_features ?? 2;
-  }, [algorithmInfo, describe.data, config.dataset.name]);
+  }, [experiment, algorithmInfo, describe.data, config.dataset.name]);
 
   const serverParameters = useMemo(() => {
     // An interrupted result has no `circuit` key at all, so this must narrow
@@ -262,8 +264,8 @@ export default function QmlLabPage() {
 
           <TabsContent value="circuit">
             <QmlCircuitPreview
-              circuit={config.circuit}
-              nFeatures={nFeatures}
+              circuit={activeCircuit}
+              nFeatures={activeFeatures}
               serverParameters={serverParameters}
             />
           </TabsContent>
@@ -331,6 +333,10 @@ export default function QmlLabPage() {
               onSelect={(id) => {
                 reset();
                 setExperimentId(id);
+                const selectedExp = (experiments.data ?? []).find((e) => e.id === id);
+                if (selectedExp?.config) {
+                  setConfig(selectedExp.config);
+                }
                 setView("results");
               }}
             />

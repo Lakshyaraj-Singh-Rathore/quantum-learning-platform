@@ -18,10 +18,13 @@ import {
   Code2,
   BarChart3,
   Globe,
-    Copy,
-    ExternalLink,
-    AlertTriangle,
-  } from "lucide-react";
+  Copy,
+  ExternalLink,
+  AlertTriangle,
+  FileCode,
+  ShieldCheck,
+  FileUp,
+} from "lucide-react";
 import { ComposerInner } from "@composer/Composer";
 import { circuitIsDynamic, maxLayer } from "@composer/ir";
 import { bell, ghz, wState, qft3, emptyCircuit, useCircuit } from "../state/circuit";
@@ -35,6 +38,13 @@ import {
   copyCircuitCode,
   generateQasm3,
 } from "../lib/circuitExport";
+import {
+  IMPORT_FORMATS,
+  MAX_IMPORT_BYTES,
+  MAX_IMPORT_CHARS,
+  detectFormat,
+  validateAndSanitizeCircuitIR,
+} from "../lib/circuitImport";
 import { Histogram } from "../components/results/ResultsViews";
 import { QSphere } from "../components/results/GeometryViews";
 import {
@@ -59,6 +69,7 @@ import {
 import { ResultsPanel } from "../components/results/ResultsPanel";
 import { NoiseLabView } from "../components/noise/NoiseLabView";
 import { SmartComposerPanel } from "../components/smart_composer/SmartComposerPanel";
+import type { NoiseSimulationResult } from "../api/noiseLab";
 
 const SHOT_CHOICES = [128, 256, 512, 1024, 2048, 4096, 8192];
 
@@ -89,10 +100,12 @@ export function ComposerPage() {
   const setQubits = useCircuit((state) => state.setQubits);
   const setCircuitName = useCircuit((state) => state.setCircuitName);
   const setChallengeContext = useCircuit((state) => state.setChallengeContext);
+  const userEditedNameRef = useRef(false);
 
   const [shots, setShots] = useState(1024);
   const [backendId, setBackendId] = useState<string>("qiskit_aer");
-  const [noise] = useState<NoiseIn>(DEFAULT_NOISE);
+  const [noise, setNoise] = useState<NoiseIn>(DEFAULT_NOISE);
+  const [noiseSimResult, setNoiseSimResult] = useState<NoiseSimulationResult | null>(null);
   const [jobId, setJobId] = useState<number | null>(null);
   const [runSnapshot, setRunSnapshot] = useState<string | null>(null);
   const [ranQubits, setRanQubits] = useState<number | null>(null);
@@ -142,9 +155,13 @@ export function ComposerPage() {
   // Dialog States
   const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
-  const [importQasmText, setImportQasmText] = useState("");
+  const [importFormat, setImportFormat] = useState<string>("auto");
+  const [importText, setImportText] = useState("");
+  const [importFileName, setImportFileName] = useState<string | null>(null);
+  const [importFileSize, setImportFileSize] = useState<number | null>(null);
   const [importBusy, setImportBusy] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [savedCircuitsDialogOpen, setSavedCircuitsDialogOpen] = useState(false);
   const [savedCircuits, setSavedCircuits] = useState<SavedCircuitRecord[]>(() => {
@@ -224,21 +241,102 @@ export function ComposerPage() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [canRun, run]);
 
-  // QASM Import Handler
-  async function handleImportQasm() {
-    if (!importQasmText.trim()) return;
+  // File Upload Handler with size & format guards
+  function handleFileUpload(file: File) {
+    if (!file) return;
+    if (file.size > MAX_IMPORT_BYTES) {
+      setImportError(
+        `File size exceeds 100 KB limit (${(file.size / 1024).toFixed(1)} KB). Please upload a smaller circuit file.`
+      );
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const text = (e.target?.result as string) || "";
+      if (text.length > MAX_IMPORT_CHARS) {
+        setImportError(
+          `File exceeds maximum character limit of ${MAX_IMPORT_CHARS.toLocaleString()} characters.`
+        );
+        return;
+      }
+      setImportText(text);
+      setImportFileName(file.name);
+      setImportFileSize(file.size);
+      setImportError(null);
+
+      // Auto-detect format from file extension and content
+      const detected = detectFormat(text, file.name);
+      setImportFormat(detected);
+    };
+    reader.onerror = () => {
+      setImportError("Failed to read file from disk.");
+    };
+    reader.readAsText(file);
+  }
+
+  // Multi-Format Circuit Import Handler
+  async function handleImportCircuit() {
+    const trimmed = importText.trim();
+    if (!trimmed) {
+      setImportError("Please paste circuit code or upload a file first.");
+      return;
+    }
+
+    // Determine target format
+    let effectiveFormat = importFormat;
+    if (effectiveFormat === "auto") {
+      effectiveFormat = detectFormat(trimmed, importFileName ?? undefined);
+    }
+
+    if (effectiveFormat === "cudaq_cpp") {
+      setImportError(
+        "CUDA-Q C++ (.cpp) requires compilation via nvq++ and cannot be directly parsed in the browser. Please use CUDA-Q Python or OpenQASM 3.0 instead."
+      );
+      return;
+    }
+
     setImportBusy(true);
     setImportError(null);
+
     try {
-      const res = await buildCircuit(importQasmText, "qasm3");
-      if (res.circuit_ir) {
-        setIr(res.circuit_ir);
+      if (effectiveFormat === "json") {
+        // Direct, safe AST validation and parsing without subprocess execution
+        const result = validateAndSanitizeCircuitIR(trimmed);
+        if (!result.ok) {
+          setImportError(result.error);
+          return;
+        }
+        setIr(result.ir);
+        if (result.ir.name && result.ir.name !== "circuit" && result.ir.name !== "imported_circuit") {
+          setCircuitName(result.ir.name);
+        }
         setImportDialogOpen(false);
-        setImportQasmText("");
-        toast.success("Circuit imported successfully from OpenQASM 3");
+        setImportText("");
+        setImportFileName(null);
+        setImportFileSize(null);
+        toast.success("Circuit imported safely from Circuit IR (JSON)");
+      } else {
+        // QASM3, Qiskit, Cirq, PennyLane, qBraid, CUDA-Q via backend codelab service (sandboxed)
+        const backendFramework = effectiveFormat === "cudaq" ? "cudaq" : effectiveFormat;
+        const res = await buildCircuit(trimmed, backendFramework);
+        if (res.circuit_ir) {
+          setIr(res.circuit_ir);
+          if (res.circuit_ir.name && res.circuit_ir.name !== "circuit") {
+            setCircuitName(res.circuit_ir.name);
+          }
+          setImportDialogOpen(false);
+          setImportText("");
+          setImportFileName(null);
+          setImportFileSize(null);
+          const fmtObj = IMPORT_FORMATS.find((f) => f.id === effectiveFormat);
+          toast.success(`Circuit imported successfully from ${fmtObj?.name || effectiveFormat}`);
+        } else {
+          setImportError("No valid circuit was returned by compiler.");
+        }
       }
     } catch (err: any) {
-      setImportError(err.message || "Failed to parse OpenQASM 3 code.");
+      setImportError(err.message || "Failed to compile circuit. Please verify syntax.");
     } finally {
       setImportBusy(false);
     }
@@ -275,6 +373,7 @@ export function ComposerPage() {
   }
 
   function loadCircuit(record: SavedCircuitRecord) {
+    userEditedNameRef.current = true;
     setIr(record.ir);
     setCircuitName(record.name);
     setSavedCircuitsDialogOpen(false);
@@ -324,7 +423,10 @@ export function ComposerPage() {
           {/* Circuit Title Input */}
           <Input
             value={circuitName}
-            onChange={(e) => setCircuitName(e.target.value)}
+            onChange={(e) => {
+              userEditedNameRef.current = true;
+              setCircuitName(e.target.value);
+            }}
             className="h-8 w-44 font-semibold text-xs border-line bg-bg focus:w-56 transition-all"
             placeholder="Circuit Name"
             aria-label="Circuit Name"
@@ -333,7 +435,13 @@ export function ComposerPage() {
           {/* Qubit Count Stepper */}
           <div className="flex items-center rounded-lg border border-line bg-bg p-0.5">
             <button
-              onClick={() => setQubits(ir.n_qubits - 1)}
+              onClick={() => {
+                const n = ir.n_qubits - 1;
+                setQubits(n);
+                if (!userEditedNameRef.current && (circuitName === "Bell State" || circuitName.includes("GHZ") || circuitName.includes("Circuit"))) {
+                  setCircuitName(`${n}-Qubit Circuit`);
+                }
+              }}
               disabled={ir.n_qubits <= 1}
               className="p-1 text-ink-3 hover:text-ink disabled:opacity-30 rounded-md transition-colors"
               title="Decrease qubits"
@@ -345,7 +453,13 @@ export function ComposerPage() {
               {ir.n_qubits} Qubits
             </span>
             <button
-              onClick={() => setQubits(ir.n_qubits + 1)}
+              onClick={() => {
+                const n = ir.n_qubits + 1;
+                setQubits(n);
+                if (!userEditedNameRef.current && (circuitName === "Bell State" || circuitName.includes("GHZ") || circuitName.includes("Circuit"))) {
+                  setCircuitName(`${n}-Qubit Circuit`);
+                }
+              }}
               disabled={ir.n_qubits >= 20}
               className="p-1 text-ink-3 hover:text-ink disabled:opacity-30 rounded-md transition-colors"
               title="Increase qubits"
@@ -359,16 +473,48 @@ export function ComposerPage() {
 
           {/* Presets */}
           <div className="flex items-center gap-1">
-            <Button size="sm" variant="ghost" onClick={() => resetCircuit(bell())} title="Load Bell state">
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => {
+                userEditedNameRef.current = false;
+                resetCircuit(bell(), "Bell State");
+              }}
+              title="Load Bell state"
+            >
               <Sparkles className="h-3.5 w-3.5 text-accent" /> Bell
             </Button>
-            <Button size="sm" variant="ghost" onClick={() => resetCircuit(ghz(3))} title="Load 3-qubit GHZ state">
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => {
+                userEditedNameRef.current = false;
+                resetCircuit(ghz(3), "GHZ State");
+              }}
+              title="Load 3-qubit GHZ state"
+            >
               GHZ
             </Button>
-            <Button size="sm" variant="ghost" onClick={() => resetCircuit(wState())} title="Load 3-qubit W state">
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => {
+                userEditedNameRef.current = false;
+                resetCircuit(wState(), "W State");
+              }}
+              title="Load 3-qubit W state"
+            >
               W State
             </Button>
-            <Button size="sm" variant="ghost" onClick={() => resetCircuit(qft3())} title="Load 3-qubit QFT">
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => {
+                userEditedNameRef.current = false;
+                resetCircuit(qft3(), "3-Qubit QFT");
+              }}
+              title="Load 3-qubit QFT"
+            >
               QFT
             </Button>
           </div>
@@ -598,7 +744,14 @@ export function ComposerPage() {
                 <ComposerInner
                   value={ir}
                   nQubits={ir.n_qubits}
-                  onChange={setIr}
+                  onChange={(newIr) => {
+                    setIr(newIr);
+                    if (!userEditedNameRef.current) {
+                      if (circuitName === "Bell State" && (newIr.n_qubits !== 2 || newIr.ops.length !== 4)) {
+                        setCircuitName(`${newIr.n_qubits}-Qubit Circuit`);
+                      }
+                    }
+                  }}
                   theme={{ base: "dark" }}
                 />
               </div>
@@ -737,6 +890,27 @@ export function ComposerPage() {
                   </Select>
                 </div>
 
+                {/* Noise Model Toggle */}
+                {(backendId === "qiskit_aer" || backendId === "cudaq" || backendId === "auto") && (
+                  <button
+                    type="button"
+                    onClick={() => setNoise((n) => ({ ...n, enabled: !n.enabled }))}
+                    className={`h-8 px-2.5 rounded-lg border text-xs font-medium flex items-center gap-1.5 transition-all ${
+                      noise.enabled
+                        ? "bg-amber-500/15 border-amber-500/40 text-amber-300 shadow-xs"
+                        : "bg-raised border-line text-ink-3 hover:text-ink hover:border-line-soft"
+                    }`}
+                    title={
+                      noise.enabled
+                        ? `Noise model active: T1=${noise.t1_us}µs, T2=${noise.t2_us}µs, Readout=${(noise.readout_error * 100).toFixed(0)}%`
+                        : "Enable T1/T2 decoherence & readout noise for simulation"
+                    }
+                  >
+                    <span className={`h-2 w-2 rounded-full ${noise.enabled ? "bg-amber-400 animate-pulse" : "bg-ink-4"}`} />
+                    Noise: <span className="font-semibold">{noise.enabled ? "ON" : "OFF"}</span>
+                  </button>
+                )}
+
                 {/* Run Simulation Button */}
                 <Tooltip
                   content={
@@ -819,13 +993,17 @@ export function ComposerPage() {
 
               {bottomView === "noise" && (
                 <div className="space-y-4 py-2">
-                  <NoiseLabView circuitIr={ir} backendId={backendId} />
+                  <NoiseLabView
+                    circuitIr={ir}
+                    backendId={backendId}
+                    onSimulationDone={(res) => setNoiseSimResult(res)}
+                  />
                 </div>
               )}
 
               {bottomView === "advanced" && (
                 <div className="space-y-4">
-                  {jobId === null ? (
+                  {jobId === null && !noiseSimResult ? (
                     <div className="flex flex-col items-center justify-center p-12 text-center border border-line-soft rounded-2xl bg-subtle/30">
                       <Play className="h-8 w-8 text-accent/50 mb-3 animate-pulse" />
                       <h4 className="text-base font-semibold text-white">No Backend Job Submitted Yet</h4>
@@ -849,6 +1027,11 @@ export function ComposerPage() {
                       ranQubits={ranQubits}
                       currentQubits={ir.n_qubits}
                       ir={ir}
+                      noiseSimResult={noiseSimResult}
+                      onRunNoise={(n) => {
+                        setNoise(n);
+                        run.mutate();
+                      }}
                     />
                   )}
                 </div>
@@ -866,43 +1049,224 @@ export function ComposerPage() {
         description="Are you sure you want to remove all gates and measurements from the current canvas? This cannot be undone."
         confirmLabel="Clear Canvas"
         variant="danger"
-        onConfirm={() => resetCircuit(emptyCircuit(ir.n_qubits))}
+        onConfirm={() => {
+          userEditedNameRef.current = false;
+          resetCircuit(emptyCircuit(ir.n_qubits), "Untitled Circuit");
+        }}
       />
 
-      {/* QASM Import Dialog */}
-      <Dialog open={importDialogOpen} onOpenChange={setImportDialogOpen}>
-        <DialogContent className="max-w-lg">
+      {/* Multi-Format Circuit Import Dialog */}
+      <Dialog
+        open={importDialogOpen}
+        onOpenChange={(open) => {
+          setImportDialogOpen(open);
+          if (!open) setImportError(null);
+        }}
+      >
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Import OpenQASM 3.0</DialogTitle>
-            <DialogDescription>
-              Paste OpenQASM 3.0 code below to compile and load it directly onto the Composer grid.
-            </DialogDescription>
+            <div className="flex items-center gap-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent/15 text-accent border border-accent/30">
+                <FileCode className="h-4 w-4" />
+              </div>
+              <div>
+                <DialogTitle>Import Quantum Circuit</DialogTitle>
+                <DialogDescription>
+                  Load circuits from OpenQASM 3.0, Circuit IR JSON, Qiskit, Cirq, PennyLane, qBraid, or CUDA-Q.
+                </DialogDescription>
+              </div>
+            </div>
           </DialogHeader>
 
-          <div className="space-y-3">
-            <textarea
-              rows={8}
-              value={importQasmText}
-              onChange={(e) => setImportQasmText(e.target.value)}
-              placeholder={`OPENQASM 3.0;\ninclude "stdgates.inc";\nqubit[2] q;\nh q[0];\ncx q[0], q[1];`}
-              className="w-full rounded-lg border border-line bg-subtle p-3 text-xs font-mono text-ink placeholder:text-ink-3 focus:outline-none focus:border-line-focus"
-            />
-            {importError && <ErrorNote className="text-xs">{importError}</ErrorNote>}
+          <div className="space-y-4">
+            {/* Format Selector Pills */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-ink-2">Circuit Format</label>
+              <div className="flex flex-wrap gap-1.5">
+                {IMPORT_FORMATS.map((fmt) => {
+                  const isSelected = importFormat === fmt.id;
+                  return (
+                    <button
+                      key={fmt.id}
+                      type="button"
+                      onClick={() => {
+                        setImportFormat(fmt.id);
+                        setImportError(null);
+                      }}
+                      className={cn(
+                        "flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-medium transition-all cursor-pointer",
+                        isSelected
+                          ? "border-accent bg-accent/15 text-accent font-semibold shadow-xs"
+                          : "border-line bg-subtle/60 text-ink-2 hover:bg-hover hover:text-ink"
+                      )}
+                    >
+                      <Badge
+                        tone={isSelected ? "accent" : "neutral"}
+                        className="px-1 py-0 text-[10px] font-mono"
+                      >
+                        {fmt.badge}
+                      </Badge>
+                      <span>{fmt.name}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-[11px] text-ink-3">
+                {IMPORT_FORMATS.find((f) => f.id === importFormat)?.description}
+              </p>
+            </div>
+
+            {/* Drag & Drop File Upload Area */}
+            <div
+              onDragOver={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const file = e.dataTransfer.files?.[0];
+                if (file) handleFileUpload(file);
+              }}
+              onClick={() => fileInputRef.current?.click()}
+              className="group relative flex flex-col items-center justify-center rounded-xl border border-dashed border-line hover:border-accent/60 bg-subtle/30 hover:bg-accent/5 p-4 transition-all cursor-pointer text-center"
+            >
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".qasm,.json,.py,.cpp,.cc,.cxx,.txt"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) handleFileUpload(file);
+                }}
+              />
+              <FileUp className="h-6 w-6 text-ink-3 group-hover:text-accent transition-colors mb-1.5" />
+              <div className="text-xs font-medium text-ink">
+                Drop circuit file here, or <span className="text-accent underline">browse</span>
+              </div>
+              <p className="text-[10px] text-ink-3 mt-0.5">
+                Supports .qasm, .json, .py (Qiskit/Cirq/PennyLane/qBraid/CUDA-Q), and .cpp (up to 100 KB)
+              </p>
+            </div>
+
+            {/* Selected File Badge (if loaded from file) */}
+            {importFileName && (
+              <div className="flex items-center justify-between rounded-lg border border-accent/30 bg-accent/10 px-3 py-1.5 text-xs text-accent">
+                <div className="flex items-center gap-2 truncate">
+                  <FileCode className="h-4 w-4 shrink-0" />
+                  <span className="font-mono font-medium truncate">{importFileName}</span>
+                  {importFileSize !== null && (
+                    <span className="text-[11px] opacity-75">
+                      ({(importFileSize / 1024).toFixed(1)} KB)
+                    </span>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setImportFileName(null);
+                    setImportFileSize(null);
+                    setImportText("");
+                    if (fileInputRef.current) fileInputRef.current.value = "";
+                  }}
+                  className="rounded p-1 hover:bg-accent/20 text-accent transition-colors"
+                  title="Remove uploaded file"
+                  aria-label="Remove uploaded file"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            )}
+
+            {/* Circuit Code Textarea */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between text-xs">
+                <label className="font-semibold text-ink-2">Circuit Code / Specification</label>
+                <span className="text-[11px] font-mono text-ink-3">
+                  {importText.length.toLocaleString()} / {MAX_IMPORT_CHARS.toLocaleString()} chars
+                </span>
+              </div>
+              <textarea
+                rows={9}
+                value={importText}
+                maxLength={MAX_IMPORT_CHARS}
+                onChange={(e) => {
+                  setImportText(e.target.value);
+                  if (importError) setImportError(null);
+                  if (importFormat === "auto" && e.target.value.length > 10) {
+                    const detected = detectFormat(e.target.value, importFileName ?? undefined);
+                    if (detected !== "auto") {
+                      // Optionally reflect detection
+                    }
+                  }
+                }}
+                placeholder={
+                  IMPORT_FORMATS.find((f) => f.id === importFormat)?.placeholder ||
+                  IMPORT_FORMATS[0].placeholder
+                }
+                className="w-full rounded-lg border border-line bg-subtle p-3 text-xs font-mono text-ink placeholder:text-ink-3/60 focus:outline-none focus:border-line-focus shadow-inner"
+              />
+            </div>
+
+            {/* Error Message */}
+            {importError && (
+              <ErrorNote className="text-xs flex items-start gap-1.5">
+                <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+                <span>{importError}</span>
+              </ErrorNote>
+            )}
+
+            {/* Data Safety & Integrity Notice */}
+            <div className="flex items-start gap-2 rounded-lg border border-line-soft bg-subtle/50 p-2.5 text-[11px] text-ink-3">
+              <ShieldCheck className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
+              <div>
+                <span className="font-semibold text-ink-2">Tamper-Proof & Safe Parsing: </span>
+                Circuit IR (JSON) and OpenQASM 3.0 are parsed via pure AST validation with strict boundary and index guards. Python frameworks are transpiled inside a sealed, isolated execution sandbox with no network or filesystem tampering.
+              </div>
+            </div>
           </div>
 
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setImportDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              variant="primary"
-              onClick={handleImportQasm}
-              disabled={importBusy || !importQasmText.trim()}
-              className="gap-1.5"
-            >
-              {importBusy ? <Spinner className="h-3.5 w-3.5" /> : <Upload className="h-3.5 w-3.5" />}
-              Import to Canvas
-            </Button>
+          <DialogFooter className="mt-4 flex items-center justify-between sm:justify-between w-full">
+            <div>
+              {importText && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setImportText("");
+                    setImportFileName(null);
+                    setImportFileSize(null);
+                    setImportError(null);
+                    if (fileInputRef.current) fileInputRef.current.value = "";
+                  }}
+                  className="text-xs text-ink-3 hover:text-ink"
+                >
+                  Clear Input
+                </Button>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setImportDialogOpen(false);
+                  setImportError(null);
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                onClick={handleImportCircuit}
+                disabled={importBusy || !importText.trim()}
+                className="gap-1.5"
+              >
+                {importBusy ? <Spinner className="h-3.5 w-3.5" /> : <Upload className="h-3.5 w-3.5" />}
+                Import to Canvas
+              </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>

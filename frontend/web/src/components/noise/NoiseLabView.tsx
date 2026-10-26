@@ -26,6 +26,7 @@ import {
 interface NoiseLabViewProps {
   circuitIr: any;
   backendId?: string;
+  onSimulationDone?: (result: NoiseSimulationResult) => void;
 }
 
 const DEFAULT_CONFIG: NoiseConfig = {
@@ -68,7 +69,7 @@ const DEFAULT_CONFIG: NoiseConfig = {
   simulation_method: "automatic",
 };
 
-export function NoiseLabView({ circuitIr, backendId = "qiskit_aer" }: NoiseLabViewProps) {
+export function NoiseLabView({ circuitIr, backendId = "qiskit_aer", onSimulationDone }: NoiseLabViewProps) {
   const [config, setConfig] = useState<NoiseConfig>(DEFAULT_CONFIG);
   const [activeCategory, setActiveCategory] = useState<
     "decoherence" | "stochastic" | "coherent" | "readout" | "correlated"
@@ -100,9 +101,11 @@ export function NoiseLabView({ circuitIr, backendId = "qiskit_aer" }: NoiseLabVi
 
   // Simulation Mutation
   const simulateMutation = useMutation({
-    mutationFn: () => noiseLabApi.simulate(circuitIr, config, shots),
+    mutationFn: (overrideConfig?: NoiseConfig) =>
+      noiseLabApi.simulate(circuitIr, overrideConfig ?? config, shots),
     onSuccess: (data) => {
       setSimResult(data);
+      onSimulationDone?.(data);
     },
   });
 
@@ -118,8 +121,10 @@ export function NoiseLabView({ circuitIr, backendId = "qiskit_aer" }: NoiseLabVi
   // Apply preset
   const handleSelectPreset = (presetKey: string) => {
     if (presetsQuery.data && presetsQuery.data[presetKey]) {
-      setConfig(presetsQuery.data[presetKey]);
-      setSimResult(null);
+      const newConfig = presetsQuery.data[presetKey];
+      setConfig(newConfig);
+      // Immediately run simulation for the new preset so results appear right away!
+      simulateMutation.mutate(newConfig);
     }
   };
 
@@ -192,13 +197,24 @@ export function NoiseLabView({ circuitIr, backendId = "qiskit_aer" }: NoiseLabVi
             size="sm"
             onClick={() => simulateMutation.mutate()}
             disabled={simulateMutation.isPending || (validation && !validation.valid)}
-            className="flex items-center gap-1.5 shadow-sm"
+            className="flex items-center gap-1.5 shadow-sm font-semibold"
           >
             {simulateMutation.isPending ? <Spinner className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
-            Simulate
+            Run Noise Simulation
           </Button>
         </div>
       </div>
+
+      {/* Simulation Error Alert if any */}
+      {simulateMutation.isError && (
+        <div className="p-3.5 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs flex items-start gap-2.5">
+          <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-red-400" />
+          <div className="flex flex-col gap-1">
+            <span className="font-semibold">Noise Simulation Failed:</span>
+            <span>{String(simulateMutation.error)}</span>
+          </div>
+        </div>
+      )}
 
       {/* Physics Validation Alert if invalid */}
       {validation && !validation.valid && (
@@ -744,11 +760,11 @@ export function NoiseLabView({ circuitIr, backendId = "qiskit_aer" }: NoiseLabVi
                     ? simResult.metrics.purity.toFixed(3)
                     : "1.000"}
                 </span>
-                <span className="text-[9px] text-ink-4 mt-1">Tr(ρ²) (1 = Pure, 0.5 = Mixed)</span>
+                <span className="text-[9px] text-ink-4 mt-1">Tr(ρ²) · Mixed State Purity</span>
               </Card>
 
               <Card className="p-3 bg-raised/50 border border-white/5 rounded-xl flex flex-col">
-                <span className="text-[11px] text-ink-3">Total Variation Dist</span>
+                <span className="text-[11px] text-ink-3">Total Variation Distance</span>
                 <span className="text-lg font-mono font-bold text-emerald-400 mt-0.5">
                   {simResult.metrics.total_variation_distance.toFixed(4)}
                 </span>
@@ -787,7 +803,7 @@ export function NoiseLabView({ circuitIr, backendId = "qiskit_aer" }: NoiseLabVi
             </div>
 
             {simResult ? (
-              <div className="flex flex-col gap-2.5 pt-2">
+              <div className="flex flex-col gap-3 pt-2">
                 {Array.from(
                   new Set([
                     ...Object.keys(simResult.ideal_probabilities),
@@ -798,27 +814,56 @@ export function NoiseLabView({ circuitIr, backendId = "qiskit_aer" }: NoiseLabVi
                   .map((state) => {
                     const idealP = simResult.ideal_probabilities[state] || 0;
                     const noisyP = simResult.noisy_probabilities[state] || 0;
+                    const delta = noisyP - idealP;
                     return (
-                      <div key={state} className="flex flex-col gap-1 text-xs">
+                      <div key={state} className="flex flex-col gap-1.5 text-xs bg-black/20 p-2.5 rounded-lg border border-white/5">
                         <div className="flex justify-between font-mono text-[11px]">
-                          <span className="text-white font-bold">|{state}⟩</span>
+                          <span className="text-white font-bold flex items-center gap-1.5">
+                            |{state}⟩
+                            {Math.abs(delta) > 0.005 && (
+                              <span className={`text-[10px] px-1.5 py-0.2 rounded font-semibold ${
+                                delta > 0 ? "bg-amber-500/15 text-amber-300" : "bg-cyan-500/15 text-cyan-300"
+                              }`}>
+                                {delta > 0 ? `+${(delta * 100).toFixed(1)}%` : `${(delta * 100).toFixed(1)}%`}
+                              </span>
+                            )}
+                          </span>
                           <span>
-                            <span className="text-accent font-semibold">{(idealP * 100).toFixed(1)}%</span>
-                            {" vs "}
-                            <span className="text-amber-400 font-semibold">{(noisyP * 100).toFixed(1)}%</span>
+                            <span className="text-accent font-semibold">Ideal: {(idealP * 100).toFixed(1)}%</span>
+                            {" · "}
+                            <span className="text-amber-400 font-semibold">Noisy: {(noisyP * 100).toFixed(1)}%</span>
                           </span>
                         </div>
-                        <div className="h-3 w-full bg-bg rounded-full overflow-hidden flex gap-1 p-0.5">
-                          <div
-                            className="h-full bg-accent rounded-xs transition-all duration-300"
-                            style={{ width: `${idealP * 100}%` }}
-                            title={`Ideal: ${(idealP * 100).toFixed(2)}%`}
-                          />
-                          <div
-                            className="h-full bg-amber-400/80 rounded-xs transition-all duration-300"
-                            style={{ width: `${noisyP * 100}%` }}
-                            title={`Noisy: ${(noisyP * 100).toFixed(2)}%`}
-                          />
+
+                        <div className="flex flex-col gap-1">
+                          {/* Ideal Bar Row */}
+                          <div className="flex items-center gap-2">
+                            <span className="w-10 text-[10px] text-accent font-mono font-medium">Ideal</span>
+                            <div className="h-2 flex-1 bg-bg rounded-full overflow-hidden p-0.5">
+                              <div
+                                className="h-full bg-accent rounded-full transition-all duration-300"
+                                style={{ width: `${Math.min(100, Math.max(idealP > 0 ? 2 : 0, idealP * 100))}%` }}
+                                title={`Ideal: ${(idealP * 100).toFixed(2)}%`}
+                              />
+                            </div>
+                            <span className="w-12 text-right font-mono text-[10px] text-ink-3">
+                              {(idealP * 100).toFixed(1)}%
+                            </span>
+                          </div>
+                          {/* Noisy Bar Row */}
+                          <div className="flex items-center gap-2">
+                            <span className="w-10 text-[10px] text-amber-400 font-mono font-medium">Noisy</span>
+                            <div className="h-2 flex-1 bg-bg rounded-full overflow-hidden p-0.5">
+                              <div
+                                className="h-full bg-amber-400 rounded-full transition-all duration-300"
+                                style={{ width: `${Math.min(100, Math.max(noisyP > 0 ? 2 : 0, noisyP * 100))}%` }}
+                                title={`Noisy: ${(noisyP * 100).toFixed(2)}%`}
+                              />
+                            </div>
+                            <span className="w-12 text-right font-mono text-[10px] text-ink-3">
+                              {(noisyP * 100).toFixed(1)}%
+                            </span>
+                          </div>
                         </div>
                       </div>
                     );
@@ -826,7 +871,7 @@ export function NoiseLabView({ circuitIr, backendId = "qiskit_aer" }: NoiseLabVi
               </div>
             ) : (
               <div className="h-32 grid place-items-center text-xs text-ink-4">
-                Click Simulate to run ideal vs noisy execution
+                Click Run Noise Simulation to view ideal vs noisy execution
               </div>
             )}
           </Card>

@@ -1,7 +1,7 @@
 import { NavLink } from "react-router-dom";
-import { Atom, ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { NAV_SECTIONS, useNavItems } from "./nav";
-import { cn, Tooltip } from "../ui";
+import { cn, Tooltip, QuantumLogo } from "../ui";
 import { create } from "zustand";
 
 interface SidebarStore {
@@ -52,15 +52,14 @@ export function Sidebar({
       <div className={cn("flex h-15 shrink-0 items-center border-b border-white/5", collapsed ? "justify-center px-2" : "justify-between px-4")}>
         <div className="flex items-center gap-3 min-w-0">
           <div
-            className={cn(
-              "relative grid shrink-0 place-items-center rounded-xl bg-gradient-to-tr from-accent/30 to-accent-2/30 text-accent border border-accent/40 shadow-[0_0_15px_-3px_rgba(59,130,246,0.5)] cursor-pointer transition-transform duration-150 hover:scale-105",
-              collapsed ? "h-10 w-10" : "h-8.5 w-8.5",
-            )}
             onClick={collapsed ? toggleCollapsed : undefined}
             title={collapsed ? "QuantumLearn Studio (click to expand)" : "QuantumLearn Studio"}
+            className="cursor-pointer transition-transform duration-150 hover:scale-105 shrink-0"
           >
-            <Atom className={cn("animate-spin-slow", collapsed ? "h-5 w-5" : "h-4.5 w-4.5")} aria-hidden />
-            <div className="absolute inset-0 rounded-xl bg-accent/20 blur-xs" />
+            <QuantumLogo
+              className={collapsed ? "h-10 w-10" : "h-8.5 w-8.5"}
+              size={collapsed ? 26 : 22}
+            />
           </div>
           {!collapsed && (
             <div className="flex flex-col min-w-0">

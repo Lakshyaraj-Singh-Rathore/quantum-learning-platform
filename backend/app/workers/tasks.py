@@ -88,12 +88,15 @@ def run_simulation(self, job_id: int) -> dict:
                 )
             elif engine == "qbraid":
                 # qBraid is the only backend that waits on a remote queue. Its
-                # own default is 300 s, but Celery kills the task at
-                # celery_hard_time_limit (15 s), so the wait was guaranteed to
-                # be cut off mid-flight -- after the credits had already been
-                # spent on the submission. Give it the real budget, minus a
-                # margin to record the result before Celery pulls the plug.
-                budget = max(5.0, get_settings().celery_soft_time_limit - 1.0)
+                # own default is 300 s. When dispatched to a Celery worker, we respect
+                # the worker's soft time limit minus a small margin so the timeout error
+                # can be caught and written to the database before the worker process is killed.
+                # When running eagerly (local dev), we give it the full 300 s queue allowance.
+                settings = get_settings()
+                if settings.celery_task_always_eager:
+                    budget = 300.0
+                else:
+                    budget = max(10.0, float(settings.celery_soft_time_limit - 2.0))
                 result = STATIC_RUNNERS[engine](ir, shots=job.shots, timeout=budget)
             else:
                 result = STATIC_RUNNERS[engine](ir, shots=job.shots)

@@ -153,10 +153,10 @@ _BROKEN_BELL = {
     "n_clbits": 2,
     "ops": [
         # Bug: X instead of H, so there is no superposition to entangle.
-        {"kind": "gate", "gate": "x", "qubits": [0], "layer": 0},
-        {"kind": "gate", "gate": "x", "qubits": [1], "controls": [0], "layer": 1},
-        {"kind": "measure", "qubits": [0], "clbits": [0], "layer": 2},
-        {"kind": "measure", "qubits": [1], "clbits": [1], "layer": 2},
+        {"kind": "gate", "gate": "x", "qubits": [0], "controls": [], "params": [], "clbits": [], "layer": 0},
+        {"kind": "gate", "gate": "x", "qubits": [1], "controls": [0], "params": [], "clbits": [], "layer": 1},
+        {"kind": "measure", "qubits": [0], "controls": [], "params": [], "clbits": [0], "layer": 2},
+        {"kind": "measure", "qubits": [1], "controls": [], "params": [], "clbits": [1], "layer": 2},
     ],
 }
 
@@ -167,9 +167,9 @@ _BROKEN_PHASE = {
     "ops": [
         # Bug: the second H is missing, so the phase never turns into a
         # measurable difference and the histogram looks 50/50 either way.
-        {"kind": "gate", "gate": "h", "qubits": [0], "layer": 0},
-        {"kind": "gate", "gate": "z", "qubits": [0], "layer": 1},
-        {"kind": "measure", "qubits": [0], "clbits": [0], "layer": 2},
+        {"kind": "gate", "gate": "h", "qubits": [0], "controls": [], "params": [], "clbits": [], "layer": 0},
+        {"kind": "gate", "gate": "z", "qubits": [0], "controls": [], "params": [], "clbits": [], "layer": 1},
+        {"kind": "measure", "qubits": [0], "controls": [], "params": [], "clbits": [0], "layer": 2},
     ],
 }
 

@@ -28,7 +28,7 @@ import { GEOMETRY, gateColour, gateForeground, gateShape, gateText } from "./the
 export interface PendingSelection {
   op: Op;
   need: number; // -1 = arbitrary
-  mode: "controls" | "target" | "target2";
+  mode: "controls" | "target" | "target2" | "mcx_config";
 }
 
 interface Props {
@@ -136,13 +136,12 @@ export default function Grid(props: Props) {
 
   /** Rows that are legal control/target picks for the pending selection. */
   const pickable = useMemo(() => {
-    if (!pending) return new Set<number>();
+    if (!pending || pending.mode === "mcx_config") return new Set<number>();
     const used = new Set(involvedQubits(pending.op));
     return new Set(range(0, rows - 1).filter((q) => !used.has(q)));
   }, [pending, rows]);
 
-  /** True when nothing has been placed on this wire, so it can be removed. */
-  const wireEmpty = (q: number) => !ir.ops.some((o) => [...o.qubits, ...o.controls].includes(q));
+  const wireEmpty = (q: number) => !ir.ops.some((o) => [...(o.qubits || []), ...(o.controls || [])].includes(q));
 
   const coordsFromEvent = (e: React.DragEvent) => {
     const rect = gridRef.current?.getBoundingClientRect();
@@ -258,7 +257,11 @@ export default function Grid(props: Props) {
               >
                 {isPickCell && (
                   <div className="pending-target-badge">
-                    {pending?.mode === "target2" ? "✕" : pending?.mode === "target" ? "⊕" : "•"}
+                    {pending?.mode === "target2"
+                      ? "✕"
+                      : pending?.mode === "target"
+                      ? (pending.op.gate === "x" ? "⊕" : (pending.op.gate ?? "").toUpperCase())
+                      : "•"}
                   </div>
                 )}
               </div>
@@ -312,9 +315,9 @@ export default function Grid(props: Props) {
                   </div>
                 );
               }
-              if (activeMovingOp.controls.length > 0) {
+              if ((activeMovingOp.controls?.length || 0) > 0) {
                 let targetQ = activeMovingOp.qubits[0] ?? 0;
-                let controls = [...activeMovingOp.controls];
+                let controls = [...(activeMovingOp.controls || [])];
                 if (movingOp?.handleType === "control") {
                   controls[0] = dragHover.q;
                 } else if (movingOp?.handleType?.startsWith("control-")) {
@@ -332,7 +335,7 @@ export default function Grid(props: Props) {
                 const allQ = [...controls, targetQ];
                 const lo = Math.min(...allQ);
                 const hi = Math.max(...allQ);
-                const isH = activeMovingOp.gate === "h";
+                const isTargetShape = gateShape(activeMovingOp) === "target";
                 return (
                   <div key="preview-move-controlled">
                     <div
@@ -354,22 +357,7 @@ export default function Grid(props: Props) {
                         }}
                       />
                     ))}
-                    {isH ? (
-                      <div
-                        className="gate drag-preview-tile"
-                        style={{
-                          left: colX(dragHover.c) + pad,
-                          top: TOP + targetQ * CELL + pad,
-                          width: TILE,
-                          height: TILE,
-                          background: "#F84D63",
-                          color: "#FFFFFF",
-                          zIndex: 20,
-                        }}
-                      >
-                        H
-                      </div>
-                    ) : (
+                    {isTargetShape ? (
                       <div
                         className="gate target drag-preview-target"
                         style={{
@@ -380,6 +368,25 @@ export default function Grid(props: Props) {
                           zIndex: 20,
                         }}
                       />
+                    ) : (
+                      <div
+                        className="gate drag-preview-tile"
+                        style={{
+                          left: colX(dragHover.c) + pad,
+                          top: TOP + targetQ * CELL + pad,
+                          width: TILE,
+                          height: TILE,
+                          background: gateColour(activeMovingOp),
+                          color: gateForeground(activeMovingOp),
+                          zIndex: 20,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          fontWeight: 600,
+                        }}
+                      >
+                        {gateText(activeMovingOp)}
+                      </div>
                     )}
                   </div>
                 );
@@ -396,135 +403,6 @@ export default function Grid(props: Props) {
                   }}
                 >
                   {gateText(activeMovingOp)}
-                </div>
-              );
-            })() : dragging?.gate === "swap" ? (() => {
-              const q0 = dragHover.q;
-              const q1 = rows === 2 ? (q0 === 0 ? 1 : 0) : (q0 < rows - 1 ? q0 + 1 : q0 - 1);
-              return (
-                <div key="preview-swap">
-                  <div
-                    className="ctrl-line swap-line preview-line"
-                    style={{
-                      left: colX(dragHover.c) + CELL / 2 - 1,
-                      top: wireY(Math.min(q0, q1)),
-                      height: Math.abs(q0 - q1) * CELL,
-                    }}
-                  />
-                  {[q0, q1].map((pq) => (
-                    <div
-                      key={`preview-swap-${pq}`}
-                      className="gate swap drag-preview-cross"
-                      style={{
-                        left: colX(dragHover.c) + pad,
-                        top: TOP + pq * CELL + pad,
-                        width: TILE,
-                        height: TILE,
-                        zIndex: 20,
-                      }}
-                    >
-                      ✕
-                    </div>
-                  ))}
-                </div>
-              );
-            })() : dragging?.id === "ccx" || dragging?.controls === 2 ? (() => {
-              const targetQ = dragHover.q;
-              let controls: number[];
-              if (rows === 2) {
-                controls = [targetQ === 0 ? 1 : 0];
-              } else if (targetQ === 0) {
-                controls = [1, 2];
-              } else if (targetQ === 1) {
-                controls = [0, 2];
-              } else {
-                controls = [targetQ - 2, targetQ - 1];
-              }
-              const allQ = [...controls, targetQ];
-              const lo = Math.min(...allQ);
-              const hi = Math.max(...allQ);
-              return (
-                <div key="preview-ccx">
-                  <div
-                    className="ctrl-line preview-line"
-                    style={{
-                      left: colX(dragHover.c) + CELL / 2 - 1,
-                      top: wireY(lo),
-                      height: (hi - lo) * CELL,
-                    }}
-                  />
-                  {controls.map((cQ) => (
-                    <div
-                      key={`preview-ccx-${cQ}`}
-                      className="ctrl-dot preview-dot"
-                      style={{
-                        left: colX(dragHover.c) + CELL / 2 - 6.5,
-                        top: wireY(cQ) - 6.5,
-                        zIndex: 20,
-                      }}
-                    />
-                  ))}
-                  <div
-                    className="gate target drag-preview-target"
-                    style={{
-                      left: colX(dragHover.c) + pad,
-                      top: TOP + targetQ * CELL + pad,
-                      width: TILE,
-                      height: TILE,
-                      zIndex: 20,
-                    }}
-                  />
-                </div>
-              );
-            })() : (dragging?.controls && dragging.controls > 0) ? (() => {
-              const targetQ = dragHover.q;
-              const controlQ = rows === 2 ? (targetQ === 0 ? 1 : 0) : (targetQ === 0 ? 1 : targetQ - 1);
-              const isH = dragging.gate === "h";
-              return (
-                <div key="preview-controlled">
-                  <div
-                    className="ctrl-line preview-line"
-                    style={{
-                      left: colX(dragHover.c) + CELL / 2 - 1,
-                      top: wireY(Math.min(targetQ, controlQ)),
-                      height: Math.abs(targetQ - controlQ) * CELL,
-                    }}
-                  />
-                  <div
-                    className="ctrl-dot preview-dot"
-                    style={{
-                      left: colX(dragHover.c) + CELL / 2 - 6.5,
-                      top: wireY(controlQ) - 6.5,
-                      zIndex: 20,
-                    }}
-                  />
-                  {isH ? (
-                    <div
-                      className="gate drag-preview-tile"
-                      style={{
-                        left: colX(dragHover.c) + pad,
-                        top: TOP + targetQ * CELL + pad,
-                        width: TILE,
-                        height: TILE,
-                        background: "#F84D63",
-                        color: "#FFFFFF",
-                        zIndex: 20,
-                      }}
-                    >
-                      H
-                    </div>
-                  ) : (
-                    <div
-                      className="gate target drag-preview-target"
-                      style={{
-                        left: colX(dragHover.c) + pad,
-                        top: TOP + targetQ * CELL + pad,
-                        width: TILE,
-                        height: TILE,
-                        zIndex: 20,
-                      }}
-                    />
-                  )}
                 </div>
               );
             })() : dragging?.kind === "measure" ? (
@@ -617,8 +495,8 @@ export default function Grid(props: Props) {
           const negControls = op.neg_controls || [];
           const totalControls = controls.length + negControls.length;
           if (!totalControls || isBlock(op)) return null;
-          const all = [...controls, ...negControls, ...op.qubits];
-          const hasTarget = op.qubits.length > 0;
+          const all = [...controls, ...negControls, ...(op.qubits || [])];
+          const hasTarget = (op.qubits?.length || 0) > 0;
           const lo = Math.min(...all);
           const hi = Math.max(...all);
           return (
@@ -919,7 +797,7 @@ export default function Grid(props: Props) {
             );
           }
 
-          if ((op.controls.length > 0 || (op.neg_controls && op.neg_controls.length > 0)) && op.qubits.length === 0) return null;
+          if (((op.controls?.length || 0) > 0 || (op.neg_controls && op.neg_controls.length > 0)) && (op.qubits?.length || 0) === 0) return null;
 
           // Measurement: a meter, wired to the register by the line drawn above.
           if (shape === "meter") {
@@ -954,7 +832,7 @@ export default function Grid(props: Props) {
                   e.stopPropagation();
                   props.onSelect(op.id);
                 }}
-                title={`measure q[${q}] → c${op.clbits[0] ?? q} — drag to move`}
+                title={`measure q[${q}] → c${op.clbits?.[0] ?? q} — drag to move`}
               >
                 <MeterDial />
                 <span className="del" onClick={(e) => { e.stopPropagation(); props.onDelete(op.id); }}>
@@ -965,7 +843,7 @@ export default function Grid(props: Props) {
           }
 
           // Everything else: a filled tile bearing the gate's name.
-          const isControlledTile = op.controls.length > 0 || (op.neg_controls && op.neg_controls.length > 0);
+          const isControlledTile = (op.controls?.length || 0) > 0 || (op.neg_controls && op.neg_controls.length > 0);
           return (
             <div
               key={op.id}
@@ -1074,7 +952,7 @@ export default function Grid(props: Props) {
                 >
                   ✏️
                 </button>
-                {(selectedOp.controls.length > 0 || (selectedOp.neg_controls && selectedOp.neg_controls.length > 0) || selectedOp.qubits.length > 1) && (
+                {((selectedOp.controls?.length || 0) > 0 || (selectedOp.neg_controls && selectedOp.neg_controls.length > 0) || (selectedOp.qubits?.length || 0) > 1) && (
                   <button
                     type="button"
                     className="ibm-toolbar-btn"

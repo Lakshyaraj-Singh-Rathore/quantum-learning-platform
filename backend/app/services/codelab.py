@@ -65,6 +65,7 @@ _CHILD_ENV = {
 MAX_CODE_CHARS = 20_000
 
 FRAMEWORKS = ("qiskit", "cirq", "pennylane", "qasm3", "qbraid", "cudaq")
+DATA_FORMATS = ("json",)
 
 FRAMEWORK_ALIASES: dict[str, str] = {
     "openqasm3": "qasm3",
@@ -75,6 +76,8 @@ FRAMEWORK_ALIASES: dict[str, str] = {
     "qiskit_aer": "qiskit",
     "cuda_q": "cudaq",
     "cuda-q": "cudaq",
+    "ir": "json",
+    "circuit_ir": "json",
 }
 
 
@@ -848,7 +851,7 @@ def build_circuit(code: str, framework: str) -> dict[str, Any]:
     stack trace, whenever the program cannot yield a circuit.
     """
     framework = normalize_framework(framework)
-    if framework not in FRAMEWORKS:
+    if framework not in FRAMEWORKS and framework not in DATA_FORMATS:
         raise CodeLabError(f"framework must be one of {', '.join(FRAMEWORKS)}")
     if not code.strip():
         raise CodeLabError("Write some code first.")
@@ -857,14 +860,27 @@ def build_circuit(code: str, framework: str) -> dict[str, Any]:
             f"Program is too long ({len(code)} chars, limit {MAX_CODE_CHARS})."
         )
 
-    # OpenQASM 3 is the platform's own format: it is data, not a program, so
-    # it is parsed directly and never reaches the code sandbox.
+    # OpenQASM 3 and Circuit IR JSON are data formats: they are parsed directly
+    # with strict AST and schema validation, and never reach the code sandbox.
     if framework == "qasm3":
         try:
             ir = from_qasm3(code, name="code-lab")
         except Exception as exc:  # noqa: BLE001
             raise CodeLabError(f"Could not parse your OpenQASM 3: {exc}") from exc
         return {"ir": ir, "qasm3": code, "stdout": ""}
+
+    if framework == "json":
+        try:
+            parsed = json.loads(code)
+            if not isinstance(parsed, dict):
+                raise ValueError("Circuit IR JSON must be a JSON object.")
+            from app.quantum.ir import CircuitIR
+            from app.quantum.qasm3_codec import to_qasm3
+            ir = CircuitIR.from_dict(parsed)
+            qasm3_code = to_qasm3(ir)
+        except Exception as exc:  # noqa: BLE001
+            raise CodeLabError(f"Could not parse Circuit IR JSON: {exc}") from exc
+        return {"ir": ir, "qasm3": qasm3_code, "stdout": ""}
 
     child = _CHILD.format(
         limit_mb=MEMORY_LIMIT_MB,
@@ -1012,6 +1028,21 @@ STARTERS: dict[str, str] = {
         circuit.h(q[0])
         circuit.cx(q[0], q[1])
         circuit.mz(q)
+        '''
+    ),
+    "json": textwrap.dedent(
+        '''\
+        {
+          "name": "bell-state",
+          "n_qubits": 2,
+          "n_clbits": 2,
+          "ops": [
+            {"kind": "gate", "gate": "h", "qubits": [0], "layer": 0},
+            {"kind": "gate", "gate": "cx", "controls": [0], "qubits": [1], "layer": 1},
+            {"kind": "measure", "qubits": [0], "clbits": [0], "layer": 2},
+            {"kind": "measure", "qubits": [1], "clbits": [1], "layer": 2}
+          ]
+        }
         '''
     ),
 }

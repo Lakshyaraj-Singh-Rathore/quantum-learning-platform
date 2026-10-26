@@ -111,7 +111,7 @@ check("undo and redo are present", plain.includes("↶") && plain.includes("↷"
 check("undo starts disabled with no history", count("disabled") >= 2);
 check("an alignment control is present", html.includes("align-select"));
 check("an Inspect toggle is present", html.includes("inspect-toggle") && html.includes("Inspect"));
-check("the qubit and measurement actions survived", html.includes("Qubit") && html.includes("Measure All"));
+check("the qubit actions survived", html.includes("Qubit"));
 
 /* ---------- canvas ---------- */
 

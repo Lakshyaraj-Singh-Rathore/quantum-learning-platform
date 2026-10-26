@@ -1,10 +1,10 @@
 import { useState, type FormEvent } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Atom, Sparkles, Shield, Cpu, ChevronRight, User } from "lucide-react";
+import { Sparkles, Shield, Cpu, ChevronRight, User } from "lucide-react";
 import { login, register } from "../api/auth";
 import { ApiError } from "../api/client";
 import { useSession } from "../state/session";
-import { Button, Card, ErrorNote, Input, Label, Tabs, TabsList, TabsTrigger } from "../components/ui";
+import { Button, Card, ErrorNote, Input, Label, Tabs, TabsList, TabsTrigger, QuantumLogo } from "../components/ui";
 
 type Mode = "login" | "register";
 
@@ -75,10 +75,7 @@ export function LoginPage({ mode: initialMode }: { mode: Mode }) {
       <div className="relative flex-1 flex flex-col justify-between p-8 sm:p-12 lg:p-16 border-b lg:border-b-0 lg:border-r border-white/5 z-10">
         {/* Brand Header */}
         <div className="flex items-center gap-3.5">
-          <div className="relative grid h-10 w-10 place-items-center rounded-2xl bg-gradient-to-tr from-accent/30 to-accent-2/30 text-accent border border-accent/40 shadow-[0_0_20px_-3px_rgba(59,130,246,0.6)]">
-            <Atom className="h-5 w-5 animate-spin-slow" />
-            <div className="absolute inset-0 rounded-2xl bg-accent/20 blur-xs" />
-          </div>
+          <QuantumLogo className="h-10 w-10 rounded-2xl" size={26} />
           <div>
             <span className="text-xl font-bold tracking-tight text-white font-display">
               QuantumLearn

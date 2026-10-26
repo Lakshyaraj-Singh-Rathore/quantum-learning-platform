@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Gamepad2,
   Lock,
@@ -40,6 +40,7 @@ interface ScoredRun {
 }
 
 export function GamesPage() {
+  const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const slug = searchParams.get("slug");
 
@@ -51,7 +52,12 @@ export function GamesPage() {
     }
   };
 
-  const games = useQuery({ queryKey: ["games"], queryFn: listGames, staleTime: 30_000 });
+  const handleBack = () => {
+    void queryClient.invalidateQueries({ queryKey: ["games"] });
+    setSlug(null);
+  };
+
+  const games = useQuery({ queryKey: ["games"], queryFn: listGames, staleTime: 0 });
   const all = games.data?.games ?? [];
 
   const level = useMemo(() => {
@@ -76,13 +82,13 @@ export function GamesPage() {
       <div className="flex flex-col gap-5 p-6 max-w-5xl mx-auto">
         <div className="flex items-center justify-between border-b border-line pb-4">
           <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-sm text-ink-3">
-            <button onClick={() => setSlug(null)} className="hover:text-ink transition-colors">
+            <button onClick={handleBack} className="hover:text-ink transition-colors">
               Games
             </button>
             <ChevronRight className="h-3.5 w-3.5" />
             <span className="font-semibold text-ink">Quantum Password Search (Grover)</span>
           </nav>
-          <Button size="sm" variant="secondary" onClick={() => setSlug(null)} className="gap-1.5 text-xs">
+          <Button size="sm" variant="secondary" onClick={handleBack} className="gap-1.5 text-xs">
             <ArrowLeft className="h-3.5 w-3.5" /> All games
           </Button>
         </div>
@@ -107,7 +113,7 @@ export function GamesPage() {
       )}
     >
       {level ? (
-        <LevelPlay level={level} onBack={() => setSlug(null)} />
+        <LevelPlay level={level} onBack={handleBack} />
       ) : (
         <Catalogue games={all} onPlay={setSlug} />
       )}
@@ -246,6 +252,7 @@ export function Catalogue({
 /* Playing a Level                                                            */
 /* -------------------------------------------------------------------------- */
 export function LevelPlay({ level, onBack }: { level: GameLevel; onBack: () => void }) {
+  const queryClient = useQueryClient();
   const navigate = useNavigate();
   const ir = useCircuit((state) => state.ir);
   const setIr = useCircuit((state) => state.setIr);
@@ -274,8 +281,12 @@ export function LevelPlay({ level, onBack }: { level: GameLevel; onBack: () => v
 
   const submit = useMutation({
     mutationFn: () => submitChallenge(level.slug, ir, shots),
-    onSuccess: (attempt) =>
-      setScored({ outcome: attempt, stamp: circuitStamp(ir), slug: level.slug }),
+    onSuccess: (attempt) => {
+      setScored({ outcome: attempt, stamp: circuitStamp(ir), slug: level.slug });
+      void queryClient.invalidateQueries({ queryKey: ["games"] });
+      void queryClient.invalidateQueries({ queryKey: ["progress", "me"] });
+      void queryClient.invalidateQueries({ queryKey: ["challenges"] });
+    },
   });
 
   const attemptId = submit.data?.attempt_id ?? null;
@@ -287,6 +298,14 @@ export function LevelPlay({ level, onBack }: { level: GameLevel; onBack: () => v
       query.state.data?.status === "graded" || query.state.data?.status === "failed" ? false : 500,
     staleTime: 0,
   });
+
+  useEffect(() => {
+    if (outcome.data?.status === "graded") {
+      void queryClient.invalidateQueries({ queryKey: ["games"] });
+      void queryClient.invalidateQueries({ queryKey: ["progress", "me"] });
+      void queryClient.invalidateQueries({ queryKey: ["challenges"] });
+    }
+  }, [outcome.data?.status, queryClient]);
 
   const graded = outcome.data?.status === "graded" ? outcome.data : null;
 
@@ -378,7 +397,15 @@ export function LevelPlay({ level, onBack }: { level: GameLevel; onBack: () => v
       {/* Top Header */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line pb-3">
         <div className="flex items-center gap-3">
-          <Button size="sm" variant="secondary" onClick={onBack} className="gap-1.5 text-xs">
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() => {
+              void queryClient.invalidateQueries({ queryKey: ["games"] });
+              onBack();
+            }}
+            className="gap-1.5 text-xs"
+          >
             <ArrowLeft className="h-3.5 w-3.5" /> All games
           </Button>
           <h2 className="text-xl font-bold tracking-tight text-ink">{level.title}</h2>

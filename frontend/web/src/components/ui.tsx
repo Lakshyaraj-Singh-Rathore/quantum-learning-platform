@@ -797,3 +797,5 @@ export function DataTable<T extends Record<string, any>>({
     </div>
   );
 }
+
+export { QuantumLogo, QuantumLogoIcon } from "./ui/QuantumLogo";

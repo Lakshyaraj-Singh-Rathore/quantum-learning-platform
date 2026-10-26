@@ -149,6 +149,22 @@ def check_qasm3(source: str) -> list[Finding]:
     return sorted(set(findings))
 
 
+def check_json(source: str) -> list[Finding]:
+    """Validate Circuit IR JSON without running code."""
+    import json
+    try:
+        parsed = json.loads(source)
+    except json.JSONDecodeError as exc:
+        return [(exc.lineno or 1, exc.colno or 1, f"JSON syntax error: {exc.msg}")]
+    if not isinstance(parsed, dict):
+        return [(1, 1, "Circuit IR must be a JSON object.")]
+    if "n_qubits" not in parsed:
+        return [(1, 1, "Missing `n_qubits` field in Circuit IR JSON.")]
+    if "ops" not in parsed or not isinstance(parsed["ops"], list):
+        return [(1, 1, "Missing or invalid `ops` list in Circuit IR JSON.")]
+    return []
+
+
 def check(source: str, framework: str) -> list[Finding]:
     """Validate ``source`` for ``framework``. Never raises."""
     try:
@@ -157,6 +173,8 @@ def check(source: str, framework: str) -> list[Finding]:
         norm_fw = normalize_framework(framework)
         if norm_fw == "qasm3":
             return check_qasm3(source)
+        if norm_fw == "json":
+            return check_json(source)
         return check_python(source, norm_fw)
     except Exception:  # noqa: BLE001 - a broken checker must not break the page
         return []

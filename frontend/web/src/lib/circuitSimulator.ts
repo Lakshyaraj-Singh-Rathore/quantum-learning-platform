@@ -144,82 +144,191 @@ export function simulateCircuit(ir: CircuitIR, maxQubits = PREVIEW_MAX_QUBITS): 
   const ops = [...ir.ops].sort((a, b) => a.layer - b.layer);
 
   for (const op of ops) {
+    if (op.kind === "barrier") continue;
+
+    if (op.kind === "reset") {
+      for (const tgt of op.qubits ?? []) {
+        if (tgt >= n) continue;
+        const bit = 1 << tgt;
+        for (let i = 0; i < dim; i++) {
+          if ((i & bit) !== 0) {
+            const i0 = i & ~bit;
+            state[i0] = cadd(state[i0], state[i]);
+            state[i] = cx(0, 0);
+          }
+        }
+      }
+      let norm = 0;
+      for (let i = 0; i < dim; i++) {
+        norm += state[i].re * state[i].re + state[i].im * state[i].im;
+      }
+      if (norm > 0) {
+        const factor = 1 / Math.sqrt(norm);
+        for (let i = 0; i < dim; i++) {
+          state[i] = cx(state[i].re * factor, state[i].im * factor);
+        }
+      }
+      continue;
+    }
+
+    if (op.kind === "measure") {
+      // Born rule collapse for mid-circuit measurements:
+      // If the measured qubit is used again later in the circuit, project and collapse statevector
+      const tgt = op.qubits?.[0];
+      if (tgt !== undefined && tgt < n) {
+        const isMidCircuit = ops.some(
+          (other) =>
+            other.layer > op.layer &&
+            (other.qubits?.includes(tgt) || other.controls?.includes(tgt))
+        );
+        if (isMidCircuit) {
+          const bit = 1 << tgt;
+          let p1 = 0;
+          for (let i = 0; i < dim; i++) {
+            if ((i & bit) !== 0) {
+              p1 += state[i].re * state[i].re + state[i].im * state[i].im;
+            }
+          }
+          const outcome = Math.random() < p1 ? 1 : 0;
+          for (let i = 0; i < dim; i++) {
+            const bitVal = (i & bit) !== 0 ? 1 : 0;
+            if (bitVal !== outcome) {
+              state[i] = cx(0, 0);
+            }
+          }
+          let norm = 0;
+          for (let i = 0; i < dim; i++) {
+            norm += state[i].re * state[i].re + state[i].im * state[i].im;
+          }
+          if (norm > 0) {
+            const factor = 1 / Math.sqrt(norm);
+            for (let i = 0; i < dim; i++) {
+              state[i] = cx(state[i].re * factor, state[i].im * factor);
+            }
+          }
+        }
+      }
+      continue;
+    }
+
     if (op.kind !== "gate" || !op.gate) continue;
-    const g = op.gate.toLowerCase();
-    const target = op.qubits[0];
-    if (target === undefined || target >= n) continue;
+    let g = op.gate.toLowerCase();
+    let controls = [...(op.controls ?? [])];
+    const negControls = [...(op.neg_controls ?? [])];
+    let targets = [...(op.qubits ?? [])];
 
-    // 1-Qubit Uncontrolled Gate
-    if ((!op.controls || op.controls.length === 0) && g !== "cx" && g !== "cz" && g !== "cy" && g !== "swap") {
-      let mat = GATES_1Q[g];
-      if (!mat && (g === "p" || g === "rx" || g === "ry" || g === "rz")) {
-        const p = parseParam(op.params?.[0]?.expr);
-        mat = getParamGate(g, p);
+    // Normalize standard 2Q/3Q multi-qubit gate aliases where controls might be in op.qubits
+    if (g === "cx" || g === "cnot") {
+      if (controls.length === 0 && targets.length >= 2) {
+        controls = [targets[0]];
+        targets = [targets[1]];
       }
-      if (!mat) mat = GATES_1Q.id;
-
-      const next = new Array<Complex>(dim);
-      const targetBit = 1 << target;
-      for (let i = 0; i < dim; i++) {
-        if ((i & targetBit) === 0) {
-          const i0 = i;
-          const i1 = i | targetBit;
-          const a0 = state[i0];
-          const a1 = state[i1];
-          next[i0] = cadd(cmul(mat[0][0], a0), cmul(mat[0][1], a1));
-          next[i1] = cadd(cmul(mat[1][0], a0), cmul(mat[1][1], a1));
-        }
+      g = "x";
+    } else if (g === "cy") {
+      if (controls.length === 0 && targets.length >= 2) {
+        controls = [targets[0]];
+        targets = [targets[1]];
       }
-      state = next;
-    } else if (g === "cx" || g === "cnot") {
-      const ctrl = op.controls?.[0] ?? op.qubits[0];
-      const tgt = op.controls?.[0] !== undefined ? op.qubits[0] : op.qubits[1];
-      if (ctrl === undefined || tgt === undefined || ctrl >= n || tgt >= n) continue;
-      const ctrlBit = 1 << ctrl;
-      const tgtBit = 1 << tgt;
-      const next = [...state];
-      for (let i = 0; i < dim; i++) {
-        if ((i & ctrlBit) !== 0 && (i & tgtBit) === 0) {
-          const i0 = i;
-          const i1 = i | tgtBit;
-          const temp = next[i0];
-          next[i0] = next[i1];
-          next[i1] = temp;
-        }
-      }
-      state = next;
+      g = "y";
     } else if (g === "cz") {
-      const ctrl = op.controls?.[0] ?? op.qubits[0];
-      const tgt = op.controls?.[0] !== undefined ? op.qubits[0] : op.qubits[1];
-      if (ctrl === undefined || tgt === undefined || ctrl >= n || tgt >= n) continue;
-      const ctrlBit = 1 << ctrl;
-      const tgtBit = 1 << tgt;
-      const next = [...state];
-      for (let i = 0; i < dim; i++) {
-        if ((i & ctrlBit) !== 0 && (i & tgtBit) !== 0) {
-          next[i] = cx(-next[i].re, -next[i].im);
-        }
+      if (controls.length === 0 && targets.length >= 2) {
+        controls = [targets[0]];
+        targets = [targets[1]];
       }
-      state = next;
-    } else if (g === "swap") {
-      const q0 = op.qubits[0];
-      const q1 = op.qubits[1];
-      if (q0 === undefined || q1 === undefined || q0 >= n || q1 >= n) continue;
+      g = "z";
+    } else if (g === "ch") {
+      if (controls.length === 0 && targets.length >= 2) {
+        controls = [targets[0]];
+        targets = [targets[1]];
+      }
+      g = "h";
+    } else if (g === "ccx" || g === "toffoli") {
+      if (controls.length === 0 && targets.length >= 3) {
+        controls = [targets[0], targets[1]];
+        targets = [targets[2]];
+      }
+      g = "x";
+    } else if (g === "mcx") {
+      if (controls.length === 0 && targets.length >= 2) {
+        controls = targets.slice(0, -1);
+        targets = [targets[targets.length - 1]];
+      }
+      g = "x";
+    } else if (g === "cswap" || g === "fredkin") {
+      if (controls.length === 0 && targets.length >= 3) {
+        controls = [targets[0]];
+        targets = [targets[1], targets[2]];
+      }
+      g = "swap";
+    }
+
+    // Skip operations on qubits outside the simulated preview width
+    if (controls.some((c) => c >= n) || negControls.some((c) => c >= n)) continue;
+
+    // SWAP Gate (can also have controls)
+    if (g === "swap") {
+      const q0 = targets[0];
+      const q1 = targets[1];
+      if (q0 === undefined || q1 === undefined || q0 >= n || q1 >= n || q0 === q1) continue;
       const bit0 = 1 << q0;
       const bit1 = 1 << q1;
       const next = [...state];
       for (let i = 0; i < dim; i++) {
-        const b0 = (i & bit0) !== 0;
-        const b1 = (i & bit1) !== 0;
-        if (b0 && !b1) {
-          const j = (i & ~bit0) | bit1;
-          const temp = next[i];
-          next[i] = next[j];
-          next[j] = temp;
+        const posActive = controls.every((c) => (i & (1 << c)) !== 0);
+        const negActive = negControls.every((c) => (i & (1 << c)) === 0);
+        if (posActive && negActive) {
+          const b0 = (i & bit0) !== 0;
+          const b1 = (i & bit1) !== 0;
+          if (b0 && !b1) {
+            const j = (i & ~bit0) | bit1;
+            const temp = next[i];
+            next[i] = next[j];
+            next[j] = temp;
+          }
         }
       }
       state = next;
+      continue;
     }
+
+    // 1-Qubit Unitary (with optional arbitrary positive/negative controls)
+    const tgt = targets[0];
+    if (tgt === undefined || tgt >= n) continue;
+
+    let mat = GATES_1Q[g];
+    if (!mat && (g === "p" || g === "phase" || g === "rx" || g === "ry" || g === "rz")) {
+      const p = op.params?.[0]?.value ?? parseParam(op.params?.[0]?.expr);
+      mat = getParamGate(g === "phase" ? "p" : g, p);
+    }
+    if (!mat) mat = GATES_1Q.id;
+
+    if (op.inv) {
+      mat = [
+        [cx(mat[0][0].re, -mat[0][0].im), cx(mat[1][0].re, -mat[1][0].im)],
+        [cx(mat[0][1].re, -mat[0][1].im), cx(mat[1][1].re, -mat[1][1].im)],
+      ];
+    }
+
+    const next = new Array<Complex>(dim);
+    const tgtBit = 1 << tgt;
+    for (let i = 0; i < dim; i++) {
+      if ((i & tgtBit) === 0) {
+        const i0 = i;
+        const i1 = i | tgtBit;
+        const posActive = controls.every((c) => (i & (1 << c)) !== 0);
+        const negActive = negControls.every((c) => (i & (1 << c)) === 0);
+        if (posActive && negActive) {
+          const a0 = state[i0];
+          const a1 = state[i1];
+          next[i0] = cadd(cmul(mat[0][0], a0), cmul(mat[0][1], a1));
+          next[i1] = cadd(cmul(mat[1][0], a0), cmul(mat[1][1], a1));
+        } else {
+          next[i0] = state[i0];
+          next[i1] = state[i1];
+        }
+      }
+    }
+    state = next;
   }
 
   // Format statevector and probabilities
@@ -227,12 +336,49 @@ export function simulateCircuit(ir: CircuitIR, maxQubits = PREVIEW_MAX_QUBITS): 
   const counts: Record<string, number> = {};
   const probs: Record<string, number> = {};
 
-  for (let i = 0; i < dim; i++) {
-    const p = state[i].re * state[i].re + state[i].im * state[i].im;
-    if (p > 1e-6) {
-      const bitStr = i.toString(2).padStart(n, "0");
-      probs[bitStr] = Number(p.toFixed(4));
-      counts[bitStr] = Math.round(p * 1024);
+  // Check if any explicit measurements exist in the circuit
+  const measureOps = ops.filter((o) => o.kind === "measure" && o.qubits && o.qubits.length > 0);
+
+  if (measureOps.length > 0) {
+    // Map measured qubits to classical bit register (c0 is rightmost in Qiskit bit ordering)
+    const qToC = new Map<number, number>();
+    for (const m of measureOps) {
+      const q = m.qubits[0];
+      const c = m.clbits?.[0] ?? q;
+      qToC.set(q, c);
+    }
+    const maxClbit = Math.max(...Array.from(qToC.values()), 0);
+    const numClbits = maxClbit + 1;
+
+    for (let i = 0; i < dim; i++) {
+      const p = state[i].re * state[i].re + state[i].im * state[i].im;
+      if (p > 1e-6) {
+        let clbitVal = 0;
+        for (const [q, c] of qToC.entries()) {
+          if (q < n) {
+            const bit = (i >> q) & 1;
+            if (bit) {
+              clbitVal |= (1 << c);
+            }
+          }
+        }
+        const bitStr = clbitVal.toString(2).padStart(numClbits, "0");
+        probs[bitStr] = (probs[bitStr] || 0) + p;
+        counts[bitStr] = (counts[bitStr] || 0) + Math.round(p * 1024);
+      }
+    }
+    for (const k of Object.keys(probs)) {
+      probs[k] = Number(probs[k].toFixed(4));
+    }
+  } else {
+    // Direct statevector probabilities when circuit is unmeasured (no measurement required to run)
+    for (let i = 0; i < dim; i++) {
+      const p = state[i].re * state[i].re + state[i].im * state[i].im;
+      if (p > 1e-6) {
+        const bitStr = i.toString(2).padStart(n, "0");
+        probs[bitStr] = Number(p.toFixed(4));
+        counts[bitStr] = Math.round(p * 1024);
+      }
     }
   }
 

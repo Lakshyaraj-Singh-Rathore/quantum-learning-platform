@@ -26,6 +26,24 @@ def get_current_user(
     return user
 
 
+def get_current_user_optional(
+    creds: HTTPAuthorizationCredentials | None = Depends(bearer),
+    db: Session = Depends(get_db),
+) -> User | None:
+    if creds is None or not creds.credentials:
+        return None
+    try:
+        payload = decode_token(creds.credentials)
+        user_id = payload.get("sub")
+        if user_id:
+            user = db.get(User, int(user_id))
+            if user and user.is_active:
+                return user
+    except Exception:
+        pass
+    return None
+
+
 def require_roles(*roles: str):
     def _inner(user: User = Depends(get_current_user)) -> User:
         if user.role not in roles:

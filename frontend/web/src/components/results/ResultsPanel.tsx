@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { jobResult, jobStatus } from "../../api/jobs";
+import { jobResult, jobStatus, type NoiseIn, type RunResult } from "../../api/jobs";
 import type { CircuitIR } from "@composer/types";
+import type { NoiseSimulationResult } from "../../api/noiseLab";
 import { Badge, ErrorNote, Spinner, cn } from "../ui";
 import {
   BlochView,
@@ -45,6 +46,8 @@ export function ResultsPanel({
   ranQubits,
   currentQubits,
   ir,
+  noiseSimResult,
+  onRunNoise,
 }: {
   jobId: number | null;
   stale: boolean;
@@ -52,9 +55,11 @@ export function ResultsPanel({
   currentQubits: number;
   /** The grid's current circuit, for the diagram tab. */
   ir: CircuitIR;
+  noiseSimResult?: NoiseSimulationResult | null;
+  onRunNoise?: (noise: NoiseIn) => void;
 }) {
   const [status, setStatus] = useState<string | null>(null);
-  const [tab, setTab] = useState<TabId>("histogram");
+  const [tab, setTab] = useState<TabId>(noiseSimResult && jobId === null ? "ideal" : "histogram");
 
   useEffect(() => {
     if (jobId === null) return;
@@ -88,15 +93,43 @@ export function ResultsPanel({
     staleTime: Infinity,
   });
 
-  if (jobId === null) return null;
+  if (jobId === null && !noiseSimResult) return null;
 
-  const running = status !== null && status !== "completed" && status !== "failed";
-  const data = result.data?.result ?? null;
+  const running = jobId !== null && status !== null && status !== "completed" && status !== "failed";
+
+  const syntheticResult: RunResult | null = noiseSimResult
+    ? {
+        counts: noiseSimResult.noisy_counts,
+        probabilities: noiseSimResult.noisy_probabilities,
+        metadata: {
+          backend: "qiskit_aer (Noise Lab)",
+          n_qubits: noiseSimResult.n_qubits,
+          shots: noiseSimResult.shots,
+          runtime_seconds: 0.05,
+          bit_order: "qubit 0 = rightmost",
+          warnings: noiseSimResult.warnings ?? [],
+          ideal_counts: noiseSimResult.ideal_counts,
+          noise: { enabled: true },
+          metrics: {
+            fidelity: noiseSimResult.metrics.fidelity ?? 1.0,
+            purity: noiseSimResult.metrics.purity ?? 1.0,
+            total_variation: noiseSimResult.metrics.total_variation_distance,
+            shot_leakage: 0.0,
+          },
+        },
+        statevector: null,
+        preview_truncated: false,
+      }
+    : null;
+
+  const data = result.data?.result ?? syntheticResult;
 
   return (
     <section className="flex flex-col gap-4 rounded-xl border border-line bg-raised p-5">
       <div className="flex flex-wrap items-center gap-3">
-        <h3 className="text-sm font-semibold">Results — job #{jobId}</h3>
+        <h3 className="text-sm font-semibold">
+          {jobId !== null ? `Results — job #${jobId}` : "Noise Simulation Results"}
+        </h3>
         {running && (
           <span className="flex items-center gap-2 text-[13px] text-ink-3">
             <Spinner /> {status}…
@@ -172,7 +205,14 @@ export function ResultsPanel({
 
           <div role="tabpanel">
             {tab === "histogram" && <Histogram result={data} />}
-            {tab === "ideal" && <IdealVsNoisy result={data} />}
+            {tab === "ideal" && (
+              <IdealVsNoisy
+                result={data}
+                circuitIr={ir}
+                noiseSimResult={noiseSimResult}
+                onRunNoise={onRunNoise}
+              />
+            )}
             {tab === "born" && <BornVsShots result={data} />}
             {tab === "probabilities" && <ProbabilityTable result={data} />}
             {tab === "statevector" && <StatevectorTable result={data} />}

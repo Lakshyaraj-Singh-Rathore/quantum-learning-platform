@@ -12,18 +12,25 @@ import { amplitudes, cabs, probabilities, qubitCount, relativePhases } from "../
 import type { RunResult } from "../../api/jobs";
 import { Notice } from "./ResultsViews";
 
-/** The cyclic phase colour scale from viz.py (teal -> blue -> pink -> red -> teal). */
+/** The cyclic phase colour scale:
+ *  0 rad (0°): Teal #3dd6c6
+ *  +π/2 rad (+90°): Blue #5b9dff
+ *  ±π rad (180°): Red #ff5d5d
+ *  -π/2 rad (-90° / 270°): Purple #e17cff
+ *  2π rad (360° / 0°): Teal #3dd6c6
+ */
 const PHASE_STOPS: [number, [number, number, number]][] = [
-  [0.0, [61, 214, 198]],
-  [0.25, [91, 157, 255]],
-  [0.5, [225, 124, 255]],
-  [0.75, [255, 93, 93]],
-  [1.0, [61, 214, 198]],
+  [0.0, [61, 214, 198]],   // 0° (0 rad): Teal
+  [0.25, [91, 157, 255]],  // 90° (+π/2 rad): Blue
+  [0.5, [255, 93, 93]],    // 180° (±π rad): Red
+  [0.75, [225, 124, 255]], // 270° / -90° (-π/2 rad): Purple
+  [1.0, [61, 214, 198]],   // 360°: Teal
 ];
 
 export function phaseColour(degrees: number): string {
-  // Plotly maps the scale across [cmin, cmax] = [-180, 180].
-  const t = (((degrees + 180) % 360) + 360) % 360 / 360;
+  // Normalize angle to [0, 360)
+  const norm = ((degrees % 360) + 360) % 360;
+  const t = norm / 360;
   for (let i = 0; i < PHASE_STOPS.length - 1; i += 1) {
     const [t0, c0] = PHASE_STOPS[i];
     const [t1, c1] = PHASE_STOPS[i + 1];
@@ -644,7 +651,7 @@ export function QSphere({ result }: { result: RunResult }) {
                 const y3 = -r2 * Math.sin(a2);
                 const x4 = r1 * Math.cos(a2);
                 const y4 = -r1 * Math.sin(a2);
-                const deg = i * 10 - 180;
+                const deg = i * 10;
                 return (
                   <path
                     key={i}

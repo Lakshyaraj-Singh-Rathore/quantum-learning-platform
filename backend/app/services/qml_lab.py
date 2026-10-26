@@ -419,8 +419,8 @@ def run_inference(experiment: QmlExperiment, features: list[list[float]]) -> dic
     Loads from disk rather than re-training, which is what makes this a test
     of the persisted model rather than of a fresh one.
     """
-    config = QmlExperimentConfig.model_validate(experiment.config)
     loaded = load_model(artifact_root(), experiment.id)
+    config = loaded.config
 
     # The scaler is part of the dataset build, so rebuild it from the same
     # seed. Deterministic by construction: the same seed yields the same split

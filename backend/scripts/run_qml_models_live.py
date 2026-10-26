@@ -265,8 +265,9 @@ def run_dt16_quantum_kernel():
     print(f"\n--> Quantum Kernel Completed in {dt:.2f}s (Status: {outcome.status})")
     print(f"    Epoch Rows Written:       {len(outcome.history)} (Zero expected for closed-form solve)")
     print(f"    Test Accuracy:            {eval_res['accuracy']*100:.2f}% (F1: {eval_res['f1']:.4f})")
-    print(f"    Kernel Matrix Evaluated:  {outcome.artifact.kernel_train.shape}")
-    print(f"    Alpha Weights Learned:    {outcome.artifact.alpha.shape[0]} dual support coefficients")
+    fit, x_train = outcome.artifact
+    print(f"    Train Samples in Kernel:  {x_train.shape[0]} support vectors")
+    print(f"    Alpha Weights Learned:    {fit.alpha.shape[0]} dual coefficients (bias={fit.bias:.4f})")
     return eval_res["accuracy"]
 
 

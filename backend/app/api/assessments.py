@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from app.ai.rag import TRACK_MARKER_RE
 from app.config import get_settings
 from app.database import get_db
-from app.deps import get_current_user
+from app.deps import get_current_user, get_current_user_optional
 from app.models.assessment import (
     AutogradeResult,
     ChallengeAttempt,
@@ -412,7 +412,7 @@ def get_assessment_topics() -> list[dict[str, Any]]:
 def generate_ai_assignment(
     payload: dict[str, Any],
     db: Session = Depends(get_db),
-    user: User = Depends(get_current_user),
+    user: User | None = Depends(get_current_user_optional),
 ) -> dict[str, Any]:
     from app.services.assignment_ai import generate_assignment
     topics = payload.get("topics") or []
@@ -425,7 +425,7 @@ def generate_ai_assignment(
 def evaluate_ai_assignment(
     payload: dict[str, Any],
     db: Session = Depends(get_db),
-    user: User = Depends(get_current_user),
+    user: User | None = Depends(get_current_user_optional),
 ) -> dict[str, Any]:
     from app.services.assignment_ai import evaluate_assignment
     assignment = payload.get("assignment") or {}
@@ -436,7 +436,7 @@ def evaluate_ai_assignment(
 @router.get("/assessments/daily-challenge")
 def get_daily_quantum_challenge(
     db: Session = Depends(get_db),
-    user: User = Depends(get_current_user),
+    user: User | None = Depends(get_current_user_optional),
 ) -> dict[str, Any]:
     from app.services.assignment_ai import get_daily_challenge
     return get_daily_challenge(db)
@@ -445,7 +445,7 @@ def get_daily_quantum_challenge(
 @router.post("/assessments/daily-challenge/verify")
 def verify_daily_quantum_challenge(
     payload: dict[str, Any],
-    user: User = Depends(get_current_user),
+    user: User | None = Depends(get_current_user_optional),
 ) -> dict[str, Any]:
     from app.services.assignment_ai import verify_daily_challenge
     challenge_id = payload.get("challenge_id") or "daily_1"

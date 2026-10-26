@@ -291,6 +291,93 @@ button.tb:disabled {
   border-color: #ef4444 !important;
 }
 
+.mcx-config-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  background: linear-gradient(135deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.95));
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  padding: 8px 14px;
+}
+
+.mcx-config-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.mcx-buttons-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.mcx-count-btn {
+  background: rgba(56, 189, 248, 0.16) !important;
+  border: 1px solid rgba(56, 189, 248, 0.45) !important;
+  color: #38bdf8 !important;
+  border-radius: 4px;
+  padding: 3px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  min-width: 30px;
+  transition: all 0.15s ease;
+}
+
+.mcx-count-btn:hover {
+  background: rgba(56, 189, 248, 0.35) !important;
+  border-color: #38bdf8 !important;
+  color: #ffffff !important;
+  transform: translateY(-1px);
+}
+
+.mcx-or-label {
+  font-size: 11px;
+  color: #94a3b8;
+  margin: 0 2px;
+}
+
+.mcx-count-input {
+  width: 48px;
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  color: #f8fafc;
+  border-radius: 4px;
+  padding: 3px 6px;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.mcx-count-input:focus {
+  outline: none;
+  border-color: #38bdf8;
+  box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.25);
+}
+
+.mcx-confirm-btn {
+  background: rgba(34, 197, 94, 0.2) !important;
+  border: 1px solid rgba(34, 197, 94, 0.5) !important;
+  color: #86efac !important;
+  border-radius: 4px;
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.mcx-confirm-btn:hover {
+  background: rgba(34, 197, 94, 0.35) !important;
+  color: #ffffff !important;
+  border-color: #22c55e !important;
+}
+
 
 /* IBM Quantum Composer Drag Preview elements */
 .drag-preview-tile {

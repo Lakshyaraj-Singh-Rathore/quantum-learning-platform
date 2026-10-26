@@ -6,6 +6,7 @@ import { gateColour, gateForeground } from "./theme";
 interface EditGatePanelProps {
   op: Op;
   nQubits: number;
+  nClbits?: number;
   onUpdateOp: (updated: Op) => void;
   onClose: () => void;
   onAddQubit?: () => number;
@@ -243,15 +244,31 @@ const GATE_SPECS: Record<string, GateSpec> = {
     properties: ["Universal Classical", "Reversible Logic", "3-Qubit"],
     desc: "Toffoli gate (Controlled-Controlled-NOT). Flips the third qubit if both controls are |1⟩.",
   },
+  MCX: {
+    name: "Multi-Controlled X (MCX)",
+    matrix: [
+      ["1", "0", "⋯", "0"],
+      ["0", "1", "⋯", "0"],
+      ["⋮", "⋮", "⋱", "⋮"],
+      ["0", "0", "⋯", "X"],
+    ],
+    dirac: ["|11⋯10⟩ → |11⋯11⟩", "|11⋯11⟩ → |11⋯10⟩"],
+    properties: ["Universal Classical", "Reversible Logic", "Multi-Qubit"],
+    desc: "Generalized Toffoli gate (CⁿX). Flips the target qubit if and only if all n control qubits are |1⟩.",
+  },
   MEASURE: {
     name: "Measurement",
     matrix: [
       ["1", "0"],
       ["0", "0"],
     ],
-    dirac: ["|ψ⟩ = α|0⟩ + β|1⟩", "P(0) = |α|², P(1) = |β|²"],
-    properties: ["Projective", "Non-Unitary", "POVM / Readout"],
-    desc: "Collapses quantum superposition into classical bit register 0 or 1 according to the Born rule.",
+    dirac: [
+      "|ψ⟩ = α|0⟩ + β|1⟩",
+      "P(0) = |α|², P(1) = |β|²",
+      "Collapse: |ψ⟩ → |0⟩ or |1⟩",
+    ],
+    properties: ["Projective Z-Basis", "Born Rule Collapse", "Quantum-to-Classical", "POVM / Readout"],
+    desc: "Projects the qubit state onto the computational Z-basis, collapsing quantum superposition into a definite classical bit (0 or 1) according to the Born rule, and storing the readout in the classical register.",
   },
   RESET: {
     name: "State Reset (|0⟩)",
@@ -278,6 +295,7 @@ const GATE_SPECS: Record<string, GateSpec> = {
 export const EditGatePanel: React.FC<EditGatePanelProps> = ({
   op,
   nQubits,
+  nClbits,
   onUpdateOp,
   onClose,
   onAddQubit,
@@ -286,8 +304,11 @@ export const EditGatePanel: React.FC<EditGatePanelProps> = ({
 }) => {
   const [showAddMenu, setShowAddMenu] = useState(false);
   const allWires = Array.from({ length: nQubits }, (_: unknown, i: number) => i);
+  const clbitCount = Math.max(nClbits || nQubits, nQubits, (op.clbits?.[0] ?? 0) + 1);
+  const allClbits = Array.from({ length: clbitCount }, (_: unknown, i: number) => i);
   const rawGateName = (op.gate ?? op.kind ?? "").toUpperCase();
-  const gateName = rawGateName;
+  const isMcx = (op.gate === "x" || op.kind === "gate") && (((op.controls?.length || 0) + (op.neg_controls?.length || 0)) > 2);
+  const gateName = isMcx ? "MCX" : rawGateName;
 
   const controls = op.controls || [];
   const negControls = op.neg_controls || [];
@@ -488,6 +509,33 @@ export const EditGatePanel: React.FC<EditGatePanelProps> = ({
               </div>
             </div>
           ))}
+
+          {op.kind === "measure" && (
+            <div className="ibm-field-group">
+              <label className="ibm-field-label">
+                Classical Bit Register (Readout)
+              </label>
+              <div className="ibm-select-row">
+                <select
+                  className="ibm-select"
+                  value={op.clbits?.[0] ?? op.qubits[0] ?? 0}
+                  onChange={(e) => {
+                    const nextClbit = Number(e.target.value);
+                    onUpdateOp({ ...op, clbits: [nextClbit] });
+                  }}
+                >
+                  {allClbits.map((c: number) => (
+                    <option key={`clbit-opt-${c}`} value={c}>
+                      c[{c}]
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <span style={{ fontSize: "11px", color: "var(--ibm-text-secondary, #94a3b8)", marginTop: "4px", display: "block" }}>
+                Z-basis readout collapses |ψ⟩ to |0⟩ or |1⟩ into classical register c[{op.clbits?.[0] ?? op.qubits[0] ?? 0}].
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Section 2: Parameters (for Rx, Ry, Rz, P, U) */}
@@ -659,12 +707,16 @@ export const EditGatePanel: React.FC<EditGatePanelProps> = ({
 
         {/* Section 4: Gate Inspector & Quantum Unitary (Fills wasted space with rich quantum mechanics info) */}
         <div className="ibm-edit-section ibm-inspector-section">
-          <div className="ibm-section-title">Quantum Operator Matrix</div>
+          <div className="ibm-section-title">
+            {op.kind === "measure" ? "Measurement Operator & Projector" : "Quantum Operator Matrix"}
+          </div>
           <div className="ibm-matrix-card">
             <div className="ibm-matrix-header">
               <span className="ibm-matrix-name">{spec.name}</span>
               <span className="ibm-matrix-dim">
-                {spec.matrix.length}×{spec.matrix[0]?.length || spec.matrix.length} Unitary
+                {op.kind === "measure"
+                  ? "Z-Basis Projection (POVM)"
+                  : `${spec.matrix.length}×${spec.matrix[0]?.length || spec.matrix.length} Unitary`}
               </span>
             </div>
 

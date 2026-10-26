@@ -13,8 +13,11 @@
  * lives in src/lib/quantum.ts and is golden-tested against numpy.
  */
 import { useState, useMemo } from "react";
-import { ZoomIn, ZoomOut, RotateCcw, Maximize2, Minimize2 } from "lucide-react";
-import { cn } from "../ui";
+import { ZoomIn, ZoomOut, RotateCcw, Maximize2, Minimize2, Activity, Play } from "lucide-react";
+import { cn, Button, Spinner } from "../ui";
+import { noiseLabApi, type NoiseSimulationResult, type NoiseConfig } from "../../api/noiseLab";
+import type { NoiseIn } from "../../api/jobs";
+import type { CircuitIR } from "@composer/types";
 import {
   amplitudes,
   blochAngles,
@@ -499,7 +502,7 @@ export function Histogram({
             <div
               className="w-full h-full"
               style={{
-                background: "linear-gradient(to bottom, #3dd6c6 0%, #ff5d5d 25%, #e17cff 50%, #5b9dff 75%, #3dd6c6 100%)",
+                background: "linear-gradient(to bottom, #ff5d5d 0%, #5b9dff 25%, #3dd6c6 50%, #e17cff 75%, #ff5d5d 100%)",
               }}
             />
           </div>
@@ -671,15 +674,25 @@ function GroupedBars({
     <div className="flex flex-col gap-3 font-sans select-none">
       {/* Top Legend */}
       <div className="flex flex-wrap items-center gap-6 text-xs font-mono font-semibold">
-        {series.map((s) => (
-          <span key={s.name} className="flex items-center gap-2 text-ink hover:text-white transition-colors">
-            <span
-              className="h-3 w-3 rounded-xs shadow-sm"
-              style={{ backgroundColor: s.color, boxShadow: `0 0 10px ${s.color}66` }}
-            />
-            {s.name}
-          </span>
-        ))}
+        {series.map((s) => {
+          const bg = s.color.startsWith("var(")
+            ? s.name === "Ideal"
+              ? "#06b6d4"
+              : "#f59e0b"
+            : s.color;
+          return (
+            <span key={s.name} className="flex items-center gap-2 text-ink hover:text-white transition-colors">
+              <span
+                className="h-3 w-3 rounded-xs shadow-sm"
+                style={{
+                  backgroundColor: bg,
+                  boxShadow: `0 0 10px ${bg.startsWith("#") ? bg + "66" : "rgba(6, 182, 212, 0.4)"}`,
+                }}
+              />
+              {s.name}
+            </span>
+          );
+        })}
       </div>
 
       {/* Main Chart Area */}
@@ -715,24 +728,35 @@ function GroupedBars({
                   const val = Math.max(0, s.values[i]);
                   const ratio = Math.max(0, Math.min(1, val / 1.0));
                   const barHeightPct = Math.max(3, ratio * 100);
+                  const bg = s.color.startsWith("var(")
+                    ? s.name === "Ideal"
+                      ? "#06b6d4"
+                      : "#f59e0b"
+                    : s.color;
 
                   return (
                     <div
                       key={s.name}
                       className="group relative flex-1 flex flex-col items-center justify-end h-full"
                     >
+                      {/* Percentage label on top of bar */}
+                      {val > 0.01 && (
+                        <span className="mb-1 text-[10px] font-mono font-bold text-ink-2 group-hover:text-white transition-colors">
+                          {(val * 100).toFixed(1)}%
+                        </span>
+                      )}
                       <div
                         className="w-full rounded-t-sm shadow-md transition-all duration-200 hover:brightness-125 cursor-pointer"
                         style={{
                           height: `${barHeightPct}%`,
-                          backgroundColor: s.color,
-                          boxShadow: `0 0 12px ${s.color}44`,
+                          backgroundColor: bg,
+                          boxShadow: `0 0 12px ${bg.startsWith("#") ? bg + "44" : "rgba(6, 182, 212, 0.3)"}`,
                         }}
                       >
                         {/* Hover Tooltip */}
                         <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:flex flex-col items-center pointer-events-none z-30">
                           <div className="bg-[#0f172a] border border-line-soft text-white text-[11px] font-mono px-2.5 py-1.5 rounded-lg shadow-xl whitespace-nowrap">
-                            <span className="font-bold text-accent">{label}</span>: {val.toFixed(4)} ({s.name})
+                            <span className="font-bold text-accent">|{label}⟩</span>: {(val * 100).toFixed(2)}% ({s.name})
                           </div>
                           <div className="w-2 h-2 bg-[#0f172a] border-r border-b border-line-soft rotate-45 -mt-1" />
                         </div>
@@ -753,6 +777,127 @@ function GroupedBars({
             <span
               key={label}
               className="flex-1 max-w-[140px] text-center font-mono text-xs font-bold text-ink hover:text-accent transition-colors"
+            >
+              |{label}⟩
+            </span>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DifferenceBars({
+  labels,
+  values,
+  height = 180,
+}: {
+  labels: string[];
+  values: number[];
+  height?: number;
+}) {
+  const maxAbs = Math.max(...values.map((v) => Math.abs(v)), 0.02);
+  const ceiling = Math.min(1.0, Math.ceil(maxAbs * 20) / 20 || 0.1);
+
+  return (
+    <div className="flex flex-col gap-2 font-sans select-none">
+      <div className="flex items-center justify-between text-xs font-mono text-ink-3">
+        <span>Noisy minus ideal (positive = noise added weight here)</span>
+        <span>Scale: ±{(ceiling * 100).toFixed(0)}%</span>
+      </div>
+
+      <div className="relative flex items-stretch pt-2" style={{ height: `${height}px` }}>
+        {/* Y-Axis Column */}
+        <div className="flex flex-col justify-between items-end pr-2.5 text-[10px] font-mono select-none w-14 shrink-0">
+          <span className="text-amber-400 font-semibold">+{(ceiling * 100).toFixed(1)}%</span>
+          <span className="text-ink-4">0.0%</span>
+          <span className="text-cyan-400 font-semibold">-{(ceiling * 100).toFixed(1)}%</span>
+        </div>
+
+        {/* Chart Container */}
+        <div className="relative flex-1 border-l border-line-soft px-4 h-full">
+          {/* Zero center baseline */}
+          <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 border-b border-line-soft pointer-events-none z-0" />
+          {/* Upper reference line */}
+          <div className="absolute left-0 right-0 top-1 border-b border-dashed border-white/10 pointer-events-none z-0" />
+          {/* Lower reference line */}
+          <div className="absolute left-0 right-0 bottom-1 border-b border-dashed border-white/10 pointer-events-none z-0" />
+
+          {/* Bars */}
+          <div className="relative z-10 w-full flex items-center justify-around gap-2 sm:gap-6 h-full">
+            {labels.map((label, i) => {
+              const diff = values[i] ?? 0;
+              const isPos = diff >= 0;
+              const absVal = Math.abs(diff);
+              const heightPct = Math.min(48, (absVal / ceiling) * 46);
+              const pctText = (diff * 100).toFixed(2);
+              const signedText = isPos ? `+${pctText}%` : `${pctText}%`;
+
+              return (
+                <div key={label} className="group relative flex-1 flex flex-col items-center justify-center h-full max-w-[120px]">
+                  {/* Tooltip */}
+                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:flex flex-col items-center pointer-events-none z-30">
+                    <div className="bg-[#0f172a] border border-line-soft text-white text-[11px] font-mono px-2.5 py-1.5 rounded-lg shadow-xl whitespace-nowrap">
+                      <span className="font-bold text-accent">|{label}⟩</span>:{" "}
+                      <span className={isPos ? "text-amber-400 font-bold" : "text-cyan-400 font-bold"}>
+                        {signedText}
+                      </span>
+                      <p className="text-[10px] text-ink-3 mt-0.5">
+                        {isPos ? "Noise leaked extra weight into this state" : "Noise degraded/damped this state"}
+                      </p>
+                    </div>
+                    <div className="w-2 h-2 bg-[#0f172a] border-r border-b border-line-soft rotate-45 -mt-1" />
+                  </div>
+
+                  {/* Upper half container for positive diff */}
+                  <div className="w-full flex-1 flex flex-col items-center justify-end pb-0.5">
+                    {isPos && absVal > 0.0001 && (
+                      <div className="flex flex-col items-center w-full">
+                        <span className="text-[9px] font-mono font-bold text-amber-400 mb-0.5">
+                          {signedText}
+                        </span>
+                        <div
+                          className="w-full max-w-[36px] rounded-t-sm bg-gradient-to-t from-amber-500 to-amber-400 shadow-xs transition-all duration-200 group-hover:brightness-125"
+                          style={{
+                            height: `${Math.max(4, heightPct * 1.6)}px`,
+                            boxShadow: "0 0 10px rgba(245, 158, 11, 0.4)",
+                          }}
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Lower half container for negative diff */}
+                  <div className="w-full flex-1 flex flex-col items-center justify-start pt-0.5">
+                    {!isPos && absVal > 0.0001 && (
+                      <div className="flex flex-col items-center w-full">
+                        <div
+                          className="w-full max-w-[36px] rounded-b-sm bg-gradient-to-b from-cyan-500 to-cyan-400 shadow-xs transition-all duration-200 group-hover:brightness-125"
+                          style={{
+                            height: `${Math.max(4, heightPct * 1.6)}px`,
+                            boxShadow: "0 0 10px rgba(6, 182, 212, 0.4)",
+                          }}
+                        />
+                        <span className="text-[9px] font-mono font-bold text-cyan-400 mt-0.5">
+                          {signedText}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* X-Axis basis state labels */}
+      <div className="flex ml-14 pl-4 pt-1">
+        <div className="w-full flex justify-around gap-2 sm:gap-6">
+          {labels.map((label) => (
+            <span
+              key={label}
+              className="flex-1 max-w-[120px] text-center font-mono text-xs font-bold text-ink hover:text-accent transition-colors"
             >
               |{label}⟩
             </span>
@@ -1126,17 +1271,137 @@ export function BornVsShots({ result }: { result: RunResult }) {
   );
 }
 
-export function IdealVsNoisy({ result }: { result: RunResult }) {
-  const idealCounts = result.metadata.ideal_counts as Record<string, number> | undefined;
+const DEFAULT_SIM_PRESET: NoiseConfig = {
+  name: "superconducting_transmon",
+  description: "Superconducting transmon model with T1/T2 decoherence and readout error.",
+  decoherence: {
+    enabled: true,
+    t1_us: 60.0,
+    t2_us: 45.0,
+    gate_time_1q_us: 0.03,
+    gate_time_2q_us: 0.30,
+    gate_time_3q_us: 1.00,
+    excited_state_pop: 0.0,
+  },
+  stochastic: {
+    enabled: true,
+    depolarizing_1q: 0.001,
+    depolarizing_2q: 0.01,
+    bit_flip: 0.0,
+    phase_flip: 0.0,
+    bit_phase_flip: 0.0,
+    reset_error: 0.0,
+  },
+  coherent: { enabled: false, over_rotation_1q_rad: 0.0, over_rotation_2q_rad: 0.0, phase_offset_rad: 0.0 },
+  readout: { enabled: true, prob_1_given_0: 0.015, prob_0_given_1: 0.025 },
+  correlated: { enabled: false, zz_crosstalk_strength: 0.0, correlated_depolarizing_2q: 0.0 },
+  simulation_method: "automatic",
+};
+
+export function IdealVsNoisy({
+  result,
+  circuitIr,
+  noiseSimResult,
+  onRunNoise,
+}: {
+  result: RunResult;
+  circuitIr?: CircuitIR;
+  noiseSimResult?: NoiseSimulationResult | null;
+  onRunNoise?: (noise: NoiseIn) => void;
+}) {
+  const [localSimResult, setLocalSimResult] = useState<NoiseSimulationResult | null>(null);
+  const [isSimulating, setIsSimulating] = useState(false);
+  const [simError, setSimError] = useState<string | null>(null);
+
+  // Check if job itself has ideal_counts or if noiseSimResult or localSimResult is available
+  const jobIdealCounts = result.metadata?.ideal_counts as Record<string, number> | undefined;
+  const activeSim = localSimResult || noiseSimResult;
+
+  const idealCounts = jobIdealCounts || (activeSim ? activeSim.ideal_counts : undefined);
+  const noisyCounts = jobIdealCounts ? (result.counts ?? {}) : (activeSim ? activeSim.noisy_counts : (result.counts ?? {}));
+
+  // Derive metrics
+  const jobMetrics = (result.metadata?.metrics ?? {}) as Record<string, unknown>;
+  const fidelity = jobIdealCounts
+    ? (jobMetrics.fidelity !== undefined ? Number(jobMetrics.fidelity) : 1.0)
+    : (activeSim?.metrics?.fidelity ?? 1.0);
+  const purityVal = jobIdealCounts
+    ? (jobMetrics.purity !== undefined ? Number(jobMetrics.purity) : 1.0)
+    : (activeSim?.metrics?.purity ?? 1.0);
+  const tvd = jobIdealCounts
+    ? (jobMetrics.total_variation !== undefined ? Number(jobMetrics.total_variation) : 0.0)
+    : (activeSim?.metrics?.total_variation_distance ?? 0.0);
+  const leakage = jobIdealCounts
+    ? (jobMetrics.shot_leakage !== undefined ? Number(jobMetrics.shot_leakage) : 0.0)
+    : 0.0;
+
+  const handleRunSimulation = async () => {
+    if (!circuitIr) return;
+    setIsSimulating(true);
+    setSimError(null);
+    try {
+      const shots = result.metadata?.shots ? Number(result.metadata.shots) : 1024;
+      const res = await noiseLabApi.simulate(circuitIr, DEFAULT_SIM_PRESET, shots);
+      setLocalSimResult(res);
+      onRunNoise?.({
+        enabled: true,
+        t1_us: DEFAULT_SIM_PRESET.decoherence.t1_us,
+        t2_us: DEFAULT_SIM_PRESET.decoherence.t2_us,
+        readout_error: DEFAULT_SIM_PRESET.readout.prob_1_given_0,
+        gate_time_1q_us: DEFAULT_SIM_PRESET.decoherence.gate_time_1q_us,
+        gate_time_2q_us: DEFAULT_SIM_PRESET.decoherence.gate_time_2q_us,
+        gate_time_3q_us: DEFAULT_SIM_PRESET.decoherence.gate_time_3q_us,
+      });
+    } catch (err: any) {
+      setSimError(err.message || String(err));
+    } finally {
+      setIsSimulating(false);
+    }
+  };
+
   if (!idealCounts) {
     return (
-      <Notice>
-        Enable the noise model on the Qiskit Aer or CUDA-Q backend to compare an ideal run
-        against a noisy one.
-      </Notice>
+      <div className="flex flex-col gap-4">
+        <Notice>
+          Enable the noise model on the Qiskit Aer or CUDA-Q backend to compare an ideal run
+          against a noisy one.
+        </Notice>
+
+        {circuitIr && (
+          <div className="flex flex-col gap-3 rounded-xl border border-line-soft bg-raised/40 p-4 backdrop-blur-sm">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-white flex items-center gap-1.5">
+                <Activity className="h-4 w-4 text-accent" />
+                Simulate Under Realistic Quantum Noise
+              </span>
+              <span className="text-[11px] text-ink-3 font-mono">Qiskit Aer Native</span>
+            </div>
+            <p className="text-xs text-ink-3 leading-relaxed">
+              This circuit was executed under ideal (noiseless) conditions. Click below to simulate T₁ energy relaxation, T₂ phase damping, and SPAM readout faults side by side with the ideal distribution.
+            </p>
+            {simError && (
+              <div className="text-xs text-danger bg-danger/10 p-2 rounded-lg border border-danger/30">
+                {simError}
+              </div>
+            )}
+            <div className="flex items-center gap-3 pt-1">
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={handleRunSimulation}
+                disabled={isSimulating}
+                className="flex items-center gap-1.5 font-semibold shadow-sm"
+              >
+                {isSimulating ? <Spinner className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
+                Run Noise Simulation
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
     );
   }
-  const noisyCounts = result.counts ?? {};
+
   const totalIdeal = Object.values(idealCounts).reduce((a, b) => a + b, 0) || 1;
   const totalNoisy = Object.values(noisyCounts).reduce((a, b) => a + b, 0) || 1;
   const labels = [...new Set([...Object.keys(idealCounts), ...Object.keys(noisyCounts)])].sort();
@@ -1144,28 +1409,69 @@ export function IdealVsNoisy({ result }: { result: RunResult }) {
   const noisy = labels.map((k) => (noisyCounts[k] ?? 0) / totalNoisy);
 
   return (
-    <div className="flex flex-col gap-4">
-      <GroupedBars
-        labels={labels}
-        series={[
-          { name: "Ideal", values: ideal, color: "var(--accent)" },
-          { name: "Noisy", values: noisy, color: "var(--danger)" },
-        ]}
-      />
-      <div>
-        <p className="mb-2 text-[13px] font-medium text-ink">
-          Noisy minus ideal (positive = noise added weight here)
-        </p>
+    <div className="flex flex-col gap-6">
+      {/* Top Metric Cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="rounded-xl border border-line-soft bg-raised/50 p-3 flex flex-col">
+          <span className="text-[11px] text-ink-3">Quantum State Fidelity</span>
+          <span className="text-lg font-mono font-bold text-accent mt-0.5">
+            {(fidelity * 100).toFixed(2)}%
+          </span>
+          <span className="text-[9px] text-ink-4 mt-0.5">⟨ψ|ρ|ψ⟩ state overlap</span>
+        </div>
+
+        <div className="rounded-xl border border-line-soft bg-raised/50 p-3 flex flex-col">
+          <span className="text-[11px] text-ink-3">Mixed State Purity</span>
+          <span className="text-lg font-mono font-bold text-white mt-0.5">
+            {purityVal.toFixed(3)}
+          </span>
+          <span className="text-[9px] text-ink-4 mt-0.5">Tr(ρ²) (1 = Pure, 0.5 = Mixed)</span>
+        </div>
+
+        <div className="rounded-xl border border-line-soft bg-raised/50 p-3 flex flex-col">
+          <span className="text-[11px] text-ink-3">Total Variation Dist</span>
+          <span className="text-lg font-mono font-bold text-emerald-400 mt-0.5">
+            {tvd.toFixed(4)}
+          </span>
+          <span className="text-[9px] text-ink-4 mt-0.5">½ ∑ |P_ideal - P_noisy|</span>
+        </div>
+
+        <div className="rounded-xl border border-line-soft bg-raised/50 p-3 flex flex-col">
+          <span className="text-[11px] text-ink-3">Shot Leakage</span>
+          <span className="text-lg font-mono font-bold text-amber-400 mt-0.5">
+            {(leakage * 100).toFixed(1)}%
+          </span>
+          <span className="text-[9px] text-ink-4 mt-0.5">Weight on zero-probability states</span>
+        </div>
+      </div>
+
+      {/* Main Dual Bar Histogram */}
+      <div className="flex flex-col gap-3 rounded-xl border border-line-soft bg-raised/30 p-4">
+        <div className="flex items-center justify-between border-b border-line-soft pb-2.5">
+          <h4 className="text-sm font-semibold text-white flex items-center gap-2">
+            <Activity className="h-4 w-4 text-accent" />
+            Measurement Distributions: Ideal vs Noisy
+          </h4>
+          <span className="text-xs font-mono text-ink-3">
+            {labels.length} basis states compared
+          </span>
+        </div>
+
         <GroupedBars
           labels={labels}
-          height={180}
           series={[
-            {
-              name: "difference",
-              values: noisy.map((v, i) => v - ideal[i]),
-              color: "#f59e0b",
-            },
+            { name: "Ideal", values: ideal, color: "#06b6d4" },
+            { name: "Noisy", values: noisy, color: "#f59e0b" },
           ]}
+        />
+      </div>
+
+      {/* Difference Chart */}
+      <div className="rounded-xl border border-line-soft bg-raised/30 p-4">
+        <DifferenceBars
+          labels={labels}
+          values={noisy.map((v, i) => v - ideal[i])}
+          height={180}
         />
       </div>
     </div>

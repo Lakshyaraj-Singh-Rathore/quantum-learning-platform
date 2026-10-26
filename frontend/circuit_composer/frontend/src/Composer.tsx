@@ -16,8 +16,6 @@ import {
   makeOp,
   makeParam,
   maxLayer,
-  measureAllAppend,
-  normalizeTerminalMeasurement,
   paramsFor,
   placeOp,
   requiredClbits,
@@ -83,8 +81,23 @@ const ALL_PALETTE_ITEMS: Record<string, PaletteItem> = (() => {
   return m
 })()
 
+const normalizeOp = (o: Op): Op => {
+  return {
+    ...makeOp(o.kind || "gate", o),
+    qubits: Array.isArray(o.qubits) ? [...o.qubits] : [],
+    controls: Array.isArray(o.controls) ? [...o.controls] : [],
+    neg_controls: Array.isArray(o.neg_controls) ? [...o.neg_controls] : [],
+    params: Array.isArray(o.params) ? [...o.params] : [],
+    clbits: Array.isArray(o.clbits) ? [...o.clbits] : [],
+    body: Array.isArray(o.body) ? o.body.map(normalizeOp) : [],
+    else_body: Array.isArray(o.else_body) ? o.else_body.map(normalizeOp) : [],
+  }
+}
+
 const sanitizeOps = (ops: Op[], nQubits: number): Op[] => {
-  const normalized = ops.map((o) => {
+  if (!Array.isArray(ops)) return []
+  const normalized = ops.map((raw) => {
+    const o = normalizeOp(raw)
     if (o.gate === "swap") {
       let q0 = o.qubits[0] ?? 0
       let q1 = o.qubits[1] ?? (nQubits === 2 ? (q0 === 0 ? 1 : 0) : (q0 < nQubits - 1 ? q0 + 1 : q0 - 1))
@@ -100,7 +113,7 @@ const sanitizeOps = (ops: Op[], nQubits: number): Op[] => {
   const seen = new Set<string>()
   const deduped: Op[] = []
   for (const op of normalized) {
-    const key = `${op.kind}:${op.gate}:${op.layer}:${[...op.qubits].sort().join(",")}:${[...op.controls].sort().join(",")}`
+    const key = `${op.kind}:${op.gate}:${op.layer}:${[...(op.qubits || [])].sort().join(",")}:${[...(op.controls || [])].sort().join(",")}`
     if (!seen.has(key)) {
       seen.add(key)
       deduped.push(op)
@@ -133,6 +146,7 @@ export function ComposerInner({ value, nQubits, onChange, onHeight, theme }: Com
   const [error, setError] = useState("")
   const [notice, setNotice] = useState("")
   const [editing, setEditing] = useState<{ rootIndex: number; path: PathStep[] } | null>(null)
+  const [mcxCountInput, setMcxCountInput] = useState<number>(2)
 
   const lastSent = useRef<string>("")
   const rootRef = useRef<HTMLDivElement>(null)
@@ -346,7 +360,7 @@ export function ComposerInner({ value, nQubits, onChange, onHeight, theme }: Com
       const isNeg = item.id === "negctrl"
       // Find a gate directly at (qubit, layer), or in the same column (layer), or currently selected
       const exactOp = ir.ops.find(
-        (o) => o.layer === layer && (o.qubits.includes(qubit) || o.controls.includes(qubit) || (o.neg_controls || []).includes(qubit))
+        (o) => o.layer === layer && ((o.qubits || []).includes(qubit) || (o.controls || []).includes(qubit) || (o.neg_controls || []).includes(qubit))
       )
       const columnOps = ir.ops.filter((o) => o.layer === layer && o.kind === "gate" && o.gate !== "barrier")
       const currentSelected = ir.ops.find((o) => o.id === selectedId)
@@ -362,7 +376,7 @@ export function ComposerInner({ value, nQubits, onChange, onHeight, theme }: Com
       }
 
       // Determine which wire gets the new control dot
-      const usedWires = new Set([...targetOp.qubits, ...targetOp.controls, ...(targetOp.neg_controls || [])])
+      const usedWires = new Set([...(targetOp.qubits || []), ...(targetOp.controls || []), ...(targetOp.neg_controls || [])])
       let newCtrlWire: number | null = null
 
       if (!usedWires.has(qubit)) {
@@ -563,8 +577,8 @@ export function ComposerInner({ value, nQubits, onChange, onHeight, theme }: Com
           }
         })
         setSelectedId(mcxOp.id)
-        setPending({ op: mcxOp, need: -1, mode: "controls" })
-        setNotice(`Click wires to add controls for MCX, then click Done`)
+        setPending({ op: mcxOp, need: -1, mode: "mcx_config" })
+        setNotice("Configure MCX Gate: Select or enter the number of control qubits.")
         return
       }
 
@@ -577,9 +591,28 @@ export function ComposerInner({ value, nQubits, onChange, onHeight, theme }: Com
     }
   }
 
+  const handleConfirmMcxControls = (k: number) => {
+    if (!pending || pending.mode !== "mcx_config") return
+    const validCount = Math.max(1, Math.min(19, k))
+    const targetQ = pending.op.qubits[0] ?? 0
+    const needed = Math.max(validCount + 1, targetQ + 1)
+    update((prev) => {
+      const nq = Math.max(prev.n_qubits, needed)
+      return {
+        ...prev,
+        n_qubits: nq,
+        n_clbits: Math.max(prev.n_clbits, nq),
+      }
+    })
+    setPending({ op: pending.op, need: validCount, mode: "controls" })
+    setNotice(
+      `Select ${validCount} control qubit(s) for MCX — click ${validCount === 1 ? "1 wire" : `${validCount} wires`} on circuit (${validCount} remaining)`
+    )
+  }
+
   /** Click during a pending control/target selection. */
   const handlePick = (qubit: number) => {
-    if (!pending) return
+    if (!pending || pending.mode === "mcx_config") return
     const used = involvedQubits(pending.op)
     if (used.includes(qubit)) return
 
@@ -589,7 +622,7 @@ export function ComposerInner({ value, nQubits, onChange, onHeight, theme }: Com
     } else if (pending.mode === "target2") {
       next = { ...pending.op, qubits: [...pending.op.qubits, qubit] }
     } else {
-      next = { ...pending.op, controls: [...pending.op.controls, qubit] }
+      next = { ...pending.op, controls: [...(pending.op.controls || []), qubit] }
     }
 
     update((prev) => {
@@ -618,14 +651,18 @@ export function ComposerInner({ value, nQubits, onChange, onHeight, theme }: Com
     } else {
       setPending({ ...pending, op: next })
       if (pending.mode === "controls") {
-        const remaining = pending.need - got
-        setNotice(`Select ${remaining} more control qubit(s) — click wire on circuit`)
+        if (pending.need > 0) {
+          const remaining = pending.need - got
+          setNotice(`Select ${remaining} more control qubit(s) — click wire on circuit (${remaining} remaining)`)
+        } else {
+          setNotice(`Click wires to add controls for MCX, then click Done`)
+        }
       }
     }
   }
 
   const finishPick = () => {
-    if (pending && pending.mode === "controls" && pending.op.controls.length === 0) {
+    if (pending && pending.mode === "controls" && (pending.op.controls?.length || 0) === 0) {
       // no controls picked -> leave the bare gate in place
       setNotice("No controls added; the gate was left uncontrolled.")
     }
@@ -656,7 +693,7 @@ export function ComposerInner({ value, nQubits, onChange, onHeight, theme }: Com
       } else if (handleType === "control" || handleType?.startsWith("control-")) {
         const cIdx = handleType.includes("-") ? parseInt(handleType.split("-")[1] ?? "0", 10) : 0
         if (op.qubits.includes(qubit)) return prev // control cannot overlap target
-        const newControls = [...op.controls]
+        const newControls = [...(op.controls || [])]
         if (newControls.length === 0) newControls.push(qubit)
         else newControls[cIdx] = qubit
         moved = { ...op, controls: newControls, layer }
@@ -668,14 +705,14 @@ export function ComposerInner({ value, nQubits, onChange, onHeight, theme }: Com
         else newNegControls[cIdx] = qubit
         moved = { ...op, neg_controls: newNegControls, layer }
       } else if (handleType === "target") {
-        if (op.controls.includes(qubit) || (op.neg_controls || []).includes(qubit)) return prev // target cannot overlap control
+        if ((op.controls || []).includes(qubit) || (op.neg_controls || []).includes(qubit)) return prev // target cannot overlap control
         moved = { ...op, qubits: [qubit], layer }
       } else {
         // Move entire gate: delta applies across all involved qubits
-        const refQ = op.qubits[0] ?? op.controls[0] ?? (op.neg_controls && op.neg_controls[0]) ?? 0
+        const refQ = (op.qubits || [])[0] ?? (op.controls || [])[0] ?? (op.neg_controls && op.neg_controls[0]) ?? 0
         const delta = qubit - refQ
-        const nextQubits = op.qubits.map((q) => q + delta)
-        const nextControls = op.controls.map((q) => q + delta)
+        const nextQubits = (op.qubits || []).map((q) => q + delta)
+        const nextControls = (op.controls || []).map((q) => q + delta)
         const nextNegControls = (op.neg_controls || []).map((q) => q + delta)
         const all = [...nextQubits, ...nextControls, ...nextNegControls]
         if (all.some((q) => q < 0 || q >= prev.n_qubits)) {
@@ -704,10 +741,10 @@ export function ComposerInner({ value, nQubits, onChange, onHeight, theme }: Com
       const ops = prev.ops.map((o) => {
         if (o.id !== id) return o
         const allControls = [...(o.controls || []), ...(o.neg_controls || [])]
-        if (allControls.length > 0 && o.qubits.length > 0) {
-          const nextQubits = [...o.qubits]
-          if (o.controls.length > 0) {
-            const nextControls = [...o.controls]
+        if (allControls.length > 0 && (o.qubits?.length || 0) > 0) {
+          const nextQubits = [...(o.qubits || [])]
+          if ((o.controls?.length || 0) > 0) {
+            const nextControls = [...(o.controls || [])]
             const temp = nextQubits[0]
             nextQubits[0] = nextControls[0]
             nextControls[0] = temp
@@ -851,8 +888,8 @@ export function ComposerInner({ value, nQubits, onChange, onHeight, theme }: Com
       n_qubits: prev.n_qubits - 1,
       ops: prev.ops.map((o) => ({
         ...o,
-        qubits: o.qubits.map((x) => (x > qubit ? x - 1 : x)),
-        controls: o.controls.map((x) => (x > qubit ? x - 1 : x)),
+        qubits: (o.qubits || []).map((x) => (x > qubit ? x - 1 : x)),
+        controls: (o.controls || []).map((x) => (x > qubit ? x - 1 : x)),
       })),
     }));
   };
@@ -987,6 +1024,7 @@ function renderPaletteLabel(label: string) {
             <EditGatePanel
               op={selectedOp}
               nQubits={ir.n_qubits}
+              nClbits={ir.n_clbits ?? ir.n_qubits}
               onUpdateOp={handleUpdateOp}
               onClose={() => setIsEditPanelOpen(false)}
               onDuplicate={() => handleDuplicateGate(selectedOp.id)}
@@ -1126,7 +1164,7 @@ function renderPaletteLabel(label: string) {
                   return {
                     ...prev,
                     n_qubits: Math.max(1, last),
-                    ops: prev.ops.filter((o) => ![...o.qubits, ...o.controls].includes(last)),
+                    ops: prev.ops.filter((o) => ![...(o.qubits || []), ...(o.controls || [])].includes(last)),
                   };
                 })
               }
@@ -1135,22 +1173,6 @@ function renderPaletteLabel(label: string) {
             </button>
             <span className="hint">{ir.n_qubits} qubits</span>
             <div className="spacer" />
-            <button className="tb" onClick={() => update((prev) => measureAllAppend(prev))}>
-              Measure All (Append)
-            </button>
-            <button
-              className="tb"
-              title="Top-level only — never touches measurements inside blocks"
-              onClick={() => {
-                update((prev) => normalizeTerminalMeasurement(prev));
-                if (dynamic)
-                  setNotice(
-                    "Normalized to a single terminal measurement layer. Note: this changes the semantics of a dynamic circuit, whose mid-circuit measurements drive control flow.",
-                  );
-              }}
-            >
-              Normalize Terminal Measurement
-            </button>
             <button className="tb" onClick={() => update((prev) => ({ ...prev, ops: compact(prev.ops) }))}>
               Compact
             </button>
@@ -1160,7 +1182,55 @@ function renderPaletteLabel(label: string) {
           </div>
 
           <div className="canvas-col">
-            {pending && (
+            {pending && pending.mode === "mcx_config" ? (
+              <div className="banner info pending-banner mcx-config-banner">
+                <div className="mcx-config-content">
+                  <span className="pending-msg">
+                    <strong>Configure MCX:</strong> Number of control qubits:
+                  </span>
+                  <div className="mcx-buttons-group">
+                    {[1, 2, 3, 4].map((count) => (
+                      <button
+                        key={count}
+                        type="button"
+                        className="tb mcx-count-btn"
+                        onClick={() => handleConfirmMcxControls(count)}
+                        title={`Select ${count} control qubit${count > 1 ? "s" : ""}`}
+                      >
+                        {count}
+                      </button>
+                    ))}
+                    <span className="mcx-or-label">or custom:</span>
+                    <input
+                      type="number"
+                      min={1}
+                      max={19}
+                      className="mcx-count-input"
+                      value={mcxCountInput}
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value, 10);
+                        setMcxCountInput(isNaN(val) ? 1 : Math.max(1, Math.min(19, val)));
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          handleConfirmMcxControls(mcxCountInput);
+                        }
+                      }}
+                    />
+                    <button
+                      type="button"
+                      className="tb mcx-confirm-btn"
+                      onClick={() => handleConfirmMcxControls(mcxCountInput)}
+                    >
+                      Confirm
+                    </button>
+                  </div>
+                </div>
+                <button type="button" className="tb tb-cancel" onClick={cancelPending}>
+                  ✕ Cancel
+                </button>
+              </div>
+            ) : pending ? (
               <div className="banner info pending-banner">
                 <span>{notice}</span>
                 <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
@@ -1174,7 +1244,7 @@ function renderPaletteLabel(label: string) {
                   </button>
                 </div>
               </div>
-            )}
+            ) : null}
             {!pending && notice && <div className="banner warn">{notice}</div>}
             {error && <div className="banner err">{error}</div>}
             {dynamic && (

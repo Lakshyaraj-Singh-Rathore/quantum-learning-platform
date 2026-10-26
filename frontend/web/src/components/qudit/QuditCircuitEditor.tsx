@@ -82,6 +82,7 @@ export const QuditCircuitEditor: React.FC<QuditCircuitEditorProps> = ({
   const [showCode, setShowCode] = useState<boolean>(true);
   const [search, setSearch] = useState<string>("");
   const [showSearch, setShowSearch] = useState<boolean>(false);
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [paramExpr, setParamExpr] = useState<string>("pi/2");
 
   const commitUpdate = (newCircuit: QuditCircuit) => {
@@ -358,15 +359,28 @@ export const QuditCircuitEditor: React.FC<QuditCircuitEditorProps> = ({
   );
 
   const visiblePalette = useMemo(() => {
-    if (!search.trim()) return QUDIT_PALETTE;
+    let list = QUDIT_PALETTE;
+    if (categoryFilter !== "all") {
+      if (categoryFilter === "1q") {
+        list = list.filter((g) => g.numQudits === 1 && g.category !== "control_flow");
+      } else if (categoryFilter === "2q") {
+        list = list.filter((g) => g.numQudits === 2);
+      } else if (categoryFilter === "multi") {
+        list = list.filter((g) => g.numQudits >= 3);
+      } else if (categoryFilter === "directives") {
+        list = list.filter((g) => g.category === "control_flow");
+      }
+    }
+    if (!search.trim()) return list;
     const needle = search.trim().toLowerCase();
-    return QUDIT_PALETTE.filter(
+    return list.filter(
       (g) =>
         g.name.toLowerCase().includes(needle) ||
         g.id.toLowerCase().includes(needle) ||
-        g.label.toLowerCase().includes(needle)
+        g.label.toLowerCase().includes(needle) ||
+        (g.sublabel && g.sublabel.toLowerCase().includes(needle))
     );
-  }, [search, QUDIT_PALETTE]);
+  }, [search, categoryFilter, QUDIT_PALETTE]);
 
   // Circuit display column count
   const nCols = Math.max(8, ops.length + 3);
@@ -623,38 +637,7 @@ export const QuditCircuitEditor: React.FC<QuditCircuitEditorProps> = ({
     });
   };
 
-  // Terminal actions
-  const handleMeasureAllAppend = () => {
-    const measureOps: QuditOp[] = wires.map((w) => ({
-      id: `measure-q${w.index}-${Date.now()}`,
-      gate: "measure",
-      targets: [w.index],
-      controls: [],
-      params: {},
-      dimension,
-    }));
-    commitUpdate({
-      ...circuit,
-      ops: [...ops, ...measureOps],
-    });
-  };
-
-  const handleNormalizeTerminalMeasurement = () => {
-    const nonMeasureOps = ops.filter((o) => o.gate !== "measure");
-    const terminalMeasures: QuditOp[] = wires.map((w) => ({
-      id: `measure-q${w.index}-${Date.now()}`,
-      gate: "measure",
-      targets: [w.index],
-      controls: [],
-      params: {},
-      dimension,
-    }));
-    commitUpdate({
-      ...circuit,
-      ops: [...nonMeasureOps, ...terminalMeasures],
-    });
-  };
-
+  // Clear circuit
   const handleClear = () => {
     commitUpdate({
       ...circuit,
@@ -746,10 +729,36 @@ export const QuditCircuitEditor: React.FC<QuditCircuitEditorProps> = ({
             />
           )}
 
-          {/* Palette Grid with HTML5 Drag & Drop */}
-          <div className="grid grid-cols-6 gap-1.5 py-1">
+          {/* Category Filter Pills */}
+          <div className="flex items-center gap-1 overflow-x-auto pb-1 scrollbar-none text-[11px] font-mono">
+            {[
+              { id: "all", label: "All" },
+              { id: "1q", label: "1-Qudit" },
+              { id: "2q", label: "2-Qudit" },
+              { id: "multi", label: "Multi" },
+              { id: "directives", label: "Directives" },
+            ].map((cat) => (
+              <button
+                key={cat.id}
+                type="button"
+                onClick={() => setCategoryFilter(cat.id)}
+                className={cn(
+                  "px-2 py-0.5 rounded-full whitespace-nowrap transition-all border text-[10px]",
+                  categoryFilter === cat.id
+                    ? "bg-accent/20 border-accent text-accent font-semibold shadow-sm"
+                    : "bg-[#090d18] border-line/60 text-slate-400 hover:text-white hover:border-line"
+                )}
+              >
+                {cat.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Palette Grid with HTML5 Drag & Drop - Spacious 3-Column Layout */}
+          <div className="grid grid-cols-3 gap-2 py-1 max-h-[420px] overflow-y-auto pr-0.5">
             {visiblePalette.map((gate) => {
               const isSelected = selectedPaletteGate === gate.id;
+              const wireBadge = gate.numQudits > 1 ? `${gate.numQudits}Q` : "1Q";
               return (
                 <div
                   key={gate.id}
@@ -777,19 +786,32 @@ export const QuditCircuitEditor: React.FC<QuditCircuitEditorProps> = ({
                     color: gate.fg,
                   }}
                   className={cn(
-                    "w-9 h-9 rounded flex flex-col items-center justify-center font-bold text-xs shadow-sm hover:brightness-110 active:scale-95 transition-all relative overflow-hidden cursor-grab active:cursor-grabbing",
-                    isSelected && "ring-2 ring-white ring-offset-1 ring-offset-[#0c101c]"
+                    "h-[52px] rounded-lg flex flex-col justify-between p-1.5 shadow-md hover:brightness-115 hover:shadow-lg active:scale-95 transition-all relative overflow-hidden cursor-grab active:cursor-grabbing border border-white/10 group",
+                    isSelected
+                      ? "ring-2 ring-white ring-offset-2 ring-offset-[#0c101c] shadow-cyan-500/30"
+                      : "hover:border-white/30"
                   )}
-                  title={`${gate.name} — Drag onto circuit track or click to add`}
+                  title={`${gate.name} (${wireBadge}) — Drag onto circuit wire or click to append`}
                 >
-                  <span className="leading-none text-[11px] font-mono tracking-tighter">
-                    {gate.label}
-                  </span>
-                  {gate.sublabel && (
-                    <span className="text-[7.5px] leading-tight font-medium opacity-85">
-                      {gate.sublabel}
+                  {/* Subtle top gloss highlight */}
+                  <div className="absolute inset-x-0 top-0 h-[40%] bg-gradient-to-b from-white/20 to-transparent pointer-events-none" />
+
+                  {/* Top row: Label & Wire Badge */}
+                  <div className="flex items-center justify-between w-full relative z-10">
+                    <span className="font-mono font-bold text-[13px] leading-none tracking-tight drop-shadow-sm truncate">
+                      {gate.label}
                     </span>
-                  )}
+                    <span className="text-[8.5px] font-mono px-1 py-0.2 rounded bg-black/35 text-white/90 font-semibold border border-white/10">
+                      {wireBadge}
+                    </span>
+                  </div>
+
+                  {/* Bottom row: Sublabel */}
+                  <div className="flex items-center justify-between w-full relative z-10">
+                    <span className="text-[9px] font-medium tracking-wide uppercase opacity-85 truncate">
+                      {gate.sublabel || gate.category}
+                    </span>
+                  </div>
                 </div>
               );
             })}
@@ -912,21 +934,6 @@ export const QuditCircuitEditor: React.FC<QuditCircuitEditorProps> = ({
             </span>
 
             <div className="flex-1" />
-
-            <button
-              type="button"
-              onClick={handleMeasureAllAppend}
-              className="px-2.5 py-1 rounded border border-line bg-subtle/40 text-slate-300 hover:text-white hover:bg-hover transition-colors"
-            >
-              Measure All (Append)
-            </button>
-            <button
-              type="button"
-              onClick={handleNormalizeTerminalMeasurement}
-              className="px-2.5 py-1 rounded border border-line bg-subtle/40 text-slate-300 hover:text-white hover:bg-hover transition-colors"
-            >
-              Normalize Terminal Measurement
-            </button>
             <button
               type="button"
               onClick={() => {

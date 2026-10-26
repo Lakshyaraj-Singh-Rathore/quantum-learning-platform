@@ -150,7 +150,7 @@ export function AiAssignmentTab() {
   };
 
   const answeredCount = Object.keys(answers).length;
-  const totalQuestions = assignment?.questions.length ?? 0;
+  const totalQuestions = assignment?.questions?.length ?? assignment?.total_questions ?? 0;
 
   return (
     <div className="space-y-6">
@@ -349,7 +349,7 @@ export function AiAssignmentTab() {
                 </h3>
               </div>
               <p className="text-xs text-ink-3 mt-1">
-                Generated via <strong className="text-ink">{assignment.model_used}</strong> accessing indexed RAG materials · {assignment.total_questions} questions across {Object.keys(assignment.by_topic).length} topic sections.
+                Generated via <strong className="text-ink">{assignment.model_used || "Quantum Engine"}</strong> accessing indexed RAG materials · {assignment.total_questions || (assignment.questions?.length ?? 0)} questions across {Object.keys(assignment.by_topic || {}).length} topic sections.
               </p>
             </div>
 
@@ -374,7 +374,7 @@ export function AiAssignmentTab() {
 
           {/* Questions Grouped Topic-Wise */}
           <div className="space-y-8">
-            {Object.entries(assignment.by_topic).map(([topicId, topicQuestions], sectionIdx) => {
+            {Object.entries(assignment.by_topic || {}).map(([topicId, topicQuestions = []], sectionIdx) => {
               const topicName = topicQuestions[0]?.topic_name || topicId;
               return (
                 <div key={topicId} className="space-y-4">
@@ -395,7 +395,7 @@ export function AiAssignmentTab() {
                   <div className="space-y-4">
                     {topicQuestions.map((q) => {
                       const questionNum =
-                        assignment.questions.findIndex((x) => x.id === q.id) + 1;
+                        (assignment.questions || []).findIndex((x) => x.id === q.id) + 1;
                       const isAnswered = answers[q.id] !== undefined;
 
                       return (
@@ -736,9 +736,18 @@ export function DailyChallengeTab() {
     );
   }
 
-  const gateSummary = `${ir.n_qubits} qubits · ${ir.ops.length} gates · depth ${
-    ir.ops.length > 0 ? Math.max(...ir.ops.map((op) => op.layer)) + 1 : 0
+  const nQubits = ir?.n_qubits ?? 2;
+  const opsList = ir?.ops || [];
+  const gateSummary = `${nQubits} qubits · ${opsList.length} gates · depth ${
+    opsList.length > 0 ? Math.max(...opsList.map((op) => op.layer || 0)) + 1 : 0
   }`;
+
+  const constraints = daily.constraints || {
+    max_qubits: 2,
+    max_gates: 10,
+    target_fidelity: 0.9,
+  };
+  const allowedGates = daily.allowed_gates || ["h", "cx", "measure"];
 
   return (
     <div className="space-y-6">
@@ -755,15 +764,15 @@ export function DailyChallengeTab() {
             <Badge tone="accent" className="text-xs uppercase font-bold tracking-wider">
               Daily Circuit Puzzle
             </Badge>
-            <span className="text-[11px] text-ink-3">Topic: {daily.topic}</span>
+            <span className="text-[11px] text-ink-3">Topic: {daily.topic || "Quantum Foundations"}</span>
           </div>
 
           <div className="flex items-center gap-2">
             <span className="flex items-center gap-1 text-xs font-bold text-amber-400 bg-amber-400/10 px-2.5 py-1 rounded-lg border border-amber-400/20">
-              <Flame className="h-4 w-4 fill-amber-400 text-amber-400" /> +{daily.xp_reward} XP
+              <Flame className="h-4 w-4 fill-amber-400 text-amber-400" /> +{daily.xp_reward ?? 100} XP
             </span>
             <span className="text-[10px] uppercase font-semibold text-ink-3 px-2 py-0.5 rounded bg-subtle">
-              Difficulty: {daily.difficulty}
+              Difficulty: {daily.difficulty || "Intermediate"}
             </span>
           </div>
         </div>
@@ -777,8 +786,8 @@ export function DailyChallengeTab() {
             <span className="text-[11px] font-bold uppercase tracking-wider text-amber-400">
               Circuit Problem Statement:
             </span>
-            <p className="text-sm text-ink-1 leading-relaxed">{daily.prompt}</p>
-            {daily.story && (
+            <p className="text-sm text-ink-1 leading-relaxed">{daily.prompt || daily.story}</p>
+            {daily.story && daily.story !== daily.prompt && (
               <p className="text-xs text-ink-3 italic pt-1 border-t border-line/60">
                 Context: {daily.story}
               </p>
@@ -793,7 +802,7 @@ export function DailyChallengeTab() {
               Target Quantum State
             </span>
             <div className="font-mono text-sm font-bold text-accent-ink bg-raised p-2.5 rounded-lg border border-line">
-              {daily.target_state}
+              {daily.target_state || "Target State Vector"}
             </div>
           </div>
 
@@ -803,18 +812,18 @@ export function DailyChallengeTab() {
             </span>
             <div className="flex flex-wrap items-center gap-2 text-xs">
               <span className="px-2 py-1 rounded bg-raised border border-line text-ink-2 font-mono">
-                Max Qubits: {daily.constraints.max_qubits}
+                Max Qubits: {constraints.max_qubits}
               </span>
               <span className="px-2 py-1 rounded bg-raised border border-line text-ink-2 font-mono">
-                Max Gates: {daily.constraints.max_gates}
+                Max Gates: {constraints.max_gates}
               </span>
               <span className="px-2 py-1 rounded bg-raised border border-line text-ok font-mono font-semibold">
-                Fidelity ≥ {(daily.constraints.target_fidelity * 100).toFixed(0)}%
+                Fidelity ≥ {(constraints.target_fidelity * 100).toFixed(0)}%
               </span>
             </div>
             <div className="text-[11px] text-ink-3 pt-1">
               Allowed gates:{" "}
-              {daily.allowed_gates.map((g) => (
+              {allowedGates.map((g) => (
                 <code
                   key={g}
                   className="font-mono text-accent-ink bg-raised px-1 py-0.5 rounded border border-line text-[10px] mr-1"

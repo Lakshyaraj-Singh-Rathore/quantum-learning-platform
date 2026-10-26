@@ -169,11 +169,6 @@ def inspect_circuit(ir: CircuitIR, backend: str | None = None, shots: int | None
 
     if not ir.ops:
         warnings.append("Circuit is empty.")
-    if not summary["has_measurements"]:
-        warnings.append(
-            "No measurements found - counts will be empty. "
-            "Use 'Measure All (Append)' before running."
-        )
 
     for op in ir.walk():
         if op.kind == "gate" and op.gate == "swap" and op.controls:

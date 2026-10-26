@@ -69,10 +69,7 @@ export function familyOf(op: Op): (typeof FAMILY)[keyof typeof FAMILY] {
   }
   const g = (op.gate ?? "").toLowerCase();
   if (g === "h") return FAMILY.hadamard;
-  // A controlled X or Y is drawn in the blue family like plain X: the control
-  // dot is what marks it as controlled, not the colour of the target.
   if (X_FAMILY.has(g)) return FAMILY.xFamily;
-  if (op.controls.length > 0 && (g === "y" || g === "z")) return FAMILY.xFamily;
   if (SINGLE.has(g)) return FAMILY.single;
   if (ROTATION.has(g)) return FAMILY.rotation;
   return FAMILY.single;
@@ -110,14 +107,14 @@ export type GateShape =
 export function gateShape(op: Op): GateShape {
   if (op.kind === "measure") return "meter";
   if (op.kind === "barrier") return "barrier";
-  if (op.body.length > 0 || op.else_body.length > 0 || op.kind === "box") return "block";
+  if ((op.body?.length || 0) > 0 || (op.else_body?.length || 0) > 0 || op.kind === "box") return "block";
 
   const g = (op.gate ?? "").toLowerCase();
-  // A controlled X or Y is drawn the way every textbook draws it: a circled
-  // target, not a tile with a letter on it. Rendering it as a plain tile made
-  // a reversed control/target impossible to spot.
-  if (op.controls.length > 0 && (g === "x" || g === "y" || g === "z")) return "target";
-  if (g === "swap" && op.qubits.length === 2) return "swap";
+  // Only controlled-X (CNOT) is drawn as a circled ⊕ target.
+  // Other controlled gates (CZ, CY, CH, etc.) render as a gate tile on the target wire
+  // connected to the control dot(s).
+  if ((op.controls?.length || 0) > 0 && g === "x") return "target";
+  if (g === "swap" && (op.qubits?.length || 0) === 2) return "swap";
   return "tile";
 }
 
@@ -134,7 +131,7 @@ export function gateText(op: Op): string {
         SXDG: "√X†",
       };
       const base = names[g] ?? g;
-      if (op.params.length) return `${base}(${op.params[0].expr})`;
+      if (op.params && op.params.length > 0 && op.params[0]?.expr) return `${base}(${op.params[0].expr})`;
       return base;
     }
     case "measure":

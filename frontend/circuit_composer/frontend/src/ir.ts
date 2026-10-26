@@ -27,10 +27,13 @@ export function makeOp(kind: OpKind, patch: Partial<Op> = {}): Op {
   }
 }
 
-/** Every qubit row an op occupies, including nested block contents. */
 export function involvedQubits(op: Op): number[] {
-  const out = new Set<number>([...op.qubits, ...op.controls, ...(op.neg_controls || [])])
-  for (const child of [...op.body, ...op.else_body]) {
+  const out = new Set<number>([
+    ...(op.qubits || []),
+    ...(op.controls || []),
+    ...(op.neg_controls || []),
+  ])
+  for (const child of [...(op.body || []), ...(op.else_body || [])]) {
     for (const q of involvedQubits(child)) out.add(q)
   }
   return [...out]
@@ -72,10 +75,10 @@ export function hasCollision(
     if (o.layer !== layer || o.id === ignoreId) return false
     if (o.kind === "barrier" && o.qubits.length === 0) return true
     const [lo, hi] = rowSpan(o, nQubits)
-    const isMulti = o.controls.length + (o.neg_controls?.length || 0) + o.qubits.length > 1
+    const isMulti = (o.controls?.length || 0) + (o.neg_controls?.length || 0) + (o.qubits?.length || 0) > 1
     // blocks, barriers and multi-qubit gates occupy their whole vertical span
     const occupies =
-      o.kind === "barrier" || o.body.length > 0 || o.else_body.length > 0 || isMulti
+      o.kind === "barrier" || (o.body?.length || 0) > 0 || (o.else_body?.length || 0) > 0 || isMulti
         ? range(lo, hi)
         : involvedQubits(o)
     return occupies.some((q) => want.has(q))
@@ -116,7 +119,7 @@ export function compact(ops: Op[]): Op[] {
 export function isDynamic(op: Op): boolean {
   if (op.kind === "if" || op.kind === "while") return true
   if (op.condition && op.condition.type !== "true") return true
-  return [...op.body, ...op.else_body].some(isDynamic)
+  return [...(op.body || []), ...(op.else_body || [])].some(isDynamic)
 }
 
 export function circuitIsDynamic(ir: CircuitIR): boolean {
@@ -127,13 +130,13 @@ export function circuitIsDynamic(ir: CircuitIR): boolean {
 export function requiredClbits(ir: CircuitIR): number {
   let n = 0
   const walk = (op: Op) => {
-    for (const c of op.clbits) n = Math.max(n, c + 1)
+    for (const c of (op.clbits || [])) n = Math.max(n, c + 1)
     const cond = op.condition
     if (cond) {
       if (cond.bit != null) n = Math.max(n, cond.bit + 1)
       if (cond.end != null) n = Math.max(n, cond.end)
     }
-    ;[...op.body, ...op.else_body].forEach(walk)
+    ;[...(op.body || []), ...(op.else_body || [])].forEach(walk)
   }
   ir.ops.forEach(walk)
   // Deliberately does NOT fold in ir.n_clbits. Including the current width made
@@ -185,7 +188,7 @@ export function normalizeTerminalMeasurement(ir: CircuitIR): CircuitIR {
 /** True when a nested (non-top-level) measurement exists. */
 export function hasNestedMeasure(ops: Op[]): boolean {
   const walk = (op: Op): boolean =>
-    [...op.body, ...op.else_body].some((c) => c.kind === "measure" || walk(c))
+    [...(op.body || []), ...(op.else_body || [])].some((c) => c.kind === "measure" || walk(c))
   return ops.some(walk)
 }
 
@@ -236,18 +239,18 @@ export function describeCondition(c?: Condition | null): string {
 export function describeOp(op: Op): string {
   switch (op.kind) {
     case "gate": {
-      const p = op.params.length ? `(${op.params.map((x) => x.expr).join(", ")})` : ""
-      const ctrl = op.controls.length ? `ctrl${op.controls.join(",")}→` : ""
-      return `${ctrl}${(op.gate ?? "").toUpperCase()}${p} q${op.qubits.join(",")}`
+      const p = (op.params?.length || 0) ? `(${op.params.map((x) => x.expr).join(", ")})` : ""
+      const ctrl = (op.controls?.length || 0) ? `ctrl${op.controls.join(",")}→` : ""
+      return `${ctrl}${(op.gate ?? "").toUpperCase()}${p} q${(op.qubits || []).join(",")}`
     }
     case "measure":
-      return `measure q${op.qubits[0]} → c${op.clbits[0]}`
+      return `measure q${(op.qubits || [])[0]} → c${(op.clbits || [])[0]}`
     case "reset":
-      return `reset q${op.qubits[0]}`
+      return `reset q${(op.qubits || [])[0]}`
     case "barrier":
       return "barrier"
     case "if":
-      return `if (${describeCondition(op.condition)})${op.else_body.length ? " / else" : ""}`
+      return `if (${describeCondition(op.condition)})${(op.else_body?.length || 0) ? " / else" : ""}`
     case "for":
       return `for ${op.loop_var} in [0..${op.loop_n})`
     case "while":

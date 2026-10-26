@@ -21,8 +21,6 @@ export function bell(): CircuitIR {
     ops: [
       makeOp("gate", { gate: "h", qubits: [0], layer: 0 }),
       makeOp("gate", { gate: "x", qubits: [1], controls: [0], layer: 1 }),
-      makeOp("measure", { qubits: [0], clbits: [0], layer: 2 }),
-      makeOp("measure", { qubits: [1], clbits: [1], layer: 2 }),
     ],
   };
 }
@@ -31,9 +29,6 @@ export function ghz(n = 3): CircuitIR {
   const ops = [makeOp("gate", { gate: "h", qubits: [0], layer: 0 })];
   for (let i = 0; i < n - 1; i++) {
     ops.push(makeOp("gate", { gate: "x", qubits: [i + 1], controls: [i], layer: i + 1 }));
-  }
-  for (let i = 0; i < n; i++) {
-    ops.push(makeOp("measure", { qubits: [i], clbits: [i], layer: n }));
   }
   return { name: `ghz_${n}`, n_qubits: n, n_clbits: n, ops };
 }
@@ -48,9 +43,6 @@ export function wState(): CircuitIR {
       makeOp("gate", { gate: "x", qubits: [1], controls: [0], layer: 1 }),
       makeOp("gate", { gate: "h", qubits: [0], layer: 2 }),
       makeOp("gate", { gate: "x", qubits: [2], controls: [1], layer: 3 }),
-      makeOp("measure", { qubits: [0], clbits: [0], layer: 4 }),
-      makeOp("measure", { qubits: [1], clbits: [1], layer: 4 }),
-      makeOp("measure", { qubits: [2], clbits: [2], layer: 4 }),
     ],
   };
 }
@@ -67,9 +59,6 @@ export function qft3(): CircuitIR {
       makeOp("gate", { gate: "h", qubits: [1], layer: 3 }),
       makeOp("gate", { gate: "s", qubits: [1], controls: [2], layer: 4 }),
       makeOp("gate", { gate: "h", qubits: [2], layer: 5 }),
-      makeOp("measure", { qubits: [0], clbits: [0], layer: 6 }),
-      makeOp("measure", { qubits: [1], clbits: [1], layer: 6 }),
-      makeOp("measure", { qubits: [2], clbits: [2], layer: 6 }),
     ],
   };
 }
@@ -91,11 +80,31 @@ export interface CircuitState {
   circuitName?: string;
   challengeContext?: ChallengeContext;
   setIr: (ir: CircuitIR) => void;
-  reset: (ir?: CircuitIR) => void;
+  reset: (ir?: CircuitIR, name?: string) => void;
   setQubits: (n: number) => void;
   setCircuitId: (id?: string) => void;
   setCircuitName: (name?: string) => void;
   setChallengeContext: (ctx?: ChallengeContext) => void;
+}
+
+export function normalizeCircuit(ir?: CircuitIR | null): CircuitIR {
+  if (!ir) return emptyCircuit(2);
+  return {
+    ...ir,
+    name: ir.name ?? "circuit",
+    n_qubits: ir.n_qubits ?? 2,
+    n_clbits: ir.n_clbits ?? ir.n_qubits ?? 2,
+    ops: (ir.ops || []).map((op) => ({
+      ...op,
+      qubits: Array.isArray(op.qubits) ? [...op.qubits] : [],
+      controls: Array.isArray(op.controls) ? [...op.controls] : [],
+      neg_controls: Array.isArray(op.neg_controls) ? [...op.neg_controls] : [],
+      params: Array.isArray(op.params) ? [...op.params] : [],
+      clbits: Array.isArray(op.clbits) ? [...op.clbits] : [],
+      body: Array.isArray(op.body) ? [...op.body] : [],
+      else_body: Array.isArray(op.else_body) ? [...op.else_body] : [],
+    })),
+  };
 }
 
 export const useCircuit = create<CircuitState>()((set) => ({
@@ -104,12 +113,24 @@ export const useCircuit = create<CircuitState>()((set) => ({
   circuitId: undefined,
   circuitName: "Bell State",
   challengeContext: undefined,
-  setIr: (ir) => set((state) => ({ ir, epoch: state.epoch + 1 })),
-  reset: (ir) =>
-    set((state) => ({
-      ir: ir ?? emptyCircuit(state.ir.n_qubits),
-      epoch: state.epoch + 1,
-    })),
+  setIr: (ir) => set((state) => ({ ir: normalizeCircuit(ir), epoch: state.epoch + 1 })),
+  reset: (ir, name) =>
+    set((state) => {
+      const nextIr = normalizeCircuit(ir ?? emptyCircuit(state.ir.n_qubits));
+      let derivedName = name;
+      if (!derivedName) {
+        if (nextIr.name === "bell") derivedName = "Bell State";
+        else if (nextIr.name?.startsWith("ghz")) derivedName = `${nextIr.n_qubits}-Qubit GHZ`;
+        else if (nextIr.name === "w_state") derivedName = "W State";
+        else if (nextIr.name?.startsWith("qft")) derivedName = `${nextIr.n_qubits}-Qubit QFT`;
+        else derivedName = nextIr.ops.length > 0 ? `${nextIr.n_qubits}-Qubit Circuit` : "Untitled Circuit";
+      }
+      return {
+        ir: nextIr,
+        circuitName: derivedName,
+        epoch: state.epoch + 1,
+      };
+    }),
   setQubits: (n: number) =>
     set((state) => {
       const validN = Math.max(1, Math.min(20, n));
